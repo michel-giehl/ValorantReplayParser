@@ -22,14 +22,16 @@ internal static class ValorantSeededTransformHelpers
         ArgumentNullException.ThrowIfNull(input);
         if (input.BitsRemaining > int.MaxValue)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(CopyInputToOutput), input.Position, input.Length, input.BitsRemaining);
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(CopyInputToOutput), input.Position,
+                input.Length, input.BitsRemaining);
         }
 
         var bitCount = (int)input.BitsRemaining;
         var byteCount = GetOutputByteCount(bitCount);
         if (output.Length < byteCount)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.BufferTooSmall, nameof(CopyInputToOutput), input.Position, input.Length, byteCount);
+            throw new ArchiveReadException(ArchiveErrorCode.BufferTooSmall, nameof(CopyInputToOutput), input.Position,
+                input.Length, byteCount);
         }
 
         input.CopyBitsTo(output[..byteCount], bitCount);

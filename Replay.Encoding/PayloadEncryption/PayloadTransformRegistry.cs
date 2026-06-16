@@ -17,7 +17,8 @@ public sealed class PayloadTransformRegistry
             {
                 if (!_transforms.TryAdd(version, transform))
                 {
-                    throw new ArgumentException($"Replay version '{version}' has more than one payload transform.", nameof(transforms));
+                    throw new ArgumentException($"Replay version '{version}' has more than one payload transform.",
+                        nameof(transforms));
                 }
             }
         }

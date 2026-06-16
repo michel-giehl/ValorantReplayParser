@@ -122,7 +122,8 @@ public sealed class ValorantSeededTransform12_10 : IPayloadTransform
     }
 
     private static TransformConstants8 GetTransformConstants8(uint state) =>
-        new((byte)(state * 0x31), (byte)(state * 0x29), (int)(state * 0x2751b % 7) + 1, (int)(state * 0xcc6db61 % 7) + 1);
+        new((byte)(state * 0x31), (byte)(state * 0x29), (int)(state * 0x2751b % 7) + 1,
+            (int)(state * 0xcc6db61 % 7) + 1);
 
     private readonly record struct TransformConstants64(uint Addend1, uint Addend2, int Rotate1, int Rotate2);
 

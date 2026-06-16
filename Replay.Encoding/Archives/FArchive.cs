@@ -24,7 +24,7 @@ public abstract class FArchive : IDisposable
 
     public abstract void Skip(long count);
 
-    internal abstract void RestorePosition(long position);
+    protected internal abstract void RestorePosition(long position);
 
     public ArchiveCheckpoint CreateCheckpoint() => new(this);
 
@@ -47,7 +47,8 @@ public abstract class FArchive : IDisposable
     {
         if (!AtEnd)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.UnexpectedTrailingData, operation, Position, Length, Remaining);
+            throw new ArchiveReadException(ArchiveErrorCode.UnexpectedTrailingData, operation, Position, Length,
+                Remaining);
         }
     }
 

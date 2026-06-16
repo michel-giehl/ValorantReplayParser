@@ -21,6 +21,7 @@ public sealed class ArchiveReadException(
 
     public long Remaining { get; } = Math.Max(0, length - position);
 
-    private static string BuildMessage(ArchiveErrorCode errorCode, string operation, long position, long length, long requested) =>
+    private static string BuildMessage(ArchiveErrorCode errorCode, string operation, long position, long length,
+        long requested) =>
         $"{operation} failed with {errorCode}. Position={position}, Length={length}, Requested={requested}, Remaining={Math.Max(0, length - position)}.";
 }

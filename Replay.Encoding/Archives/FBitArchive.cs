@@ -85,7 +85,8 @@ public abstract class FBitArchive : FArchive
     {
         if (maxValue <= 0)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.MalformedSerializedInt, nameof(ReadSerializedInt), Position, Length, maxValue);
+            throw new ArchiveReadException(ArchiveErrorCode.MalformedSerializedInt, nameof(ReadSerializedInt), Position,
+                Length, maxValue);
         }
 
         uint value = 0;

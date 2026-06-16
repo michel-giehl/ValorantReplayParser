@@ -12,7 +12,8 @@ public sealed class BitBufferBuilder
         ArgumentNullException.ThrowIfNull(source);
         if (bitCount < 0)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(Append), source.Position, source.Length, bitCount);
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(Append), source.Position,
+                source.Length, bitCount);
         }
 
         EnsureCapacity(_bitLength + bitCount);

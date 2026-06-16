@@ -42,7 +42,8 @@ public sealed class BitArchiveReader : FBitArchive
     {
         if (startBit < 0 || bitLength < 0 || startBit + bitLength > input.Length * 8L)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(BitArchiveReader), 0, input.Length * 8L, bitLength);
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(BitArchiveReader), 0,
+                input.Length * 8L, bitLength);
         }
 
         _owner = owner;
@@ -86,11 +87,11 @@ public sealed class BitArchiveReader : FBitArchive
         if (TryReadBitsToUInt64(bitCount, out var value)) return value;
         if (bitCount is < 0 or > 64)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadBitsToUInt64), Position, Length, bitCount);
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadBitsToUInt64), Position, Length,
+                bitCount);
         }
 
         throw EndOfArchive(nameof(ReadBitsToUInt64), Position, Length, bitCount);
-
     }
 
     public override bool TryReadBitsToUInt64(int bitCount, out ulong value)
@@ -119,7 +120,8 @@ public sealed class BitArchiveReader : FBitArchive
         {
             if (bitCount < 0)
             {
-                throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadBits), Position, Length, bitCount);
+                throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadBits), Position, Length,
+                    bitCount);
             }
 
             throw EndOfArchive(nameof(ReadBits), Position, Length, bitCount);
@@ -146,13 +148,15 @@ public sealed class BitArchiveReader : FBitArchive
     {
         if (bitCount < 0)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(CopyBitsTo), Position, Length, bitCount);
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(CopyBitsTo), Position, Length,
+                bitCount);
         }
 
         var byteCount = (bitCount + 7) / 8;
         if (destination.Length < byteCount)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.BufferTooSmall, nameof(CopyBitsTo), Position, Length, byteCount);
+            throw new ArchiveReadException(ArchiveErrorCode.BufferTooSmall, nameof(CopyBitsTo), Position, Length,
+                byteCount);
         }
 
         if (BitsRemaining < bitCount)
@@ -174,7 +178,8 @@ public sealed class BitArchiveReader : FBitArchive
     {
         if (bitCount < 0)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadSubArchive), Position, Length, bitCount);
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadSubArchive), Position, Length,
+                bitCount);
         }
 
         if (BitsRemaining < bitCount)
@@ -234,7 +239,7 @@ public sealed class BitArchiveReader : FBitArchive
         SeekBits(BitPosition + count);
     }
 
-    internal override void RestorePosition(long position) => BitPosition = position;
+    protected internal override void RestorePosition(long position) => BitPosition = position;
 
     protected override void Dispose(bool disposing)
     {
