@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Valorant", "Replay.Valorant\Replay.Valorant.csproj", "{AC773DC9-FF96-496C-945D-1AC78625DCCC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Encoding", "Replay.Encoding\Replay.Encoding.csproj", "{2F5DF7A8-CC87-4769-8627-004D9A5EC055}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Model", "Replay.Model\Replay.Model.csproj", "{98696710-2893-40D6-B576-1E1EE0ACC5BD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Unreal", "Replay.Unreal\Replay.Unreal.csproj", "{FC15CB4D-5A8F-4503-82D0-3691B7FE013B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{A7F36E5A-D186-43A8-A530-5E5AF12E98B7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Encoding.Tests", "Replay.Encoding.Tests\Replay.Encoding.Tests.csproj", "{6CA48346-EFD3-4DF0-B90A-B424D8D4C013}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Unreal.Tests", "Replay.Unreal.Tests\Replay.Unreal.Tests.csproj", "{8067D878-375D-4CA1-8A5B-C658604BE0B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Valorant.Tests", "Replay.Valorant.Tests\Replay.Valorant.Tests.csproj", "{DAEDD49C-7AE2-4F5C-A6CB-ADBFA1691660}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AC773DC9-FF96-496C-945D-1AC78625DCCC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC773DC9-FF96-496C-945D-1AC78625DCCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC773DC9-FF96-496C-945D-1AC78625DCCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC773DC9-FF96-496C-945D-1AC78625DCCC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F5DF7A8-CC87-4769-8627-004D9A5EC055}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F5DF7A8-CC87-4769-8627-004D9A5EC055}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F5DF7A8-CC87-4769-8627-004D9A5EC055}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F5DF7A8-CC87-4769-8627-004D9A5EC055}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98696710-2893-40D6-B576-1E1EE0ACC5BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98696710-2893-40D6-B576-1E1EE0ACC5BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98696710-2893-40D6-B576-1E1EE0ACC5BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98696710-2893-40D6-B576-1E1EE0ACC5BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC15CB4D-5A8F-4503-82D0-3691B7FE013B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC15CB4D-5A8F-4503-82D0-3691B7FE013B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC15CB4D-5A8F-4503-82D0-3691B7FE013B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC15CB4D-5A8F-4503-82D0-3691B7FE013B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CA48346-EFD3-4DF0-B90A-B424D8D4C013}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CA48346-EFD3-4DF0-B90A-B424D8D4C013}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CA48346-EFD3-4DF0-B90A-B424D8D4C013}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CA48346-EFD3-4DF0-B90A-B424D8D4C013}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8067D878-375D-4CA1-8A5B-C658604BE0B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8067D878-375D-4CA1-8A5B-C658604BE0B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8067D878-375D-4CA1-8A5B-C658604BE0B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8067D878-375D-4CA1-8A5B-C658604BE0B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAEDD49C-7AE2-4F5C-A6CB-ADBFA1691660}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAEDD49C-7AE2-4F5C-A6CB-ADBFA1691660}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAEDD49C-7AE2-4F5C-A6CB-ADBFA1691660}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAEDD49C-7AE2-4F5C-A6CB-ADBFA1691660}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6CA48346-EFD3-4DF0-B90A-B424D8D4C013} = {A7F36E5A-D186-43A8-A530-5E5AF12E98B7}
+		{8067D878-375D-4CA1-8A5B-C658604BE0B3} = {A7F36E5A-D186-43A8-A530-5E5AF12E98B7}
+		{DAEDD49C-7AE2-4F5C-A6CB-ADBFA1691660} = {A7F36E5A-D186-43A8-A530-5E5AF12E98B7}
+	EndGlobalSection
+EndGlobal
