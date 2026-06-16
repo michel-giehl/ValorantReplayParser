@@ -20,4 +20,8 @@
         <Using Include="NUnit.Framework"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj"/>
+    </ItemGroup>
+
 </Project>

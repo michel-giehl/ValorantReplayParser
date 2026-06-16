@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>Unreal.Compression</RootNamespace>
+        <RootNamespace>Replay.Encoding</RootNamespace>
     </PropertyGroup>
 
 </Project>
