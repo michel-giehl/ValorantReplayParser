@@ -6,4 +6,9 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />
+      <ProjectReference Include="..\Replay.Model\Replay.Model.csproj" />
+    </ItemGroup>
+
 </Project>

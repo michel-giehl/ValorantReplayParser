@@ -2,7 +2,7 @@ using System.Buffers;
 
 namespace Replay.Encoding.Archives;
 
-public sealed class ByteArchiveReader : FArchive
+public class ByteArchiveReader : FArchive
 {
     private readonly IMemoryOwner<byte>? _owner;
     private readonly ReadOnlyMemory<byte> _buffer;
@@ -106,7 +106,7 @@ public sealed class ByteArchiveReader : FArchive
         Seek(Position + count);
     }
 
-    internal override void RestorePosition(long position) => _position = position;
+    protected internal override void RestorePosition(long position) => _position = position;
 
     protected override void Dispose(bool disposing)
     {

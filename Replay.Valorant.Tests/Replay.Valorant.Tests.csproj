@@ -20,4 +20,9 @@
         <Using Include="NUnit.Framework"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Replay.Model\Replay.Model.csproj" />
+      <ProjectReference Include="..\Replay.Valorant\Replay.Valorant.csproj" />
+    </ItemGroup>
+
 </Project>

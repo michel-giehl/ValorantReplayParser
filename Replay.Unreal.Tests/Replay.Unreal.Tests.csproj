@@ -20,4 +20,9 @@
         <Using Include="NUnit.Framework"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />
+        <ProjectReference Include="..\Replay.Unreal\Replay.Unreal.csproj"/>
+    </ItemGroup>
+
 </Project>
