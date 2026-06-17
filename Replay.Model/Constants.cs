@@ -2,8 +2,6 @@ namespace Replay.Model;
 
 public static class Constants
 {
-    public const uint FileMagic = 0x43F4EFDD;
-
     public const uint NetworkMagic = 0x2CF5A13D;
 
     public const uint ExpectedNetworkVersion = 19;

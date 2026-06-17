@@ -1,4 +1,5 @@
 using Replay.Encoding.Archives;
+using Replay.Model;
 
 namespace Replay.Unreal;
 
@@ -16,7 +17,11 @@ public sealed class FBinaryArchive : ByteArchiveReader
     {
     }
 
-    public string ReadFString()
+    public string ReadFString() => ReadFStringCore(null);
+
+    public string ReadFString(int maxSerializedBytes) => ReadFStringCore(maxSerializedBytes);
+
+    private string ReadFStringCore(int? maxSerializedBytes)
     {
         var length = ReadInt32();
         if (length == 0)
@@ -42,11 +47,60 @@ public sealed class FBinaryArchive : ByteArchiveReader
             byteCount = length;
         }
 
+        if (maxSerializedBytes is not null && byteCount > maxSerializedBytes.Value)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
+                byteCount, $"Serialized FString byte count {byteCount} exceeds maximum {maxSerializedBytes.Value}.");
+        }
+
         var bytes = ReadBytes(byteCount);
         return encoding.GetString(bytes.Span).TrimEnd('\0');
     }
 
-    public Guid ReadGuid() => new(ReadBytes(16).Span);
+    public Guid ReadGuid()
+    {
+        var a = ReadUInt32();
+        var b = ReadUInt32();
+        var c = ReadUInt32();
+        var d = ReadUInt32();
+
+        return Guid.Parse(
+            $"{a:X8}-{b >> 16:X4}-{b & 0xFFFF:X4}-{c >> 16:X4}-{c & 0xFFFF:X4}{d:X8}");
+    }
+
+    public bool ReadUInt32AsBool() => ReadUInt32() != 0;
+
+    public byte[] ReadByteArray(int maxCount)
+    {
+        var count = ReadInt32();
+        if (count < 0 || count > maxCount)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadByteArray), Position, Length,
+                count, $"Serialized byte array count {count} is outside the valid range 0..{maxCount}.");
+        }
+
+        return ReadBytes(count).ToArray();
+    }
+
+    public CustomVersionContainer ReadCustomVersionContainer()
+    {
+        var count = ReadInt32();
+        ValidateArrayCount(count, Constants.MaxCustomVersionCount, nameof(ReadCustomVersionContainer));
+        if (count > Constants.MaxCustomVersionCount)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadCustomVersionContainer),
+                Position, Length, count,
+                $"Custom version count {count} exceeds maximum {Constants.MaxCustomVersionCount}.");
+        }
+
+        var container = new CustomVersionContainer();
+        for (var i = 0; i < count; i++)
+        {
+            container.Versions.Add(new CustomVersionEntry(ReadGuid(), ReadInt32(), string.Empty));
+        }
+
+        return container;
+    }
 
     public TEnum ReadUInt32AsEnum<TEnum>() where TEnum : struct, Enum =>
         (TEnum)Enum.ToObject(typeof(TEnum), ReadUInt32());
@@ -54,10 +108,12 @@ public sealed class FBinaryArchive : ByteArchiveReader
     public TEnum ReadByteAsEnum<TEnum>() where TEnum : struct, Enum =>
         (TEnum)Enum.ToObject(typeof(TEnum), ReadByte());
 
-    public T[] ReadArray<T>(Func<T> readValue)
+    public T[] ReadArray<T>(Func<T> readValue) => ReadArray(readValue, int.MaxValue);
+
+    public T[] ReadArray<T>(Func<T> readValue, int maxCount)
     {
         var count = ReadInt32();
-        ValidateArrayCount(count, nameof(ReadArray));
+        ValidateArrayCount(count, maxCount, nameof(ReadArray));
 
         var values = new T[count];
         for (var i = 0; i < values.Length; i++)
@@ -68,10 +124,13 @@ public sealed class FBinaryArchive : ByteArchiveReader
         return values;
     }
 
-    public (T First, U Second)[] ReadTupleArray<T, U>(Func<T> readFirst, Func<U> readSecond)
+    public (T First, U Second)[] ReadTupleArray<T, U>(Func<T> readFirst, Func<U> readSecond) =>
+        ReadTupleArray(readFirst, readSecond, int.MaxValue);
+
+    public (T First, U Second)[] ReadTupleArray<T, U>(Func<T> readFirst, Func<U> readSecond, int maxCount)
     {
         var count = ReadInt32();
-        ValidateArrayCount(count, nameof(ReadTupleArray));
+        ValidateArrayCount(count, maxCount, nameof(ReadTupleArray));
 
         var values = new (T First, U Second)[count];
         for (var i = 0; i < values.Length; i++)
@@ -82,11 +141,12 @@ public sealed class FBinaryArchive : ByteArchiveReader
         return values;
     }
 
-    private void ValidateArrayCount(int count, string operation)
+    private void ValidateArrayCount(int count, int maxCount, string operation)
     {
-        if (count < 0)
+        if (count < 0 || count > maxCount)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, operation, Position, Length, count);
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, operation, Position, Length,
+                count, $"Serialized array count {count} is outside the valid range 0..{maxCount}.");
         }
     }
 }

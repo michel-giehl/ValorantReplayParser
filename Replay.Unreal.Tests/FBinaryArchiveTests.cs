@@ -36,7 +36,12 @@ public class FBinaryArchiveTests
     public void ReadGuid_ReadsSixteenByteGuid()
     {
         var expected = Guid.Parse("00112233-4455-6677-8899-aabbccddeeff");
-        var archive = new FBinaryArchive(expected.ToByteArray());
+        var bytes = new byte[16];
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(0, 4), 0x00112233u);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4, 4), 0x44556677u);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8, 4), 0x8899AABBu);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(12, 4), 0xCCDDEEFFu);
+        var archive = new FBinaryArchive(bytes);
 
         Assert.That(archive.ReadGuid(), Is.EqualTo(expected));
         Assert.That(archive.AtEnd, Is.True);

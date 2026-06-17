@@ -7,6 +7,8 @@ namespace Replay.Unreal.Tests;
 public class ReplayHeaderReaderTests
 {
     private static readonly Guid HeaderGuid = Guid.Parse("00112233-4455-6677-8899-aabbccddeeff");
+    private static readonly byte[] HeaderSkip12_10 = [3, 0, 0, 0, 49, 56, 0];
+    private static readonly byte[] HeaderSkip12_11 = [2, 0, 0, 0, 57, 0];
 
     [Test]
     public void Read_ParsesSupportedValorantHeader()
@@ -42,6 +44,22 @@ public class ReplayHeaderReaderTests
             Assert.That(result.Header.Platform, Is.EqualTo("Windows"));
             Assert.That(result.Header.BuildConfig, Is.EqualTo(7));
             Assert.That(result.Header.BuildTargetType, Is.EqualTo(BuildTargetType.Client));
+            Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
+    public void Read_ParsesAlternateValorantHeaderSkipBytes()
+    {
+        var archive = new FBinaryArchive(BuildHeader(replayVersionSkipBytes: HeaderSkip12_11));
+
+        var result = new ReplayHeaderReader(archive).Read();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Header.NetworkVersion, Is.EqualTo(Constants.ExpectedNetworkVersion));
+            Assert.That(result.ReplayVersion.Branch, Is.EqualTo("++Ares+Release-12.10"));
+            Assert.That(result.UEVersion.UE4Version, Is.EqualTo(1001u));
             Assert.That(archive.AtEnd, Is.True);
         });
     }
@@ -103,7 +121,10 @@ public class ReplayHeaderReaderTests
         });
     }
 
-    private static byte[] BuildHeader(uint networkMagic = Constants.NetworkMagic, int customVersionCount = 0)
+    private static byte[] BuildHeader(
+        uint networkMagic = Constants.NetworkMagic,
+        int customVersionCount = 0,
+        byte[]? replayVersionSkipBytes = null)
     {
         var bytes = new List<byte>();
         AddUInt32(bytes, networkMagic);
@@ -117,7 +138,7 @@ public class ReplayHeaderReaderTests
         AddUInt32(bytes, 0x11223344u);
         AddUInt32(bytes, Constants.ExpectedEngineNetworkProtocolVersion);
         AddUInt32(bytes, 0x55667788u);
-        bytes.AddRange(HeaderGuid.ToByteArray());
+        AddUnrealGuid(bytes, 0x00112233u, 0x44556677u, 0x8899AABBu, 0xCCDDEEFFu);
 
         AddUInt16(bytes, 12);
         AddUInt16(bytes, 10);
@@ -125,7 +146,7 @@ public class ReplayHeaderReaderTests
         AddUInt32(bytes, 123456u);
         AddFString(bytes, "++Ares+Release-12.10");
 
-        bytes.AddRange(new byte[6]);
+        bytes.AddRange(replayVersionSkipBytes ?? HeaderSkip12_10);
 
         AddUInt32(bytes, 1001u);
         AddUInt32(bytes, 1002u);
@@ -183,5 +204,13 @@ public class ReplayHeaderReaderTests
     private static void AddSingle(List<byte> bytes, float value)
     {
         AddUInt32(bytes, BitConverter.SingleToUInt32Bits(value));
+    }
+
+    private static void AddUnrealGuid(List<byte> bytes, uint a, uint b, uint c, uint d)
+    {
+        AddUInt32(bytes, a);
+        AddUInt32(bytes, b);
+        AddUInt32(bytes, c);
+        AddUInt32(bytes, d);
     }
 }

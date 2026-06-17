@@ -4,8 +4,9 @@ namespace Replay.Unreal;
 
 public sealed class ReplayHeaderReader
 {
-    private const int ValorantHeaderPaddingBytes = 6;
     private const int CustomVersionEntryByteCount = 20;
+    private const int MaxLevelNamesAndTimes = 1024;
+    private const int MaxGameSpecificDataEntries = 128;
 
     private readonly FBinaryArchive _archive;
 
@@ -41,8 +42,9 @@ public sealed class ReplayHeaderReader
 
         var replayVersion = ReadReplayVersion();
 
-        // VALORANT & version specific byte skip.
-        _archive.Skip(ValorantHeaderPaddingBytes);
+        // Valorant specific bytes. Unknown what this is for
+        var i = _archive.ReadUInt32();
+        _archive.Skip(i);
 
         var ueVersion = new UEVersion
         {
@@ -51,11 +53,11 @@ public sealed class ReplayHeaderReader
             PackageVersionLicense = _archive.ReadUInt32(),
         };
 
-        header.LevelNamesAndTimes = _archive.ReadTupleArray(_archive.ReadFString, _archive.ReadUInt32)
+        header.LevelNamesAndTimes = _archive.ReadTupleArray(_archive.ReadFString, _archive.ReadUInt32, MaxLevelNamesAndTimes)
             .Select(value => (LevelName: value.First, TimeInMs: value.Second))
             .ToArray();
         header.Flags = _archive.ReadUInt32AsEnum<ReplayHeaderFlags>();
-        header.GameSpecificData = _archive.ReadArray(_archive.ReadFString);
+        header.GameSpecificData = _archive.ReadArray(_archive.ReadFString, MaxGameSpecificDataEntries);
         header.MinRecordHz = _archive.ReadSingle();
         header.MaxRecordHz = _archive.ReadSingle();
         header.FrameLimitInMs = _archive.ReadSingle();
@@ -75,6 +77,7 @@ public sealed class ReplayHeaderReader
         Changelist = _archive.ReadUInt32(),
         Branch = _archive.ReadFString(),
     };
+
 
     private static void ValidateCustomVersionCount(int customVersionCount)
     {
