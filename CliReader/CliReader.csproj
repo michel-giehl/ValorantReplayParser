@@ -14,4 +14,9 @@
       <ProjectReference Include="..\Replay.Valorant\Replay.Valorant.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Serilog" Version="4.3.1" />
+      <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    </ItemGroup>
+
 </Project>

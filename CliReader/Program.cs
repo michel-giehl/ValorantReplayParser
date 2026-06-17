@@ -1,30 +1,58 @@
 using Replay.Encoding.Archives;
 using Replay.Unreal;
+using Serilog;
 
-var replayPath = args[0];
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
 
-using var file = File.OpenRead(replayPath);
-using var archive = new FBinaryArchive(file);
-
-var context = ValorantReplayReader.CreateDefault().Read(archive);
-
-if (context.Errors.Count > 0)
+try
 {
-    foreach (var error in context.Errors)
+    if (args.Length != 1)
     {
-        Console.Error.WriteLine(error.Message);
-        if (error.Exception is not null)
-        {
-            Console.Error.WriteLine(error.Exception.Message);
-        }
+        Log.Error("Usage: CliReader <replay-path>");
+        return 1;
     }
 
+    var replayPath = args[0];
+    Log.Information("Reading replay {ReplayPath}", replayPath);
+
+    using var file = File.OpenRead(replayPath);
+    using var archive = new FBinaryArchive(file);
+
+    var context = ValorantReplayReader.CreateDefault().Read(archive);
+
+    if (context.Errors.Count > 0)
+    {
+        foreach (var error in context.Errors)
+        {
+            if (error.Exception is null)
+            {
+                Log.Error("{ReplayParseError}", error.Message);
+                continue;
+            }
+
+            Log.Error(error.Exception, "{ReplayParseError}", error.Message);
+        }
+
+        return 1;
+    }
+
+    Log.Information("Read replay {ReplayName}", context.ReplayInfo.FriendlyName);
+    Log.Information("Version {ReplayVersion}", context.ReplayVersion.Branch);
+    Log.Information("Chunks {ChunkCount}", context.ReplayInfo.Chunks.Count);
+    Log.Information("Timestamp {Timestamp}", context.ReplayInfo.Timestamp);
+    Log.Information("Duration {Duration}", TimeSpan.FromMilliseconds(context.ReplayInfo.LengthInMs));
+
+    return 0;
+}
+catch (Exception exception)
+{
+    Log.Fatal(exception, "Failed to read replay.");
     return 1;
 }
-
-Console.WriteLine($"Read replay: {context.ReplayInfo.FriendlyName}");
-Console.WriteLine($"Version: {context.ReplayVersion.Branch}");
-Console.WriteLine($"Chunks: {context.ReplayInfo.Chunks.Count}");
-Console.WriteLine($"Header GUID: {context.ReplayHeader.Guid}");
-
-return 0;
+finally
+{
+    Log.CloseAndFlush();
+}
