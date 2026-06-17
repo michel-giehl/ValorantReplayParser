@@ -7,3 +7,6 @@ public sealed record InvalidReplayHeaderError(string Message, Exception? Excepti
 
 public sealed record InvalidReplayInfoError(string Message, Exception? Exception = null)
     : ReplayParseError(Message, Exception);
+
+public sealed record InvalidReplayDataError(string Message, Exception? Exception = null)
+    : ReplayParseError(Message, Exception);

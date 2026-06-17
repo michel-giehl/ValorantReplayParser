@@ -2,7 +2,7 @@ using Replay.Models;
 
 namespace Replay.Encoding.Archives;
 
-public sealed class FBinaryArchive : ByteArchiveReader
+public class FBinaryArchive : ByteArchiveReader
 {
     public FBinaryArchive(Stream input) : base(input)
     {
@@ -147,5 +147,12 @@ public sealed class FBinaryArchive : ByteArchiveReader
             throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, operation, Position, Length,
                 count, $"Serialized array count {count} is outside the valid range 0..{maxCount}.");
         }
+    }
+}
+
+public class UninitializedBinaryArchive : FBinaryArchive
+{
+    public UninitializedBinaryArchive() : base([])
+    {
     }
 }

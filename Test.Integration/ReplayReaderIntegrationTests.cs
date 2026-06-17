@@ -1,4 +1,5 @@
 using Replay.Encoding.Archives;
+using Replay.Encoding.Compression;
 using Replay.Models;
 using Replay.Unreal;
 using Snapshooter.NUnit;
@@ -32,6 +33,18 @@ public class ReplayReaderIntegrationTests
     public void ReadReplayHeader_12_11_MatchesSnapshot() =>
         ReadReplayHeaderMatchesSnapshot("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
+    [Test]
+    public void DecompressReplayData_12_08_MaterializesExpectedSize() =>
+        DecompressReplayDataMaterializesExpectedSize("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
+
+    [Test]
+    public void DecompressReplayData_12_10_MaterializesExpectedSize() =>
+        DecompressReplayDataMaterializesExpectedSize("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf");
+
+    [Test]
+    public void DecompressReplayData_12_11_MaterializesExpectedSize() =>
+        DecompressReplayDataMaterializesExpectedSize("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
+
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
@@ -52,6 +65,24 @@ public class ReplayReaderIntegrationTests
         var readResult = new ReplayHeaderReader(headerArchive).Read();
 
         Snapshot.Match(CreateReplayHeaderSnapshot(replayFileName, readResult, headerArchive, headerBytes.Length));
+    }
+
+    private static void DecompressReplayDataMaterializesExpectedSize(string replayFileName)
+    {
+        var replayBytes = ReadReplayBytes(replayFileName);
+        var archive = new FBinaryArchive(replayBytes);
+
+        var readResult = new ReplayInfoReader(archive).Read(new ReplayInfo(), new ReplayInfoSerializationMetadata());
+        new ReplayInfoChunkScanner(archive).Scan(readResult.Info);
+
+        var decompressedArchive = new ReplayDataStreamMaterializer(archive, new OozSharpOodleDecompressor())
+            .Materialize(readResult.Info);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(readResult.Info.Compressed, Is.True);
+            Assert.That(decompressedArchive.Length, Is.EqualTo(readResult.Info.TotalDataSizeInBytes));
+        });
     }
 
     private static byte[] ReadReplayBytes(string replayFileName)

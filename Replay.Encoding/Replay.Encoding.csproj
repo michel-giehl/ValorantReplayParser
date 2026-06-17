@@ -11,4 +11,8 @@
       <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="OozSharp" Version="3.0.1" />
+    </ItemGroup>
+
 </Project>

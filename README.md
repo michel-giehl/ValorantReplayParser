@@ -26,8 +26,8 @@ C# parser for VALORANT replay files (`.vrf`).
 | Replay chunk scanning | ✔ |
 | Replay header parsing | ✔ |
 | Payload transform | ✔ |
+| Oodle decompression | ✔ |
 | Minimal CLI reader | ✔ |
-| Oodle decompression | ❌ |
 | Replay data stream parsing | ❌ |
 | Packet parsing | ❌ |
 | Bunch processing | ❌ |

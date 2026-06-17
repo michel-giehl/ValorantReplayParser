@@ -5,7 +5,8 @@ using Replay.Unreal.Contracts;
 
 namespace Replay.Unreal;
 
-public class ReplayReaderContext : IHaveArchive, IHaveReplayInfo, IHaveReplayHeader, IHaveReplayVersion, IHaveErrors
+public class ReplayReaderContext : IHaveArchive, IHaveReplayInfo, IHaveReplayHeader, IHaveReplayVersion,
+    IHaveReplayDataStream, IHaveErrors
 {
     public ReplayReaderContext(FBinaryArchive archive)
     {
@@ -19,5 +20,6 @@ public class ReplayReaderContext : IHaveArchive, IHaveReplayInfo, IHaveReplayHea
     public ReplayHeader ReplayHeader { get; set; } = new UninitializedReplayHeader();
     public ReplayVersion ReplayVersion { get; set; } = new UninitializedReplayVersion { Branch = string.Empty };
     public UEVersion UEVersion { get; set; } = new UninitializedUEVersion();
+    public FBinaryArchive ReplayDataStream { get; set; } = new UninitializedBinaryArchive();
     public List<ReplayParseError> Errors { get; } = [];
 }
