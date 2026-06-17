@@ -8,7 +8,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />
-      <ProjectReference Include="..\Replay.Model\Replay.Model.csproj" />
+      <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
     </ItemGroup>
 
 </Project>

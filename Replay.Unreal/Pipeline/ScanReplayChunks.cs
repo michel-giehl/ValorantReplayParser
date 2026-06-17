@@ -1,6 +1,6 @@
 using Replay.Encoding.Archives;
-using Replay.Model;
-using Replay.Model.Contracts;
+using Replay.Models;
+using Replay.Models.Contracts;
 using Replay.Unreal.Contracts;
 
 namespace Replay.Unreal.Pipeline;

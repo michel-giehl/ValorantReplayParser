@@ -1,4 +1,4 @@
-namespace Replay.Model;
+namespace Replay.Models;
 
 public class ReplayHeader
 {

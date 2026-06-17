@@ -1,4 +1,4 @@
-namespace Replay.Model;
+namespace Replay.Models;
 
 public sealed class InvalidReplayInfoException(string message) : Exception(message)
 {

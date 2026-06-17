@@ -1,3 +1,4 @@
+using Replay.Encoding.Archives;
 using Replay.Unreal;
 using Replay.Unreal.Pipeline;
 

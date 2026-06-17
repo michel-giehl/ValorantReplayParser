@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Valorant", "Replay.V
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Encoding", "Replay.Encoding\Replay.Encoding.csproj", "{2F5DF7A8-CC87-4769-8627-004D9A5EC055}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Model", "Replay.Model\Replay.Model.csproj", "{98696710-2893-40D6-B576-1E1EE0ACC5BD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Models", "Replay.Models\Replay.Models.csproj", "{98696710-2893-40D6-B576-1E1EE0ACC5BD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Replay.Unreal", "Replay.Unreal\Replay.Unreal.csproj", "{FC15CB4D-5A8F-4503-82D0-3691B7FE013B}"
 EndProject

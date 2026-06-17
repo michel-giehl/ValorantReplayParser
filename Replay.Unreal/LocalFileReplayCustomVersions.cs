@@ -1,4 +1,4 @@
-using Replay.Model;
+using Replay.Models;
 
 namespace Replay.Unreal;
 

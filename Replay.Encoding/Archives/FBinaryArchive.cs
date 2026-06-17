@@ -1,7 +1,6 @@
-using Replay.Encoding.Archives;
-using Replay.Model;
+using Replay.Models;
 
-namespace Replay.Unreal;
+namespace Replay.Encoding.Archives;
 
 public sealed class FBinaryArchive : ByteArchiveReader
 {

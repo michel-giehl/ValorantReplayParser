@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
-using Replay.Model;
+using Replay.Models;
 using Replay.Unreal.Pipeline;
 
 namespace Replay.Unreal.Tests;

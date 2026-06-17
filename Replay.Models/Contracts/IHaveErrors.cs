@@ -1,4 +1,4 @@
-namespace Replay.Model.Contracts;
+namespace Replay.Models.Contracts;
 
 public interface IHaveErrors
 {

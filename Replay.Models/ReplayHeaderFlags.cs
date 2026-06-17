@@ -1,4 +1,4 @@
-namespace Replay.Model;
+namespace Replay.Models;
 
 [Flags]
 public enum ReplayHeaderFlags : uint

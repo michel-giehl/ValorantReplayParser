@@ -1,4 +1,4 @@
-namespace Replay.Model;
+namespace Replay.Models;
 
 public sealed record CustomVersionEntry(Guid Key, int Version, string FriendlyName);
 

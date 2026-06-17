@@ -1,4 +1,4 @@
-namespace Replay.Model;
+namespace Replay.Models;
 
 public abstract record ReplayParseError(string Message, Exception? Exception = null);
 
