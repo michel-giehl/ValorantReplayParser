@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
+using Replay.Models;
 
 namespace Replay.Encoding.Tests;
 
@@ -47,4 +48,61 @@ public class FBinaryArchiveTests
         Assert.That(archive.ReadGuid(), Is.EqualTo(expected));
         Assert.That(archive.AtEnd, Is.True);
     }
+
+    [Test]
+    public void ReadFVector_ReadsThreeFloats()
+    {
+        var bytes = new byte[12];
+        WriteSingle(bytes, 0, 1.25f);
+        WriteSingle(bytes, 4, -2.5f);
+        WriteSingle(bytes, 8, 3.75f);
+        var archive = new FBinaryArchive(bytes);
+
+        Assert.That(archive.ReadFVector(), Is.EqualTo(new FVector(1.25f, -2.5f, 3.75f)));
+        Assert.That(archive.AtEnd, Is.True);
+    }
+
+    [Test]
+    public void ReadFQuat_ReadsFourFloats()
+    {
+        var bytes = new byte[16];
+        WriteSingle(bytes, 0, 0.1f);
+        WriteSingle(bytes, 4, 0.2f);
+        WriteSingle(bytes, 8, 0.3f);
+        WriteSingle(bytes, 12, 0.4f);
+        var archive = new FBinaryArchive(bytes);
+
+        Assert.That(archive.ReadFQuat(), Is.EqualTo(new FQuat(0.1f, 0.2f, 0.3f, 0.4f)));
+        Assert.That(archive.AtEnd, Is.True);
+    }
+
+    [Test]
+    public void ReadFTransform_ReadsRotationTranslationAndScale()
+    {
+        var bytes = new byte[40];
+        WriteSingle(bytes, 0, 0.1f);
+        WriteSingle(bytes, 4, 0.2f);
+        WriteSingle(bytes, 8, 0.3f);
+        WriteSingle(bytes, 12, 0.4f);
+        WriteSingle(bytes, 16, 10f);
+        WriteSingle(bytes, 20, 20f);
+        WriteSingle(bytes, 24, 30f);
+        WriteSingle(bytes, 28, 1f);
+        WriteSingle(bytes, 32, 2f);
+        WriteSingle(bytes, 36, 3f);
+        var archive = new FBinaryArchive(bytes);
+
+        var transform = archive.ReadFTransform();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(transform.Rotation, Is.EqualTo(new FQuat(0.1f, 0.2f, 0.3f, 0.4f)));
+            Assert.That(transform.Translation, Is.EqualTo(new FVector(10f, 20f, 30f)));
+            Assert.That(transform.Scale3D, Is.EqualTo(new FVector(1f, 2f, 3f)));
+            Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    private static void WriteSingle(byte[] bytes, int offset, float value) =>
+        BinaryPrimitives.WriteSingleLittleEndian(bytes.AsSpan(offset, sizeof(float)), value);
 }

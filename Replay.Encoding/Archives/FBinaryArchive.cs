@@ -67,7 +67,31 @@ public class FBinaryArchive : ByteArchiveReader
             $"{a:X8}-{b >> 16:X4}-{b & 0xFFFF:X4}-{c >> 16:X4}-{c & 0xFFFF:X4}{d:X8}");
     }
 
+    public FVector ReadFVector() => new(ReadSingle(), ReadSingle(), ReadSingle());
+
+    public FQuat ReadFQuat() => new(ReadSingle(), ReadSingle(), ReadSingle(), ReadSingle());
+
+    public FTransform ReadFTransform() => new(ReadFQuat(), ReadFVector(), ReadFVector());
+
+    public FTransform ReadFTransfrom() => ReadFTransform();
+
     public bool ReadUInt32AsBool() => ReadUInt32() != 0;
+
+    public bool ReadBoolean() => ReadByte() != 0;
+
+    public string ReadFName()
+    {
+        var isHardcoded = ReadBoolean();
+        if (isHardcoded)
+        {
+            var nameIndex = ReadIntPacked();
+            return nameIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        var name = ReadFString();
+        _ = ReadInt32();
+        return name;
+    }
 
     public byte[] ReadByteArray(int maxCount)
     {
