@@ -45,6 +45,18 @@ public class ReplayReaderIntegrationTests
     public void DecompressReplayData_12_11_MaterializesExpectedSize() =>
         DecompressReplayDataMaterializesExpectedSize("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
+    [Test]
+    public void ReadPlaybackPackets_12_08_ExtractsPackets() =>
+        ReadPlaybackPacketsExtractsPackets("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
+
+    [Test]
+    public void ReadPlaybackPackets_12_10_ExtractsPackets() =>
+        ReadPlaybackPacketsExtractsPackets("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf");
+
+    [Test]
+    public void ReadPlaybackPackets_12_11_ExtractsPackets() =>
+        ReadPlaybackPacketsExtractsPackets("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
+
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
@@ -79,6 +91,22 @@ public class ReplayReaderIntegrationTests
             Assert.That(context.Errors, Is.Empty);
             Assert.That(context.ReplayInfo.Compressed, Is.True);
             Assert.That(replayDataHandler.TotalPayloadBytes, Is.EqualTo(context.ReplayInfo.TotalDataSizeInBytes));
+        });
+    }
+
+    private static void ReadPlaybackPacketsExtractsPackets(string replayFileName)
+    {
+        var replayBytes = ReadReplayBytes(replayFileName);
+        var context = ReadReplay(replayBytes);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Errors, Is.Empty);
+            Assert.That(context.PlaybackPackets, Is.Not.Empty);
+            Assert.That(context.PlaybackPackets.All(packet => packet.Data.Length > 0), Is.True);
+            Assert.That(context.PlaybackPackets.Min(packet => packet.TimeSeconds), Is.GreaterThanOrEqualTo(0f));
+            Assert.That(context.PlaybackPackets.Max(packet => packet.TimeSeconds),
+                Is.LessThanOrEqualTo(context.ReplayInfo.LengthInMs / 1000f + 1f));
         });
     }
 

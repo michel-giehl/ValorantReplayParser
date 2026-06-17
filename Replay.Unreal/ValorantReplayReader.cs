@@ -23,6 +23,19 @@ public sealed class ValorantReplayReader
 
     public static ValorantReplayReader CreateDefault() => new(new OozSharpOodleDecompressor());
 
+    public static ValorantReplayReader CreateDefault(ILoggerFactory loggerFactory)
+    {
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+
+        return new ValorantReplayReader(
+            new OozSharpOodleDecompressor(),
+            new PlaybackPacketReplayDataChunkHandler(
+                loggerFactory.CreateLogger<PlaybackPacketReplayDataChunkHandler>(),
+                loggerFactory),
+            loggerFactory.CreateLogger<ValorantReplayReader>(),
+            loggerFactory.CreateLogger<ReplayChunkDispatcher>());
+    }
+
     public ReplayReaderContext Read(FBinaryArchive archive)
     {
         ArgumentNullException.ThrowIfNull(archive);

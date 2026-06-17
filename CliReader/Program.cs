@@ -1,10 +1,12 @@
+using CliReader;
 using Replay.Encoding.Archives;
 using Replay.Unreal;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
-    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 try
@@ -21,7 +23,10 @@ try
     using var file = File.OpenRead(replayPath);
     using var archive = new FBinaryArchive(file);
 
-    var context = ValorantReplayReader.CreateDefault().Read(archive);
+    using var loggerFactory = LoggerFactory.Create(builder => builder
+        .SetMinimumLevel(LogLevel.Debug)
+        .AddProvider(new SerilogLoggerProvider(Log.Logger)));
+    var context = ValorantReplayReader.CreateDefault(loggerFactory).Read(archive);
 
     if (context.Errors.Count > 0)
     {

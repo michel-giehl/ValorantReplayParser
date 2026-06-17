@@ -119,7 +119,7 @@ public class ValorantReplayReaderTests
             ReplayDataChunk(10, 20, [0x03, 0x04, 0x05], memorySizeInBytes: 3),
         ]));
 
-        var context = new ValorantReplayReader().Read(archive);
+        var context = new ValorantReplayReader(replayDataChunkHandler: new NoOpReplayDataChunkHandler()).Read(archive);
 
         Assert.Multiple(() =>
         {
@@ -146,6 +146,30 @@ public class ValorantReplayReaderTests
             Assert.That(context.ReplayInfo.Chunks, Has.Count.EqualTo(2));
             Assert.That(context.ReplayInfo.HeaderChunkIndex, Is.EqualTo(1));
             Assert.That(context.ReplayInfo.Chunks[1].DataOffset, Is.GreaterThan(context.ReplayInfo.Chunks[0].DataOffset));
+        });
+    }
+
+    [Test]
+    public void Read_ReplayDataFrame_AddsPlaybackPacket()
+    {
+        var packet = new byte[] { 0xAA, 0xBB, 0xCC };
+        var frame = BuildDemoFrame(packet);
+        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
+        [
+            HeaderChunk(BuildHeader()),
+            ReplayDataChunk(100, 200, frame, memorySizeInBytes: frame.Length),
+        ]));
+
+        var context = new ValorantReplayReader().Read(archive);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Errors, Is.Empty);
+            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(1));
+            Assert.That(context.PlaybackPackets[0].ReplayDataChunkIndex, Is.EqualTo(1));
+            Assert.That(context.PlaybackPackets[0].CurrentLevelIndex, Is.EqualTo(7));
+            Assert.That(context.PlaybackPackets[0].TimeSeconds, Is.EqualTo(12.5f));
+            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet));
         });
     }
 
@@ -257,6 +281,21 @@ public class ValorantReplayReaderTests
         return bytes;
     }
 
+    private static byte[] BuildDemoFrame(byte[] packet)
+    {
+        var bytes = new List<byte>();
+        AddInt32(bytes, 7);
+        AddSingle(bytes, 12.5f);
+        AddIntPacked(bytes, 0);
+        AddIntPacked(bytes, 0);
+        AddIntPacked(bytes, 0);
+        AddIntPacked(bytes, 0);
+        AddInt32(bytes, packet.Length);
+        bytes.AddRange(packet);
+        AddInt32(bytes, 0);
+        return bytes.ToArray();
+    }
+
     private static void AddFString(List<byte> bytes, string value)
     {
         var encoded = System.Text.Encoding.UTF8.GetBytes(value + '\0');
@@ -304,6 +343,28 @@ public class ValorantReplayReaderTests
         Span<byte> buffer = stackalloc byte[8];
         BinaryPrimitives.WriteInt64LittleEndian(buffer, value);
         bytes.AddRange(buffer.ToArray());
+    }
+
+    private static void AddSingle(List<byte> bytes, float value)
+    {
+        Span<byte> buffer = stackalloc byte[4];
+        BinaryPrimitives.WriteSingleLittleEndian(buffer, value);
+        bytes.AddRange(buffer.ToArray());
+    }
+
+    private static void AddIntPacked(List<byte> bytes, uint value)
+    {
+        do
+        {
+            var nextByte = (byte)((value & 0x7F) << 1);
+            value >>= 7;
+            if (value != 0)
+            {
+                nextByte |= 1;
+            }
+
+            bytes.Add(nextByte);
+        } while (value != 0);
     }
 
     private sealed class FakeOodleDecompressor : IOodleDecompressor

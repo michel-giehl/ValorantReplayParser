@@ -18,7 +18,7 @@ public sealed class ReplayChunkDispatcher
         ILogger<ReplayChunkDispatcher>? logger = null)
     {
         _replayDataChunkPayloadReader = new ReplayDataChunkPayloadReader(oodleDecompressor);
-        _replayDataChunkHandler = replayDataChunkHandler ?? new NoOpReplayDataChunkHandler();
+        _replayDataChunkHandler = replayDataChunkHandler ?? new PlaybackPacketReplayDataChunkHandler();
         _logger = logger ?? NullLogger<ReplayChunkDispatcher>.Instance;
     }
 
