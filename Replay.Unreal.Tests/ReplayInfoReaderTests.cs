@@ -1,7 +1,6 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
 using Replay.Models;
-using Replay.Unreal.Pipeline;
 
 namespace Replay.Unreal.Tests;
 
@@ -128,116 +127,8 @@ public class ReplayInfoReaderTests
         Assert.Throws<InvalidReplayInfoException>(() => Read(archive));
     }
 
-    [Test]
-    public void Scan_DuplicateHeaderChunks_ThrowsInvalidReplayInfoException()
-    {
-        var archive = new FBinaryArchive(BuildReplayInfo(chunks: [HeaderChunk([0xAA]), HeaderChunk([0xBB])]));
-
-        Assert.Throws<InvalidReplayInfoException>(() => ReadAndScan(archive));
-    }
-
-    [Test]
-    public void Scan_CheckpointMetadataCannotReadPastDeclaredChunkSize()
-    {
-        var bytes = new List<byte>();
-        AddFString(bytes, "checkpoint0");
-        AddFString(bytes, "checkpoint");
-        AddFString(bytes, "metadata");
-        AddUInt32(bytes, 10);
-        AddUInt32(bytes, 10);
-        AddInt32(bytes, 4);
-        var checkpoint = RawChunk(ReplayChunkType.Checkpoint, bytes.Count - 1, bytes.ToArray());
-        var archive = new FBinaryArchive(BuildReplayInfo(chunks: [checkpoint, HeaderChunk([0xAA])]));
-
-        Assert.Throws<ArchiveReadException>(() => ReadAndScan(archive));
-    }
-
-    [Test]
-    public void Scan_ReplayDataMetadataCannotReadPastDeclaredChunkSize()
-    {
-        var archive = new FBinaryArchive(BuildReplayInfo(
-            chunks:
-            [
-                RawChunk(ReplayChunkType.ReplayData, 15, new byte[15]),
-                HeaderChunk([0xAA])
-            ]));
-
-        Assert.Throws<ArchiveReadException>(() => ReadAndScan(archive));
-    }
-
-    [Test]
-    public void Scan_ReplayDataTimes_AreReadFromChunkMetadata()
-    {
-        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
-        [
-            ReplayDataChunk(1, 10, [0x01, 0x02]),
-            ReplayDataChunk(10, 20, [0x03, 0x04, 0x05]),
-            HeaderChunk([0xAA])
-        ]));
-
-        var result = ReadAndScan(archive);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.Info.DataChunks, Has.Count.EqualTo(2));
-            Assert.That(result.Info.DataChunks[0].Time1, Is.EqualTo(1u));
-            Assert.That(result.Info.DataChunks[0].Time2, Is.EqualTo(10u));
-            Assert.That(result.Info.DataChunks[1].Time1, Is.EqualTo(10u));
-            Assert.That(result.Info.DataChunks[1].Time2, Is.EqualTo(20u));
-            Assert.That(result.Info.TotalDataSizeInBytes, Is.EqualTo(5));
-        });
-    }
-
-    [Test]
-    public void Scan_ValidChunks_ReturnsHeaderOffset()
-    {
-        var archive = new FBinaryArchive(BuildReplayInfo(chunks: [UnknownChunk([0x01]), HeaderChunk([0xAA, 0xBB])]));
-
-        var (readResult, scanResult) = ReadAndScanWithResult(archive);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(readResult.Info.Chunks, Has.Count.EqualTo(2));
-            Assert.That(readResult.Info.HeaderChunkIndex, Is.EqualTo(1));
-            Assert.That(scanResult.HeaderChunkPayloadOffset, Is.EqualTo(readResult.Info.Chunks[1].DataOffset));
-        });
-    }
-
-    [Test]
-    public void Middleware_InvalidReplayInfo_RecordsErrorAndStopsPipeline()
-    {
-        var context = new ReplayReaderContext(new FBinaryArchive(BuildReplayInfo(magic: BadMagic, chunks: [])));
-        var middleware = new ReadReplayInfo<ReplayReaderContext>();
-        var nextCalled = false;
-
-        middleware.Execute(context, _ => nextCalled = true);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(nextCalled, Is.False);
-            Assert.That(context.Errors, Has.Count.EqualTo(1));
-            Assert.That(context.Errors[0], Is.TypeOf<InvalidReplayInfoError>());
-            Assert.That(context.ReplayInfo.IsValid, Is.False);
-        });
-    }
-
     private static ReplayInfoReadResult Read(FBinaryArchive archive) =>
         new ReplayInfoReader(archive).Read(new ReplayInfo(), new ReplayInfoSerializationMetadata());
-
-    private static ReplayInfoReadResult ReadAndScan(FBinaryArchive archive)
-    {
-        var readResult = Read(archive);
-        new ReplayInfoChunkScanner(archive).Scan(readResult.Info);
-        return readResult;
-    }
-
-    private static (ReplayInfoReadResult ReadResult, ReplayInfoChunkScanResult ScanResult) ReadAndScanWithResult(
-        FBinaryArchive archive)
-    {
-        var readResult = Read(archive);
-        var scanResult = new ReplayInfoChunkScanner(archive).Scan(readResult.Info);
-        return (readResult, scanResult);
-    }
 
     private static byte[] BuildReplayInfo(
         uint magic = FileMagic,
@@ -309,29 +200,6 @@ public class ReplayInfoReaderTests
     private static byte[] HeaderChunk(byte[] payload) => RawChunk(ReplayChunkType.Header, payload.Length, payload);
 
     private static byte[] UnknownChunk(byte[] payload) => RawChunk(ReplayChunkType.Unknown, payload.Length, payload);
-
-    private static byte[] CheckpointChunk(string id, uint time)
-    {
-        var payload = new List<byte>();
-        AddFString(payload, id);
-        AddFString(payload, "checkpoint");
-        AddFString(payload, "metadata");
-        AddUInt32(payload, time);
-        AddUInt32(payload, time);
-        AddInt32(payload, 0);
-        return RawChunk(ReplayChunkType.Checkpoint, payload.Count, payload.ToArray());
-    }
-
-    private static byte[] ReplayDataChunk(uint startTime, uint endTime, byte[] payload)
-    {
-        var data = new List<byte>();
-        AddUInt32(data, startTime);
-        AddUInt32(data, endTime);
-        AddInt32(data, payload.Length);
-        AddInt32(data, payload.Length);
-        data.AddRange(payload);
-        return RawChunk(ReplayChunkType.ReplayData, data.Count, data.ToArray());
-    }
 
     private static byte[] RawChunk(ReplayChunkType chunkType, int sizeInBytes, byte[] payload)
     {

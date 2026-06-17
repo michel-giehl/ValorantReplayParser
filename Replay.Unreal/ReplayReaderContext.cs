@@ -1,12 +1,9 @@
 using Replay.Encoding.Archives;
 using Replay.Models;
-using Replay.Models.Contracts;
-using Replay.Unreal.Contracts;
 
 namespace Replay.Unreal;
 
-public class ReplayReaderContext : IHaveArchive, IHaveReplayInfo, IHaveReplayHeader, IHaveReplayVersion,
-    IHaveReplayDataStream, IHaveErrors
+public class ReplayReaderContext
 {
     public ReplayReaderContext(FBinaryArchive archive)
     {

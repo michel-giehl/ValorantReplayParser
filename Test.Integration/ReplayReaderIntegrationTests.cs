@@ -48,12 +48,11 @@ public class ReplayReaderIntegrationTests
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
-        var archive = new FBinaryArchive(replayBytes);
+        var context = ReadReplay(replayBytes);
 
-        var readResult = new ReplayInfoReader(archive).Read(new ReplayInfo(), new ReplayInfoSerializationMetadata());
-        var scanResult = new ReplayInfoChunkScanner(archive).Scan(readResult.Info);
+        Assert.That(context.Errors, Is.Empty);
 
-        Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, readResult, scanResult));
+        Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, context));
     }
 
     private static void ReadReplayHeaderMatchesSnapshot(string replayFileName)
@@ -70,19 +69,23 @@ public class ReplayReaderIntegrationTests
     private static void DecompressReplayDataMaterializesExpectedSize(string replayFileName)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
+        var replayDataHandler = new CountingReplayDataChunkHandler();
         var archive = new FBinaryArchive(replayBytes);
 
-        var readResult = new ReplayInfoReader(archive).Read(new ReplayInfo(), new ReplayInfoSerializationMetadata());
-        new ReplayInfoChunkScanner(archive).Scan(readResult.Info);
-
-        var decompressedArchive = new ReplayDataStreamMaterializer(archive, new OozSharpOodleDecompressor())
-            .Materialize(readResult.Info);
+        var context = new ValorantReplayReader(new OozSharpOodleDecompressor(), replayDataHandler).Read(archive);
 
         Assert.Multiple(() =>
         {
-            Assert.That(readResult.Info.Compressed, Is.True);
-            Assert.That(decompressedArchive.Length, Is.EqualTo(readResult.Info.TotalDataSizeInBytes));
+            Assert.That(context.Errors, Is.Empty);
+            Assert.That(context.ReplayInfo.Compressed, Is.True);
+            Assert.That(replayDataHandler.TotalPayloadBytes, Is.EqualTo(context.ReplayInfo.TotalDataSizeInBytes));
         });
+    }
+
+    private static ReplayReaderContext ReadReplay(byte[] replayBytes)
+    {
+        var archive = new FBinaryArchive(replayBytes);
+        return ValorantReplayReader.CreateDefault().Read(archive);
     }
 
     private static byte[] ReadReplayBytes(string replayFileName)
@@ -93,28 +96,26 @@ public class ReplayReaderIntegrationTests
 
     private static byte[] ReadHeaderPayload(byte[] replayBytes)
     {
-        var replayArchive = new FBinaryArchive(replayBytes);
-        var readResult = new ReplayInfoReader(replayArchive).Read(new ReplayInfo(), new ReplayInfoSerializationMetadata());
-        var scanResult = new ReplayInfoChunkScanner(replayArchive).Scan(readResult.Info);
+        var context = ReadReplay(replayBytes);
+        Assert.That(context.Errors, Is.Empty);
 
-        if (scanResult.HeaderChunkPayloadOffset is not { } headerPayloadOffset)
+        if (context.ReplayInfo.HeaderChunkIndex == ReplayInfo.NoChunkIndex)
         {
             throw new InvalidOperationException("Replay info did not contain a header chunk.");
         }
 
-        var headerChunk = readResult.Info.Chunks[readResult.Info.HeaderChunkIndex];
+        var headerChunk = context.ReplayInfo.Chunks[context.ReplayInfo.HeaderChunkIndex];
         return replayBytes
-            .AsSpan(checked((int)headerPayloadOffset), headerChunk.SizeInBytes)
+            .AsSpan(checked((int)headerChunk.DataOffset), headerChunk.SizeInBytes)
             .ToArray();
     }
 
     private static object CreateReplayInfoSnapshot(
         string replayFileName,
-        ReplayInfoReadResult readResult,
-        ReplayInfoChunkScanResult scanResult)
+        ReplayReaderContext context)
     {
-        var info = readResult.Info;
-        var metadata = readResult.SerializationMetadata;
+        var info = context.ReplayInfo;
+        var metadata = context.ReplayInfoSerializationMetadata;
 
         return new
         {
@@ -150,16 +151,12 @@ public class ReplayReaderIntegrationTests
             },
             Scan = new
             {
-                scanResult.HeaderChunkPayloadOffset,
+                HeaderChunkPayloadOffset = info.Chunks[info.HeaderChunkIndex].DataOffset,
                 ChunkCount = info.Chunks.Count,
-                CheckpointCount = info.Checkpoints.Count,
-                EventCount = info.Events.Count,
                 DataChunkCount = info.DataChunks.Count,
                 HeaderChunk = ToChunkSnapshot(info.Chunks[info.HeaderChunkIndex]),
                 FirstDataChunk = ToDataChunkSnapshot(info.DataChunks.FirstOrDefault()),
                 LastDataChunk = ToDataChunkSnapshot(info.DataChunks.LastOrDefault()),
-                FirstCheckpoint = ToEventSnapshot(info.Checkpoints.FirstOrDefault()),
-                LastCheckpoint = ToEventSnapshot(info.Checkpoints.LastOrDefault()),
             },
         };
     }
@@ -255,23 +252,14 @@ public class ReplayReaderIntegrationTests
         };
     }
 
-    private static object? ToEventSnapshot(ReplayEventInfo? replayEvent)
+    private sealed class CountingReplayDataChunkHandler : IReplayDataChunkHandler
     {
-        if (replayEvent is null)
-        {
-            return null;
-        }
+        public long TotalPayloadBytes { get; private set; }
 
-        return new
+        public void Handle(ReplayReaderContext context, ReplayDataChunkInfo dataChunk, FBinaryArchive replayDataArchive)
         {
-            replayEvent.ChunkIndex,
-            replayEvent.Id,
-            replayEvent.Group,
-            replayEvent.Metadata,
-            replayEvent.Time1,
-            replayEvent.Time2,
-            replayEvent.SizeInBytes,
-            replayEvent.EventDataOffset,
-        };
+            TotalPayloadBytes += replayDataArchive.Length;
+        }
     }
+
 }

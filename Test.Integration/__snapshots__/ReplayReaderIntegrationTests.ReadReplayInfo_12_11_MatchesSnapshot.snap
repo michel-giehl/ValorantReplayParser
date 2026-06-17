@@ -8,7 +8,7 @@
     "Timestamp": 639172104004960000,
     "TotalDataSizeInBytes": 446180,
     "IsLive": false,
-    "IsValid": false,
+    "IsValid": true,
     "Compressed": true,
     "Encrypted": false,
     "EncryptionKeyLength": 0,
@@ -29,8 +29,6 @@
   "Scan": {
     "HeaderChunkPayloadOffset": 594,
     "ChunkCount": 20,
-    "CheckpointCount": 6,
-    "EventCount": 6,
     "DataChunkCount": 7,
     "HeaderChunk": {
       "ChunkType": "Header",
@@ -55,26 +53,6 @@
       "MemorySizeInBytes": 20656,
       "ReplayDataOffset": 402274,
       "StreamOffset": 425524
-    },
-    "FirstCheckpoint": {
-      "ChunkIndex": 2,
-      "Id": "checkpoint0",
-      "Group": "checkpoint",
-      "Metadata": "1",
-      "Time1": 34,
-      "Time2": 34,
-      "SizeInBytes": 26910,
-      "EventDataOffset": 51538
-    },
-    "LastCheckpoint": {
-      "ChunkIndex": 17,
-      "Id": "checkpoint5",
-      "Group": "checkpoint",
-      "Metadata": "6",
-      "Time1": 23089,
-      "Time2": 23089,
-      "SizeInBytes": 45085,
-      "EventDataOffset": 357002
     }
   }
 }

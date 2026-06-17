@@ -1,21 +1,12 @@
 using Replay.Encoding.Archives;
 using Replay.Unreal;
-using Replay.Unreal.Pipeline;
 
 var replayPath = args[0];
 
 using var file = File.OpenRead(replayPath);
 using var archive = new FBinaryArchive(file);
 
-var context = new ReplayReaderContext(archive);
-
-var readReplayInfo = new ReadReplayInfo<ReplayReaderContext>();
-var scanReplayChunks = new ScanReplayChunks<ReplayReaderContext>();
-var readReplayHeader = new ReadReplayHeader<ReplayReaderContext>();
-
-readReplayInfo.Execute(context, ctx =>
-    scanReplayChunks.Execute(ctx, scanCtx =>
-        readReplayHeader.Execute(scanCtx, _ => { })));
+var context = ValorantReplayReader.CreateDefault().Read(archive);
 
 if (context.Errors.Count > 0)
 {

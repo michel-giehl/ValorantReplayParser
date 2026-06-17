@@ -1,7 +1,6 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
 using Replay.Models;
-using Replay.Unreal.Pipeline;
 
 namespace Replay.Unreal.Tests;
 
@@ -81,45 +80,6 @@ public class ReplayHeaderReaderTests
         var archive = new FBinaryArchive(bytes);
 
         Assert.Throws<InvalidReplayHeaderException>(() => new ReplayHeaderReader(archive).Read());
-    }
-
-    [Test]
-    public void Middleware_ValidHeader_SetsContextAndCallsNext()
-    {
-        var context = new ReplayReaderContext(new FBinaryArchive(BuildHeader()));
-        var middleware = new ReadReplayHeader<ReplayReaderContext>();
-        var nextCalled = false;
-
-        middleware.Execute(context, _ => nextCalled = true);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(nextCalled, Is.True);
-            Assert.That(context.Errors, Is.Empty);
-            Assert.That(context.ReplayHeader, Is.Not.TypeOf<UninitializedReplayHeader>());
-            Assert.That(context.ReplayVersion.Branch, Is.EqualTo("++Ares+Release-12.10"));
-            Assert.That(context.UEVersion.UE4Version, Is.EqualTo(1001u));
-        });
-    }
-
-    [Test]
-    public void Middleware_InvalidHeader_RecordsErrorAndStopsPipeline()
-    {
-        var context = new ReplayReaderContext(new FBinaryArchive(BuildHeader(networkMagic: 0xDEADBEEFu)));
-        var middleware = new ReadReplayHeader<ReplayReaderContext>();
-        var nextCalled = false;
-
-        middleware.Execute(context, _ => nextCalled = true);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(nextCalled, Is.False);
-            Assert.That(context.Errors, Has.Count.EqualTo(1));
-            Assert.That(context.Errors[0], Is.TypeOf<InvalidReplayHeaderError>());
-            Assert.That(context.ReplayHeader, Is.TypeOf<UninitializedReplayHeader>());
-            Assert.That(context.ReplayVersion, Is.TypeOf<UninitializedReplayVersion>());
-            Assert.That(context.UEVersion, Is.TypeOf<UninitializedUEVersion>());
-        });
     }
 
     private static byte[] BuildHeader(

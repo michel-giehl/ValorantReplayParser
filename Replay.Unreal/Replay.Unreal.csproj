@@ -11,4 +11,8 @@
       <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    </ItemGroup>
+
 </Project>
