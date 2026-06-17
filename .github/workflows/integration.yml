@@ -1,0 +1,26 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+    - name: Restore dependencies
+      run: dotnet restore Test.Integration/Test.Integration.csproj
+    - name: Build
+      run: dotnet build Test.Integration/Test.Integration.csproj --no-restore
+    - name: Test
+      run: dotnet test Test.Integration/Test.Integration.csproj --no-build --verbosity normal
+      env:
+        SNAPSHOOTER_STRICT_MODE: true

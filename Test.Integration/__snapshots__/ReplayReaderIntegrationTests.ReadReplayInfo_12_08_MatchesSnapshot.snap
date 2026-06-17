@@ -1,0 +1,80 @@
+﻿{
+  "ReplayFileName": "c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf",
+  "Info": {
+    "LengthInMs": 81610,
+    "NetworkVersion": 480767974,
+    "Changelist": 4578383,
+    "FriendlyName": "c96127a8-f003-48db-a2cd-9c71de5aba15",
+    "Timestamp": 639135697950000000,
+    "TotalDataSizeInBytes": 1190096,
+    "IsLive": false,
+    "IsValid": false,
+    "Compressed": true,
+    "Encrypted": false,
+    "EncryptionKeyLength": 0,
+    "EncryptionKey": "",
+    "HeaderChunkIndex": 0
+  },
+  "SerializationMetadata": {
+    "FileVersion": 7,
+    "FileFriendlyName": "c96127a8-f003-48db-a2cd-9c71de5aba15                                                                                                                                                                                                                            ",
+    "FileCustomVersions": [
+      {
+        "Key": "95a4f03e-7e0b-49e4-ba43-d35694ff87d9",
+        "Version": 7,
+        "FriendlyName": ""
+      }
+    ]
+  },
+  "Scan": {
+    "HeaderChunkPayloadOffset": 594,
+    "ChunkCount": 23,
+    "CheckpointCount": 7,
+    "EventCount": 7,
+    "DataChunkCount": 8,
+    "HeaderChunk": {
+      "ChunkType": "Header",
+      "SizeInBytes": 24599,
+      "TypeOffset": 586,
+      "DataOffset": 594
+    },
+    "FirstDataChunk": {
+      "ChunkIndex": 1,
+      "Time1": 0,
+      "Time2": 31,
+      "SizeInBytes": 25714,
+      "MemorySizeInBytes": 53544,
+      "ReplayDataOffset": 25217,
+      "StreamOffset": 0
+    },
+    "LastDataChunk": {
+      "ChunkIndex": 22,
+      "Time1": 81155,
+      "Time2": 81610,
+      "SizeInBytes": 7757,
+      "MemorySizeInBytes": 20177,
+      "ReplayDataOffset": 554615,
+      "StreamOffset": 1169919
+    },
+    "FirstCheckpoint": {
+      "ChunkIndex": 2,
+      "Id": "checkpoint0",
+      "Group": "checkpoint",
+      "Metadata": "1",
+      "Time1": 31,
+      "Time2": 31,
+      "SizeInBytes": 26325,
+      "EventDataOffset": 50988
+    },
+    "LastCheckpoint": {
+      "ChunkIndex": 20,
+      "Id": "checkpoint6",
+      "Group": "checkpoint",
+      "Metadata": "7",
+      "Time1": 81155,
+      "Time2": 81155,
+      "SizeInBytes": 43333,
+      "EventDataOffset": 511095
+    }
+  }
+}

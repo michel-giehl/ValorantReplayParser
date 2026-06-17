@@ -1,0 +1,60 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector" Version="6.0.4" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+        <PackageReference Include="NUnit" Version="4.3.2" />
+        <PackageReference Include="NUnit.Analyzers" Version="4.7.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+        <PackageReference Include="Snapshooter.NUnit" Version="1.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="NUnit.Framework" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Replays\5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Replays\9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Replays\c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayHeader_12_08_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayHeader_12_10_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayHeader_12_11_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayInfo_12_08_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayInfo_12_10_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayInfo_12_11_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />
+      <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
+      <ProjectReference Include="..\Replay.Unreal\Replay.Unreal.csproj" />
+    </ItemGroup>
+
+</Project>

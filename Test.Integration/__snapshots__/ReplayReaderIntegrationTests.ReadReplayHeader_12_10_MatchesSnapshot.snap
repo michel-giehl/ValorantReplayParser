@@ -1,0 +1,39 @@
+﻿{
+  "ReplayFileName": "9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf",
+  "HeaderPayloadLength": 24607,
+  "HeaderArchivePosition": 24607,
+  "AtEnd": true,
+  "Header": {
+    "NetworkVersion": 19,
+    "NetworkChecksum": 2927401153,
+    "EngineNetworkProtocolVersion": 32,
+    "GameNetworkProtocolVersion": 0,
+    "Guid": "2e811ead-a228-4320-9933-0fd65d414561",
+    "MinRecordHz": 0.0,
+    "MaxRecordHz": 1000.0,
+    "FrameLimitInMs": -1.0,
+    "CheckpointLimitInMs": -1.0,
+    "LevelNamesAndTimes": [
+      {
+        "LevelName": "/Game/Maps/Ascent/Ascent",
+        "TimeInMs": 0
+      }
+    ],
+    "Flags": "HasStreamingFixes",
+    "Platform": "LinuxServer",
+    "BuildConfig": 4,
+    "BuildTargetType": "Server"
+  },
+  "ReplayVersion": {
+    "Major": 5,
+    "Minor": 3,
+    "Patch": 2,
+    "Changelist": 2152275246,
+    "Branch": "++Ares-Core+release-12.10"
+  },
+  "UEVersion": {
+    "UE4Version": 522,
+    "UE5Version": 1009,
+    "PackageVersionLicense": 77
+  }
+}
