@@ -48,7 +48,7 @@ public class ValorantSeededTransformTests
     public void Apply_RejectsTooSmallOutputBuffer()
     {
         var payload = new BitArchiveReader(Convert.FromHexString(PayloadHex), PayloadBits);
-        var transform = PayloadTransformRegistry.CreateDefault().GetRequired("++Ares+Release-12.10");
+        var transform = PayloadTransformRegistry.CreateDefault().GetRequired("++Ares-Core+release-12.10");
 
         var exception = Assert.Throws<ArchiveReadException>(() =>
             transform.Apply(payload, PayloadBits ^ ActorNetGuid, Span<byte>.Empty));
