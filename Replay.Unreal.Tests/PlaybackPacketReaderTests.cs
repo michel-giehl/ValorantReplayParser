@@ -1,0 +1,239 @@
+using System.Buffers.Binary;
+using Replay.Encoding.Archives;
+using Replay.Models;
+
+namespace Replay.Unreal.Tests;
+
+public class PlaybackPacketReaderTests
+{
+    [Test]
+    public void Read_FrameWithTwoPackets_AddsPlaybackPackets()
+    {
+        var packet0 = new byte[] { 0xAA, 0xBB };
+        var packet1 = new byte[] { 0xCC, 0xDD, 0xEE };
+        var context = CreateContext();
+        var archive = new FBinaryArchive(BuildFrame([packet0, packet1], exportData: [], externalData: []));
+
+        new PlaybackPacketReader(context, CreateDataChunk(), archive).Read();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(2));
+            Assert.That(context.PlaybackPackets[0].ReplayDataChunkIndex, Is.EqualTo(4));
+            Assert.That(context.PlaybackPackets[0].PacketIndex, Is.EqualTo(0));
+            Assert.That(context.PlaybackPackets[0].CurrentLevelIndex, Is.EqualTo(7));
+            Assert.That(context.PlaybackPackets[0].SeenLevelIndex, Is.EqualTo(3));
+            Assert.That(context.PlaybackPackets[0].TimeSeconds, Is.EqualTo(12.5f));
+            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet0));
+            Assert.That(context.PlaybackPackets[1].PacketIndex, Is.EqualTo(1));
+            Assert.That(context.PlaybackPackets[1].SeenLevelIndex, Is.EqualTo(5));
+            Assert.That(context.PlaybackPackets[1].Data, Is.EqualTo(packet1));
+            Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
+    public void Read_FrameWithExportData_KeepsPacketAlignment()
+    {
+        var packet = new byte[] { 0x10, 0x20, 0x30 };
+        var context = CreateContext();
+        var bytes = BuildFrame(packet, exportData: BuildExportData());
+        var archive = new FBinaryArchive(bytes);
+
+        new PlaybackPacketReader(context, CreateDataChunk(), archive).Read();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(1));
+            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet));
+            Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
+    public void Read_FrameWithExternalData_KeepsPacketAlignment()
+    {
+        var packet = new byte[] { 0x42 };
+        var context = CreateContext();
+        var bytes = BuildFrame(packet, exportData: [], externalData: BuildExternalData());
+        var archive = new FBinaryArchive(bytes);
+
+        new PlaybackPacketReader(context, CreateDataChunk(), archive).Read();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(1));
+            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet));
+            Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
+    public void Read_NegativePacketSize_ThrowsInvalidReplayInfoException()
+    {
+        var context = CreateContext();
+        var archive = new FBinaryArchive(BuildFrameWithPacketSize(-1));
+
+        Assert.Throws<InvalidReplayInfoException>(() =>
+            new PlaybackPacketReader(context, CreateDataChunk(), archive).Read());
+    }
+
+    [Test]
+    public void Read_OversizedPacket_ThrowsInvalidReplayInfoException()
+    {
+        var context = CreateContext();
+        var archive = new FBinaryArchive(BuildFrameWithPacketSize((Constants.MaxPacketSizeInBits / 8) + 1));
+
+        Assert.Throws<InvalidReplayInfoException>(() =>
+            new PlaybackPacketReader(context, CreateDataChunk(), archive).Read());
+    }
+
+    private static ReplayReaderContext CreateContext()
+    {
+        return new ReplayReaderContext(new FBinaryArchive(ReadOnlyMemory<byte>.Empty))
+        {
+            ReplayHeader = new ReplayHeader
+            {
+                NetworkVersion = Constants.ExpectedNetworkVersion,
+                Flags = ReplayHeaderFlags.HasStreamingFixes,
+            },
+        };
+    }
+
+    private static ReplayDataChunkInfo CreateDataChunk() => new()
+    {
+        ChunkIndex = 4,
+    };
+
+    private static byte[] BuildFrame(params byte[][] packets) =>
+        BuildFrame(packets, exportData: [], externalData: []);
+
+    private static byte[] BuildFrame(byte[] packet, byte[] exportData, byte[]? externalData = null) =>
+        BuildFrame([packet], exportData, externalData ?? []);
+
+    private static byte[] BuildFrame(byte[][] packets, byte[] exportData, byte[] externalData)
+    {
+        var bytes = new List<byte>();
+        AddInt32(bytes, 7);
+        AddSingle(bytes, 12.5f);
+        bytes.AddRange(exportData.Length == 0 ? BuildEmptyExportData() : exportData);
+        AddIntPacked(bytes, 0);
+        AddUInt64(bytes, 0);
+        bytes.AddRange(externalData.Length == 0 ? [0] : externalData);
+
+        var seenLevelIndex = 3u;
+        foreach (var packet in packets)
+        {
+            AddIntPacked(bytes, seenLevelIndex);
+            AddInt32(bytes, packet.Length);
+            bytes.AddRange(packet);
+            seenLevelIndex += 2;
+        }
+
+        AddIntPacked(bytes, seenLevelIndex);
+        AddInt32(bytes, 0);
+        return bytes.ToArray();
+    }
+
+    private static byte[] BuildFrameWithPacketSize(int packetSize)
+    {
+        var bytes = new List<byte>();
+        AddInt32(bytes, 7);
+        AddSingle(bytes, 12.5f);
+        bytes.AddRange(BuildEmptyExportData());
+        AddIntPacked(bytes, 0);
+        AddUInt64(bytes, 0);
+        AddIntPacked(bytes, 0);
+        AddIntPacked(bytes, 3);
+        AddInt32(bytes, packetSize);
+        return bytes.ToArray();
+    }
+
+    private static byte[] BuildEmptyExportData()
+    {
+        var bytes = new List<byte>();
+        AddIntPacked(bytes, 0);
+        AddIntPacked(bytes, 0);
+        return bytes.ToArray();
+    }
+
+    private static byte[] BuildExportData()
+    {
+        var bytes = new List<byte>();
+        AddIntPacked(bytes, 1);
+        AddIntPacked(bytes, 11);
+        AddIntPacked(bytes, 1);
+        AddFString(bytes, "/Game/Test.Test_C");
+        AddIntPacked(bytes, 3);
+        bytes.Add(1);
+        AddIntPacked(bytes, 2);
+        AddUInt32(bytes, 0xAABBCCDD);
+        bytes.Add(0);
+        AddFString(bytes, "FieldName");
+        AddInt32(bytes, 0);
+        AddIntPacked(bytes, 1);
+        AddInt32(bytes, 4);
+        bytes.AddRange([0xDE, 0xAD, 0xBE, 0xEF]);
+        return bytes.ToArray();
+    }
+
+    private static byte[] BuildExternalData()
+    {
+        var bytes = new List<byte>();
+        AddIntPacked(bytes, 9);
+        AddIntPacked(bytes, 42);
+        bytes.AddRange([0xAB, 0xCD]);
+        AddIntPacked(bytes, 0);
+        return bytes.ToArray();
+    }
+
+    private static void AddFString(List<byte> bytes, string value)
+    {
+        var encoded = System.Text.Encoding.UTF8.GetBytes(value + '\0');
+        AddInt32(bytes, encoded.Length);
+        bytes.AddRange(encoded);
+    }
+
+    private static void AddSingle(List<byte> bytes, float value)
+    {
+        Span<byte> buffer = stackalloc byte[4];
+        BinaryPrimitives.WriteSingleLittleEndian(buffer, value);
+        bytes.AddRange(buffer.ToArray());
+    }
+
+    private static void AddUInt32(List<byte> bytes, uint value)
+    {
+        Span<byte> buffer = stackalloc byte[4];
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer, value);
+        bytes.AddRange(buffer.ToArray());
+    }
+
+    private static void AddInt32(List<byte> bytes, int value)
+    {
+        Span<byte> buffer = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(buffer, value);
+        bytes.AddRange(buffer.ToArray());
+    }
+
+    private static void AddUInt64(List<byte> bytes, ulong value)
+    {
+        Span<byte> buffer = stackalloc byte[8];
+        BinaryPrimitives.WriteUInt64LittleEndian(buffer, value);
+        bytes.AddRange(buffer.ToArray());
+    }
+
+    private static void AddIntPacked(List<byte> bytes, uint value)
+    {
+        do
+        {
+            var nextByte = (byte)((value & 0x7F) << 1);
+            value >>= 7;
+            if (value != 0)
+            {
+                nextByte |= 1;
+            }
+
+            bytes.Add(nextByte);
+        } while (value != 0);
+    }
+}
