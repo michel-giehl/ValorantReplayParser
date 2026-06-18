@@ -29,7 +29,7 @@ public class ReplayHeaderReaderTests
             Assert.That(result.ReplayVersion.Minor, Is.EqualTo(10));
             Assert.That(result.ReplayVersion.Patch, Is.EqualTo(1));
             Assert.That(result.ReplayVersion.Changelist, Is.EqualTo(123456u));
-            Assert.That(result.ReplayVersion.Branch, Is.EqualTo("++Ares+Release-12.10"));
+            Assert.That(result.ReplayVersion.Branch, Is.EqualTo("++Ares-Core+release-12.10"));
             Assert.That(result.UEVersion.UE4Version, Is.EqualTo(1001u));
             Assert.That(result.UEVersion.UE5Version, Is.EqualTo(1002u));
             Assert.That(result.UEVersion.PackageVersionLicense, Is.EqualTo(1003u));
@@ -58,7 +58,7 @@ public class ReplayHeaderReaderTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Header.NetworkVersion, Is.EqualTo(Constants.ExpectedNetworkVersion));
-            Assert.That(result.ReplayVersion.Branch, Is.EqualTo("++Ares+Release-12.10"));
+            Assert.That(result.ReplayVersion.Branch, Is.EqualTo("++Ares-Core+release-12.10"));
             Assert.That(result.UEVersion.UE4Version, Is.EqualTo(1001u));
             Assert.That(archive.AtEnd, Is.True);
         });
@@ -105,7 +105,7 @@ public class ReplayHeaderReaderTests
         AddUInt16(bytes, 10);
         AddUInt16(bytes, 1);
         AddUInt32(bytes, 123456u);
-        AddFString(bytes, "++Ares+Release-12.10");
+        AddFString(bytes, "++Ares-Core+release-12.10");
 
         bytes.AddRange(replayVersionSkipBytes ?? HeaderSkip12_10);
 

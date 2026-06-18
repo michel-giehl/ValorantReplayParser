@@ -7,6 +7,7 @@ namespace Replay.Unreal;
 public sealed class ReplayDataChunkPayloadReader
 {
     private readonly IOodleDecompressor? _oodleDecompressor;
+    private const int MaxChunkSize = 1024 * 1024 * 256; // Max 256 MB
 
     public ReplayDataChunkPayloadReader(IOodleDecompressor? oodleDecompressor = null)
     {
@@ -24,10 +25,10 @@ public sealed class ReplayDataChunkPayloadReader
             throw new InvalidReplayInfoException("Encrypted VALORANT replay-data chunks are not supported.");
         }
 
-        if (dataChunk.MemorySizeInBytes < 0)
+        if (dataChunk.MemorySizeInBytes is < 0 or > MaxChunkSize)
         {
             throw new InvalidReplayInfoException(
-                $"Replay-data memory size {dataChunk.MemorySizeInBytes} is negative.");
+                $"Replay-data memory size {dataChunk.MemorySizeInBytes} is invalid.");
         }
 
         var output = new byte[dataChunk.MemorySizeInBytes];
@@ -79,4 +80,5 @@ public sealed class ReplayDataChunkPayloadReader
 
         return new FBinaryArchive(output);
     }
+
 }

@@ -15,7 +15,7 @@ public class ValorantSeededTransformTests
     {
         var payload = new BitArchiveReader(Convert.FromHexString(PayloadHex), PayloadBits);
         var registry = PayloadTransformRegistry.CreateDefault();
-        var transform = registry.GetRequired("++Ares+Release-12.10");
+        var transform = registry.GetRequired("++Ares-Core+release-12.10");
         var output = new byte[transform.GetOutputByteCount(PayloadBits)];
 
         transform.Apply(
@@ -32,8 +32,8 @@ public class ValorantSeededTransformTests
     {
         var registry = PayloadTransformRegistry.CreateDefault();
 
-        Assert.That(registry.GetRequired("++Ares+Release-12.10"), Is.Not.Null);
-        Assert.That(registry.GetRequired("++Ares+Release-12.11"), Is.Not.Null);
+        Assert.That(registry.GetRequired("++Ares-Core+release-12.10"), Is.Not.Null);
+        Assert.That(registry.GetRequired("++Ares-Core+release-12.11"), Is.Not.Null);
     }
 
     [Test]

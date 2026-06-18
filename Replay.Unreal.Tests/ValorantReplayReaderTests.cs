@@ -26,7 +26,7 @@ public class ValorantReplayReaderTests
             Assert.That(context.Errors, Is.Empty);
             Assert.That(context.ReplayInfo.HeaderChunkIndex, Is.EqualTo(0));
             Assert.That(context.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
-            Assert.That(context.ReplayVersion.Branch, Is.EqualTo("++Ares+Release-12.10"));
+            Assert.That(context.ReplayVersion.Branch, Is.EqualTo("++Ares-Core+release-12.10"));
         });
     }
 
@@ -253,7 +253,7 @@ public class ValorantReplayReaderTests
         AddUInt16(bytes, 10);
         AddUInt16(bytes, 1);
         AddUInt32(bytes, 123456u);
-        AddFString(bytes, "++Ares+Release-12.10");
+        AddFString(bytes, "++Ares-Core+release-12.10");
         AddUInt32(bytes, 3);
         bytes.AddRange([49, 56, 0]);
         AddUInt32(bytes, 1001u);

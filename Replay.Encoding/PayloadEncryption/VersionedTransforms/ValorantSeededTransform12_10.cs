@@ -9,7 +9,7 @@ public sealed class ValorantSeededTransform12_10 : IPayloadTransform
     private const uint InitAOffset = 0x1bu;
     private const byte TailXor = 0xe5;
 
-    public IReadOnlyCollection<string> SupportedReplayVersions { get; } = ["++Ares+Release-12.10"];
+    public IReadOnlyCollection<string> SupportedReplayVersions { get; } = ["++Ares-Core+release-12.10"];
 
     public int GetOutputByteCount(int bitCount) => ValorantSeededTransformHelpers.GetOutputByteCount(bitCount);
 
