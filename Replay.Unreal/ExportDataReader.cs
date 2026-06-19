@@ -1,18 +1,26 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
+using Replay.Encoding.Net;
 using Replay.Models;
 
 namespace Replay.Unreal;
 
 public class ExportDataReader
 {
+    private const int MaxNetGuidRecursionDepth = 16;
+
     private readonly FBinaryArchive _archive;
+    private readonly NetGuidCache _netGuidCache;
     private readonly ILogger<ExportDataReader> _logger;
 
-    public ExportDataReader(FBinaryArchive archive, ILogger<ExportDataReader>? logger = null)
+    public ExportDataReader(
+        FBinaryArchive archive,
+        NetGuidCache netGuidCache,
+        ILogger<ExportDataReader>? logger = null)
     {
         _archive = archive;
+        _netGuidCache = netGuidCache;
         _logger = logger ?? NullLogger<ExportDataReader>.Instance;
     }
 
@@ -44,34 +52,77 @@ public class ExportDataReader
                 "Read net-field export for path index {PathNameIndex}; exported group: {IsExported}.",
                 pathNameIndex,
                 isExported);
+            NetFieldExportGroup group;
             if (isExported)
             {
-                ReadExportedGroup();
+                group = _netGuidCache.AddExportGroup(ReadExportedGroup(pathNameIndex));
+            }
+            else
+            {
+                if (!_netGuidCache.TryGetExportGroup(pathNameIndex, out var existingGroup))
+                {
+                    throw new InvalidReplayInfoException(
+                        $"Net-field export references unknown path index {pathNameIndex}.");
+                }
+
+                group = existingGroup;
             }
 
-            ReadNetFieldExport();
+            var netFieldExport = ReadNetFieldExport();
+            if (netFieldExport is null)
+            {
+                continue;
+            }
+
+            if (netFieldExport.Handle >= group.NetFieldExportsLength)
+            {
+                _logger.LogWarning(
+                    "Ignoring net-field export {Name} with handle {Handle}; group {PathName} has length {ExportCount}.",
+                    netFieldExport.Name,
+                    netFieldExport.Handle,
+                    group.PathName,
+                    group.NetFieldExportsLength);
+                continue;
+            }
+
+            group.NetFieldExports[netFieldExport.Handle] = netFieldExport;
         }
     }
 
-    private void ReadExportedGroup()
+    private NetFieldExportGroup ReadExportedGroup(uint pathNameIndex)
     {
         var pathName = _archive.ReadFString();
         var numExports = _archive.ReadIntPacked();
         _logger.LogDebug("Read exported net-field group {PathName} with {ExportCount} exports.", pathName, numExports);
+
+        return new NetFieldExportGroup
+        {
+            PathName = pathName,
+            PathNameIndex = pathNameIndex,
+            NetFieldExportsLength = numExports,
+            NetFieldExports = new NetFieldExport?[checked((int)numExports)],
+        };
     }
 
-    private void ReadNetFieldExport()
+    private NetFieldExport? ReadNetFieldExport()
     {
         var isExported = _archive.ReadBoolean();
         if (!isExported)
         {
-            return;
+            return null;
         }
 
         var handle = _archive.ReadIntPacked();
-        _ = _archive.ReadUInt32();
+        var compatibleChecksum = _archive.ReadUInt32();
         var name = _archive.ReadFName();
         _logger.LogTrace("Read net-field export {Name} with handle {Handle}.", name, handle);
+
+        return new NetFieldExport
+        {
+            Handle = handle,
+            CompatibleChecksum = compatibleChecksum,
+            Name = name,
+        };
     }
 
     public void ReadExportGuids()
@@ -93,7 +144,49 @@ public class ExportDataReader
                 throw new InvalidReplayInfoException($"Export GUID payload size {size} is negative.");
             }
 
-            _archive.Skip(size);
+            var payloadArchive = new FBinaryArchive(_archive.ReadBytes(size));
+            InternalLoadObject(payloadArchive, isExportingNetGuidBunch: true, recursionDepth: 0);
+            payloadArchive.EnsureFullyConsumed("ReadExportGuidPayload");
         }
+    }
+
+    private NetworkGuid InternalLoadObject(
+        FBinaryArchive archive,
+        bool isExportingNetGuidBunch,
+        int recursionDepth)
+    {
+        if (recursionDepth >= MaxNetGuidRecursionDepth)
+        {
+            throw new InvalidReplayInfoException(
+                $"Exported net GUID recursion depth exceeded {MaxNetGuidRecursionDepth}.");
+        }
+
+        var netGuid = new NetworkGuid(archive.ReadIntPacked());
+        if (!netGuid.IsValid)
+        {
+            return netGuid;
+        }
+
+        var exportFlags = ExportFlags.None;
+        if (netGuid.IsDefault || isExportingNetGuidBunch)
+        {
+            exportFlags = archive.ReadByteAsEnum<ExportFlags>();
+        }
+
+        if (!exportFlags.HasFlag(ExportFlags.HasPath))
+        {
+            return netGuid;
+        }
+
+        _ = InternalLoadObject(archive, isExportingNetGuidBunch, recursionDepth + 1);
+        var pathName = archive.ReadFString();
+
+        if (exportFlags.HasFlag(ExportFlags.HasNetworkChecksum))
+        {
+            _ = archive.ReadUInt32();
+        }
+
+        _netGuidCache.SetNetGuidPath(netGuid.Value, pathName);
+        return netGuid;
     }
 }

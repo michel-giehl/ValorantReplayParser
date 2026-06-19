@@ -103,6 +103,8 @@ public class ReplayReaderIntegrationTests
         {
             Assert.That(context.Errors, Is.Empty);
             Assert.That(context.PlaybackPackets, Is.Not.Empty);
+            Assert.That(context.NetGuidCache.ExportGroupsByPath, Is.Not.Empty);
+            Assert.That(context.NetGuidCache.PathByNetGuid, Is.Not.Empty);
             Assert.That(context.PlaybackPackets.All(packet => packet.Data.Length > 0), Is.True);
             Assert.That(context.PlaybackPackets.Min(packet => packet.TimeSeconds), Is.GreaterThanOrEqualTo(0f));
             Assert.That(context.PlaybackPackets.Max(packet => packet.TimeSeconds),

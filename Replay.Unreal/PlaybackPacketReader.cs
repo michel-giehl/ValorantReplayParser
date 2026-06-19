@@ -42,7 +42,10 @@ public class PlaybackPacketReader
         var timeSeconds = _archive.ReadSingle();
         _logger.LogTrace("Read playback frame at {TimeSeconds} seconds.", timeSeconds);
 
-        new ExportDataReader(_archive, _loggerFactory?.CreateLogger<ExportDataReader>()).Read();
+        new ExportDataReader(
+            _archive,
+            _context.NetGuidCache,
+            _loggerFactory?.CreateLogger<ExportDataReader>()).Read();
 
         new StreamingLevelFixesReader(_context, _archive, _loggerFactory?.CreateLogger<StreamingLevelFixesReader>()).Read();
         ReadExternalData();

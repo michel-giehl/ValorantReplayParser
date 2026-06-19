@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
+using Replay.Encoding.Net;
 using Replay.Models;
 
 namespace Replay.Unreal.Tests;
@@ -172,8 +173,19 @@ public class PlaybackPacketReaderTests
         AddFString(bytes, "FieldName");
         AddInt32(bytes, 0);
         AddIntPacked(bytes, 1);
-        AddInt32(bytes, 4);
-        bytes.AddRange([0xDE, 0xAD, 0xBE, 0xEF]);
+        var netGuidPayload = BuildNetGuidPayload();
+        AddInt32(bytes, netGuidPayload.Length);
+        bytes.AddRange(netGuidPayload);
+        return bytes.ToArray();
+    }
+
+    private static byte[] BuildNetGuidPayload()
+    {
+        var bytes = new List<byte>();
+        AddIntPacked(bytes, 17);
+        bytes.Add((byte)ExportFlags.HasPath);
+        AddIntPacked(bytes, 0);
+        AddFString(bytes, "/Game/Test.Test_C");
         return bytes.ToArray();
     }
 
