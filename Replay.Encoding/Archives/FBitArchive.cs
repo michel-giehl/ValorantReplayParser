@@ -109,4 +109,54 @@ public abstract class FBitArchive : FArchive
     public override void Seek(long position) => SeekBits(position);
 
     public override void Skip(long count) => SkipBits(count);
+
+    public string ReadFString()
+    {
+        var length = ReadInt32();
+        if (length == 0)
+        {
+            return string.Empty;
+        }
+
+        if (length == int.MinValue)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
+                length);
+        }
+
+        var isUnicode = length < 0;
+        int byteCount;
+        if (isUnicode)
+        {
+            checked { byteCount = -length * 2; }
+        }
+        else
+        {
+            byteCount = length;
+        }
+
+        if (byteCount <= 0 || byteCount > 1024 * 1024)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
+                byteCount, $"FString byte count {byteCount} exceeds maximum allowed.");
+        }
+
+        var encoding = isUnicode ? System.Text.Encoding.Unicode : System.Text.Encoding.UTF8;
+        var bytes = ReadBytes(byteCount);
+        return encoding.GetString(bytes.Span).TrimEnd('\0');
+    }
+
+    public string ReadFName()
+    {
+        var isHardcoded = ReadBit();
+        if (isHardcoded)
+        {
+            var nameIndex = ReadIntPacked();
+            return nameIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        var inString = ReadFString();
+        _ = ReadInt32();
+        return inString;
+    }
 }

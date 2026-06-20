@@ -19,6 +19,7 @@ public class ReplayReaderContext
     public UEVersion UEVersion { get; set; } = new UninitializedUEVersion();
     public FBinaryArchive ReplayDataStream { get; set; } = new UninitializedBinaryArchive();
     public NetGuidCache NetGuidCache { get; } = new();
-    public List<PlaybackPacket> PlaybackPackets { get; } = [];
+    public RawPacketStats PacketStats { get; } = new();
+    internal RawPacketReader RawPacketReader { get; } = new();
     public List<ReplayParseError> Errors { get; } = [];
 }

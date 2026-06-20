@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
+    .MinimumLevel.Information()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
@@ -24,7 +24,7 @@ try
     using var archive = new FBinaryArchive(file);
 
     using var loggerFactory = LoggerFactory.Create(builder => builder
-        .SetMinimumLevel(LogLevel.Debug)
+        .SetMinimumLevel(LogLevel.Information)
         .AddProvider(new SerilogLoggerProvider(Log.Logger)));
     var context = ValorantReplayReader.CreateDefault(loggerFactory).Read(archive);
 
@@ -49,6 +49,9 @@ try
     Log.Information("Chunks {ChunkCount}", context.ReplayInfo.Chunks.Count);
     Log.Information("Timestamp {Timestamp}", context.ReplayInfo.Timestamp);
     Log.Information("Duration {Duration}", TimeSpan.FromMilliseconds(context.ReplayInfo.LengthInMs));
+    Log.Information("File Size {FileSize} MB", file.Length / 1000_000);
+    Log.Information("Packet Stats: Bunch Count={BunchCount}\tPacket Count={PC}\tMalformedPacketCount={MFPC}\tPartialErrorCount={PEC}\tTTL Bytes={TTLB} MB", context.PacketStats.BunchCount, context.PacketStats.PacketCount,
+        context.PacketStats.MalformedPacketCount, context.PacketStats.PartialErrorCount, context.PacketStats.TotalPacketBytes / 1_000_000);
 
     return 0;
 }

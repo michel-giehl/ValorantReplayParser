@@ -150,9 +150,9 @@ public class ValorantReplayReaderTests
     }
 
     [Test]
-    public void Read_ReplayDataFrame_AddsPlaybackPacket()
+    public void Read_ReplayDataFrame_RecordsPacketStats()
     {
-        var packet = new byte[] { 0xAA, 0xBB, 0xCC };
+        var packet = BuildRawPacket();
         var frame = BuildDemoFrame(packet);
         var archive = new FBinaryArchive(BuildReplayInfo(chunks:
         [
@@ -165,11 +165,10 @@ public class ValorantReplayReaderTests
         Assert.Multiple(() =>
         {
             Assert.That(context.Errors, Is.Empty);
-            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(1));
-            Assert.That(context.PlaybackPackets[0].ReplayDataChunkIndex, Is.EqualTo(1));
-            Assert.That(context.PlaybackPackets[0].CurrentLevelIndex, Is.EqualTo(7));
-            Assert.That(context.PlaybackPackets[0].TimeSeconds, Is.EqualTo(12.5f));
-            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet));
+            Assert.That(context.PacketStats.PacketCount, Is.EqualTo(1));
+            Assert.That(context.PacketStats.TotalPacketBytes, Is.EqualTo(packet.Length));
+            Assert.That(context.PacketStats.BunchCount, Is.EqualTo(1));
+            Assert.That(context.PacketStats.MinTimeSeconds, Is.EqualTo(12.5f));
         });
     }
 
@@ -294,6 +293,60 @@ public class ValorantReplayReaderTests
         bytes.AddRange(packet);
         AddInt32(bytes, 0);
         return bytes.ToArray();
+    }
+
+    private static byte[] BuildRawPacket()
+    {
+        var bits = new List<bool>();
+        AddBit(bits, false); // bControl
+        AddBit(bits, false); // bIsReplicationPaused
+        AddBit(bits, false); // bReliable
+        AddIntPackedBits(bits, 0);
+        AddBit(bits, false); // bHasPackageMapExports
+        AddBit(bits, false); // bHasMustBeMappedGUIDs
+        AddBit(bits, false); // bPartial
+        AddBit(bits, false); // Valorant specific bit
+        AddSerializedIntBits(bits, 0, Constants.MaxPacketSizeInBits);
+
+        var packet = new byte[(bits.Count + 1 + 7) / 8];
+        for (var i = 0; i < bits.Count; i++)
+        {
+            if (bits[i])
+            {
+                packet[i >> 3] |= (byte)(1 << (i & 7));
+            }
+        }
+
+        packet[bits.Count >> 3] |= (byte)(1 << (bits.Count & 7));
+        return packet;
+    }
+
+    private static void AddBit(List<bool> bits, bool value) => bits.Add(value);
+
+    private static void AddIntPackedBits(List<bool> bits, uint value)
+    {
+        do
+        {
+            var nextByte = (byte)((value & 0x7F) << 1);
+            value >>= 7;
+            if (value != 0)
+            {
+                nextByte |= 1;
+            }
+
+            for (var i = 0; i < 8; i++)
+            {
+                bits.Add((nextByte & (1 << i)) != 0);
+            }
+        } while (value != 0);
+    }
+
+    private static void AddSerializedIntBits(List<bool> bits, uint value, int maxValue)
+    {
+        for (uint mask = 1; value + mask < maxValue; mask <<= 1)
+        {
+            bits.Add((value & mask) != 0);
+        }
     }
 
     private static void AddFString(List<byte> bytes, string value)

@@ -31,11 +31,11 @@ public class PlaybackPacketReader
     {
         while (!_archive.AtEnd)
         {
-            ReadDemoFrameIntoPlaybackPackets();
+            ReadDemoFrame();
         }
     }
 
-    private void ReadDemoFrameIntoPlaybackPackets()
+    private void ReadDemoFrame()
     {
         var currentLevelIndex = _archive.ReadInt32();
 
@@ -75,15 +75,14 @@ public class PlaybackPacketReader
                     $"Replay packet size {packetSize} exceeds maximum {maxPacketSizeInBytes}.");
             }
 
-            _context.PlaybackPackets.Add(new PlaybackPacket
+            var packetIndex = _context.PacketStats.PacketCount;
+            var packetData = _archive.ReadBytes(packetSize);
+            var result = _context.RawPacketReader.ReadPacket(packetData, packetIndex, static (ref RawBunchHeader _) => { });
+            _context.PacketStats.RecordPacket(packetSize, timeSeconds, result);
+            if (result.IsMalformed)
             {
-                ReplayDataChunkIndex = _dataChunk.ChunkIndex,
-                PacketIndex = _context.PlaybackPackets.Count,
-                CurrentLevelIndex = currentLevelIndex,
-                SeenLevelIndex = seenLevelIndex,
-                TimeSeconds = timeSeconds,
-                Data = _archive.ReadBytes(packetSize).ToArray(),
-            });
+                throw new InvalidReplayInfoException($"Replay packet {packetIndex} is malformed.");
+            }
         }
     }
 

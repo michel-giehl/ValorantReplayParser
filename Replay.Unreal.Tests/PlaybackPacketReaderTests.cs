@@ -8,10 +8,10 @@ namespace Replay.Unreal.Tests;
 public class PlaybackPacketReaderTests
 {
     [Test]
-    public void Read_FrameWithTwoPackets_AddsPlaybackPackets()
+    public void Read_FrameWithTwoPackets_RecordsPacketStats()
     {
-        var packet0 = new byte[] { 0xAA, 0xBB };
-        var packet1 = new byte[] { 0xCC, 0xDD, 0xEE };
+        var packet0 = BuildRawPacket(0);
+        var packet1 = BuildRawPacket(1);
         var context = CreateContext();
         var archive = new FBinaryArchive(BuildFrame([packet0, packet1], exportData: [], externalData: []));
 
@@ -19,16 +19,14 @@ public class PlaybackPacketReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(2));
-            Assert.That(context.PlaybackPackets[0].ReplayDataChunkIndex, Is.EqualTo(4));
-            Assert.That(context.PlaybackPackets[0].PacketIndex, Is.EqualTo(0));
-            Assert.That(context.PlaybackPackets[0].CurrentLevelIndex, Is.EqualTo(7));
-            Assert.That(context.PlaybackPackets[0].SeenLevelIndex, Is.EqualTo(3));
-            Assert.That(context.PlaybackPackets[0].TimeSeconds, Is.EqualTo(12.5f));
-            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet0));
-            Assert.That(context.PlaybackPackets[1].PacketIndex, Is.EqualTo(1));
-            Assert.That(context.PlaybackPackets[1].SeenLevelIndex, Is.EqualTo(5));
-            Assert.That(context.PlaybackPackets[1].Data, Is.EqualTo(packet1));
+            Assert.That(context.PacketStats.PacketCount, Is.EqualTo(2));
+            Assert.That(context.PacketStats.TotalPacketBytes, Is.EqualTo(packet0.Length + packet1.Length));
+            Assert.That(context.PacketStats.PacketsWithBunches, Is.EqualTo(2));
+            Assert.That(context.PacketStats.BunchCount, Is.EqualTo(2));
+            Assert.That(context.PacketStats.MalformedPacketCount, Is.EqualTo(0));
+            Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(0));
+            Assert.That(context.PacketStats.MinTimeSeconds, Is.EqualTo(12.5f));
+            Assert.That(context.PacketStats.MaxTimeSeconds, Is.EqualTo(12.5f));
             Assert.That(archive.AtEnd, Is.True);
         });
     }
@@ -36,7 +34,7 @@ public class PlaybackPacketReaderTests
     [Test]
     public void Read_FrameWithExportData_KeepsPacketAlignment()
     {
-        var packet = new byte[] { 0x10, 0x20, 0x30 };
+        var packet = BuildRawPacket();
         var context = CreateContext();
         var bytes = BuildFrame(packet, exportData: BuildExportData());
         var archive = new FBinaryArchive(bytes);
@@ -45,8 +43,9 @@ public class PlaybackPacketReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(1));
-            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet));
+            Assert.That(context.PacketStats.PacketCount, Is.EqualTo(1));
+            Assert.That(context.PacketStats.TotalPacketBytes, Is.EqualTo(packet.Length));
+            Assert.That(context.PacketStats.BunchCount, Is.EqualTo(1));
             Assert.That(archive.AtEnd, Is.True);
         });
     }
@@ -54,7 +53,7 @@ public class PlaybackPacketReaderTests
     [Test]
     public void Read_FrameWithExternalData_KeepsPacketAlignment()
     {
-        var packet = new byte[] { 0x42 };
+        var packet = BuildRawPacket();
         var context = CreateContext();
         var bytes = BuildFrame(packet, exportData: [], externalData: BuildExternalData());
         var archive = new FBinaryArchive(bytes);
@@ -63,8 +62,9 @@ public class PlaybackPacketReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.PlaybackPackets, Has.Count.EqualTo(1));
-            Assert.That(context.PlaybackPackets[0].Data, Is.EqualTo(packet));
+            Assert.That(context.PacketStats.PacketCount, Is.EqualTo(1));
+            Assert.That(context.PacketStats.TotalPacketBytes, Is.EqualTo(packet.Length));
+            Assert.That(context.PacketStats.BunchCount, Is.EqualTo(1));
             Assert.That(archive.AtEnd, Is.True);
         });
     }
@@ -197,6 +197,60 @@ public class PlaybackPacketReaderTests
         bytes.AddRange([0xAB, 0xCD]);
         AddIntPacked(bytes, 0);
         return bytes.ToArray();
+    }
+
+    private static byte[] BuildRawPacket(uint channelIndex = 0)
+    {
+        var bits = new List<bool>();
+        AddBit(bits, false); // bControl
+        AddBit(bits, false); // bIsReplicationPaused
+        AddBit(bits, false); // bReliable
+        AddIntPackedBits(bits, channelIndex);
+        AddBit(bits, false); // bHasPackageMapExports
+        AddBit(bits, false); // bHasMustBeMappedGUIDs
+        AddBit(bits, false); // bPartial
+        AddBit(bits, false); // Valorant specific bit
+        AddSerializedIntBits(bits, 0, Constants.MaxPacketSizeInBits);
+
+        var packet = new byte[(bits.Count + 1 + 7) / 8];
+        for (var i = 0; i < bits.Count; i++)
+        {
+            if (bits[i])
+            {
+                packet[i >> 3] |= (byte)(1 << (i & 7));
+            }
+        }
+
+        packet[bits.Count >> 3] |= (byte)(1 << (bits.Count & 7));
+        return packet;
+    }
+
+    private static void AddBit(List<bool> bits, bool value) => bits.Add(value);
+
+    private static void AddIntPackedBits(List<bool> bits, uint value)
+    {
+        do
+        {
+            var nextByte = (byte)((value & 0x7F) << 1);
+            value >>= 7;
+            if (value != 0)
+            {
+                nextByte |= 1;
+            }
+
+            for (var i = 0; i < 8; i++)
+            {
+                bits.Add((nextByte & (1 << i)) != 0);
+            }
+        } while (value != 0);
+    }
+
+    private static void AddSerializedIntBits(List<bool> bits, uint value, int maxValue)
+    {
+        for (uint mask = 1; value + mask < maxValue; mask <<= 1)
+        {
+            bits.Add((value & mask) != 0);
+        }
     }
 
     private static void AddFString(List<byte> bytes, string value)

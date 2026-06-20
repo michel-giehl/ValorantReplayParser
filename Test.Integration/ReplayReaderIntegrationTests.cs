@@ -46,16 +46,16 @@ public class ReplayReaderIntegrationTests
         DecompressReplayDataMaterializesExpectedSize("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
     [Test]
-    public void ReadPlaybackPackets_12_08_ExtractsPackets() =>
-        ReadPlaybackPacketsExtractsPackets("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
+    public void ReadRawPackets_12_08_RecordsStats() =>
+        ReadRawPacketsRecordsStats("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf", expectedPartialErrors: 2);
 
     [Test]
-    public void ReadPlaybackPackets_12_10_ExtractsPackets() =>
-        ReadPlaybackPacketsExtractsPackets("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf");
+    public void ReadRawPackets_12_10_RecordsStats() =>
+        ReadRawPacketsRecordsStats("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf", expectedPartialErrors: 2);
 
     [Test]
-    public void ReadPlaybackPackets_12_11_ExtractsPackets() =>
-        ReadPlaybackPacketsExtractsPackets("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
+    public void ReadRawPackets_12_11_RecordsStats() =>
+        ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2);
 
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
@@ -94,20 +94,25 @@ public class ReplayReaderIntegrationTests
         });
     }
 
-    private static void ReadPlaybackPacketsExtractsPackets(string replayFileName)
+    private static void ReadRawPacketsRecordsStats(string replayFileName, int expectedPartialErrors)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
         var context = ReadReplay(replayBytes);
+        var stats = context.PacketStats;
 
         Assert.Multiple(() =>
         {
             Assert.That(context.Errors, Is.Empty);
-            Assert.That(context.PlaybackPackets, Is.Not.Empty);
             Assert.That(context.NetGuidCache.ExportGroupsByPath, Is.Not.Empty);
             Assert.That(context.NetGuidCache.PathByNetGuid, Is.Not.Empty);
-            Assert.That(context.PlaybackPackets.All(packet => packet.Data.Length > 0), Is.True);
-            Assert.That(context.PlaybackPackets.Min(packet => packet.TimeSeconds), Is.GreaterThanOrEqualTo(0f));
-            Assert.That(context.PlaybackPackets.Max(packet => packet.TimeSeconds),
+            Assert.That(stats.PacketCount, Is.GreaterThan(0));
+            Assert.That(stats.TotalPacketBytes, Is.GreaterThan(0));
+            Assert.That(stats.PacketsWithBunches, Is.GreaterThan(0));
+            Assert.That(stats.BunchCount, Is.GreaterThan(0));
+            Assert.That(stats.MalformedPacketCount, Is.EqualTo(0));
+            Assert.That(stats.PartialErrorCount, Is.EqualTo(expectedPartialErrors));
+            Assert.That(stats.MinTimeSeconds, Is.GreaterThanOrEqualTo(0f));
+            Assert.That(stats.MaxTimeSeconds,
                 Is.LessThanOrEqualTo(context.ReplayInfo.LengthInMs / 1000f + 1f));
         });
     }

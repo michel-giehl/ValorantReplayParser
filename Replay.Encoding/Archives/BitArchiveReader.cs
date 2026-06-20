@@ -192,33 +192,6 @@ public sealed class BitArchiveReader : FBitArchive
         return child;
     }
 
-    public override uint ReadIntPacked()
-    {
-        uint value = 0;
-        var shift = 0;
-
-        for (var i = 0; i < 5; i++)
-        {
-            var nextByte = ReadByte();
-            value |= (uint)(nextByte >> 1) << shift;
-
-            if ((nextByte & 1) == 0)
-            {
-                return value;
-            }
-
-            shift += 7;
-        }
-
-        throw new ArchiveReadException(
-            ArchiveErrorCode.MalformedPackedInteger,
-            nameof(ReadIntPacked),
-            Position,
-            Length,
-            0,
-            "Packed integer did not terminate within five bytes.");
-    }
-
     public override void SeekBits(long position)
     {
         if (position < 0 || position > BitLength)
