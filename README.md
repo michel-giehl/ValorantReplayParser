@@ -20,23 +20,23 @@ C# parser for VALORANT replay files (`.vrf`).
 ## Project Progress
 
 | Area | Status |
-| --- | --- |
-| Binary and bit archives | ✔ |
-| Replay info parsing | ✔ |
-| Replay chunk scanning | ✔ |
-| Replay header parsing | ✔ |
-| Payload transform | ✔ |
-| Oodle decompression | ✔ |
-| Minimal CLI reader | ✔ |
-| Replay data stream parsing | ❌ |
-| Packet parsing | ❌ |
-| Bunch processing | ❌ |
-| Net field parsing | ❌ |
-| VALORANT export groups | ❌ |
-| VALORANT RPCs | ❌ |
-| ClassNetCaches | ❌ |
-| Match/game-state models | ❌ |
-| Stable public API | ❌ |
+| --- |------|
+| Binary and bit archives | ✔    |
+| Replay info parsing | ✔    |
+| Replay chunk scanning | ✔    |
+| Replay header parsing | ✔    |
+| Payload transform | ✔    |
+| Oodle decompression | ✔    |
+| Minimal CLI reader | ✔    |
+| Replay data stream parsing | ✔    |
+| Packet parsing | ✔    |
+| Bunch processing |  ❌    |
+| Net field parsing | ❌    |
+| VALORANT export groups | ❌    |
+| VALORANT RPCs | ❌    |
+| ClassNetCaches | ❌    |
+| Match/game-state models | ❌    |
+| Stable public API | ❌    |
 
 ## Build And Test
 
