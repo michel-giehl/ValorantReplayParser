@@ -1,4 +1,5 @@
-using Replay.Models;
+using Replay.Models.Protocol;
+using Replay.Models.Unreal;
 
 namespace Replay.Encoding.Archives;
 

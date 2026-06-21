@@ -1,7 +1,8 @@
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Net;
+using Replay.Models.Protocol;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Packets;
 
 public delegate void RawBunchPayloadCallback(ref RawBunchHeader header, FBitArchive payload);
 

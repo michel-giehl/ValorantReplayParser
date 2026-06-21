@@ -1,4 +1,4 @@
-namespace Replay.Models;
+namespace Replay.Models.Errors;
 
 public class InvalidReplayHeaderException(string message) : Exception(message)
 {

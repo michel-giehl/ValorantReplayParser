@@ -1,4 +1,7 @@
-namespace Replay.Models;
+using Replay.Models.Net;
+using Replay.Models.Unreal;
+
+namespace Replay.Models.Events;
 
 public interface IReplayEventSink
 {

@@ -1,4 +1,4 @@
-namespace Replay.Unreal;
+namespace Replay.Unreal.World;
 
 public enum ActorLifecycleStatus
 {

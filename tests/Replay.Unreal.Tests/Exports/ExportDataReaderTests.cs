@@ -1,9 +1,10 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Unreal.Exports;
 
-namespace Replay.Unreal.Tests;
+namespace Replay.Unreal.Tests.Exports;
 
 public class ExportDataReaderTests
 {

@@ -1,4 +1,4 @@
-namespace Replay.Models;
+namespace Replay.Models.Replay;
 
 public enum ReplayChunkType : uint
 {

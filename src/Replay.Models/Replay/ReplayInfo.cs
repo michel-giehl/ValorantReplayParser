@@ -1,4 +1,4 @@
-namespace Replay.Models;
+namespace Replay.Models.Replay;
 
 public sealed class ReplayInfo
 {

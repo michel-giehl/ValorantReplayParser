@@ -1,7 +1,10 @@
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
-using Replay.Models;
-using Replay.Unreal;
+using Replay.Models.Events;
+using Replay.Models.Replay;
+using Replay.Unreal.Chunks;
+using Replay.Unreal.Header;
+using Replay.Unreal.Readers;
 using Snapshooter.NUnit;
 
 namespace Test.Integration;

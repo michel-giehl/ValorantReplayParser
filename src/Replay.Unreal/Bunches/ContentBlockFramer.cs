@@ -1,8 +1,11 @@
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
-using Replay.Models;
+using Replay.Models.Events;
+using Replay.Unreal.Channels;
+using Replay.Unreal.PackageMap;
+using Replay.Unreal.World;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Bunches;
 
 public class ContentBlockFramer
 {

@@ -1,8 +1,10 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Replay;
+using Replay.Unreal.Info;
 
-namespace Replay.Unreal.Tests;
+namespace Replay.Unreal.Tests.Info;
 
 public class ReplayInfoReaderTests
 {

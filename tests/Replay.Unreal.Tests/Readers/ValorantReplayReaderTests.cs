@@ -1,9 +1,14 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Protocol;
+using Replay.Models.Replay;
+using Replay.Models.Unreal;
+using Replay.Unreal.Chunks;
+using Replay.Unreal.Readers;
 
-namespace Replay.Unreal.Tests;
+namespace Replay.Unreal.Tests.Readers;
 
 public class ValorantReplayReaderTests
 {

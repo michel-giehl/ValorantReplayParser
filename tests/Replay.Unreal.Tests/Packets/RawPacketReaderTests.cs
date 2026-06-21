@@ -1,7 +1,9 @@
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Net;
+using Replay.Models.Protocol;
+using Replay.Unreal.Packets;
 
-namespace Replay.Unreal.Tests;
+namespace Replay.Unreal.Tests.Packets;
 
 public class RawPacketReaderTests
 {

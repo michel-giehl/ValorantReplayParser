@@ -1,4 +1,4 @@
-namespace Replay.Unreal;
+namespace Replay.Unreal.Packets;
 
 public sealed class RawPacketStats
 {

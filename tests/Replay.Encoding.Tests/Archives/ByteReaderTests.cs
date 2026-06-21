@@ -1,6 +1,6 @@
 using Replay.Encoding.Archives;
 
-namespace Replay.Encoding.Tests;
+namespace Replay.Encoding.Tests.Archives;
 
 public class ByteReaderTests
 {

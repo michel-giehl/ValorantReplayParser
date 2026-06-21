@@ -1,4 +1,4 @@
-namespace Replay.Models;
+namespace Replay.Models.Protocol;
 
 public static class Constants
 {

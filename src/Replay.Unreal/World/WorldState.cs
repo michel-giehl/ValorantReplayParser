@@ -1,4 +1,6 @@
-namespace Replay.Unreal;
+using Replay.Unreal.Channels;
+
+namespace Replay.Unreal.World;
 
 public sealed class WorldState
 {

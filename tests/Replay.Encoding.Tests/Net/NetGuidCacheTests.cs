@@ -1,6 +1,6 @@
 using Replay.Encoding.Net;
 
-namespace Replay.Encoding.Tests;
+namespace Replay.Encoding.Tests.Net;
 
 public class NetGuidCacheTests
 {

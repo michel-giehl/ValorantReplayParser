@@ -1,4 +1,4 @@
-namespace Replay.Models;
+namespace Replay.Models.Unreal;
 
 public enum BuildTargetType : byte
 {

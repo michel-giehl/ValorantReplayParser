@@ -1,9 +1,17 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Events;
+using Replay.Models.Net;
+using Replay.Models.Protocol;
+using Replay.Models.Replay;
+using Replay.Unreal.Channels;
+using Replay.Unreal.Packets;
+using Replay.Unreal.Readers;
+using Replay.Unreal.World;
 
-namespace Replay.Unreal.Tests;
+namespace Replay.Unreal.Tests.Bunches;
 
 public class BunchPayloadPipelineTests
 {

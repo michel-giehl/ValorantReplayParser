@@ -1,7 +1,10 @@
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Protocol;
+using Replay.Models.Replay;
+using Replay.Models.Unreal;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Header;
 
 public sealed class ReplayHeaderReader
 {

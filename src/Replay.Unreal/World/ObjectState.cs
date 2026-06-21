@@ -1,6 +1,6 @@
 using Replay.Encoding.Net;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.World;
 
 public sealed class ObjectState
 {

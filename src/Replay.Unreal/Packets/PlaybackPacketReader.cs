@@ -1,9 +1,14 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Protocol;
+using Replay.Models.Replay;
+using Replay.Unreal.Exports;
+using Replay.Unreal.Frames;
+using Replay.Unreal.Readers;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Packets;
 
 public class PlaybackPacketReader
 {

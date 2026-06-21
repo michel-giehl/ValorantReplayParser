@@ -1,5 +1,7 @@
-using Replay.Models;
-using Replay.Unreal;
+using Replay.Models.Events;
+using Replay.Models.Net;
+using Replay.Models.Unreal;
+using Replay.Unreal.World;
 using Serilog;
 
 namespace CliReader;

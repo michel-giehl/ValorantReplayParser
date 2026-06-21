@@ -1,7 +1,9 @@
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Replay;
+using Replay.Unreal.Header;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Info;
 
 public sealed class ReplayInfoReader
 {

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Serilog.Events;
 
-namespace CliReader;
+namespace CliReader.Logging;
 
 internal sealed class SerilogLoggerProvider : ILoggerProvider
 {

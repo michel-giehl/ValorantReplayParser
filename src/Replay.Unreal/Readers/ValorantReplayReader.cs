@@ -2,9 +2,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Events;
+using Replay.Models.Replay;
+using Replay.Unreal.Chunks;
+using Replay.Unreal.Info;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Readers;
 
 public sealed class ValorantReplayReader
 {

@@ -1,6 +1,6 @@
-using Replay.Models;
+using Replay.Models.Replay;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Info;
 
 public sealed record ReplayInfoReadResult(
     ReplayInfo Info,

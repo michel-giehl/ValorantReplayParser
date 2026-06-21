@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Replay;
+using Replay.Unreal.Readers;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Frames;
 
 public class GameSpecificFrameDataReader
 {

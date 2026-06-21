@@ -1,8 +1,9 @@
 using System.Buffers;
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Net;
+using Replay.Unreal.PackageMap;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Bunches;
 
 public sealed class PartialBunchAccumulator
 {

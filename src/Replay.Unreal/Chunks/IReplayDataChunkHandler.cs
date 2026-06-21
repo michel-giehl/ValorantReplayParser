@@ -1,7 +1,8 @@
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Replay;
+using Replay.Unreal.Readers;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Chunks;
 
 public interface IReplayDataChunkHandler
 {

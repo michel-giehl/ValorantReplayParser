@@ -1,7 +1,8 @@
 using Replay.Encoding.Net;
-using Replay.Models;
+using Replay.Models.Net;
+using Replay.Models.Unreal;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Channels;
 
 public sealed class ActorChannelState
 {

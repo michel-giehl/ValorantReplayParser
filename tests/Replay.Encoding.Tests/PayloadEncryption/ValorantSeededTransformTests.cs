@@ -1,7 +1,7 @@
 using Replay.Encoding.Archives;
 using Replay.Encoding.PayloadEncryption;
 
-namespace Replay.Encoding.Tests;
+namespace Replay.Encoding.Tests.PayloadEncryption;
 
 public class ValorantSeededTransformTests
 {

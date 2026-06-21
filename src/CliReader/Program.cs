@@ -1,7 +1,8 @@
 using CliReader;
+using CliReader.Logging;
 using Replay.Encoding.Archives;
-using Replay.Unreal;
 using Microsoft.Extensions.Logging;
+using Replay.Unreal.Readers;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()

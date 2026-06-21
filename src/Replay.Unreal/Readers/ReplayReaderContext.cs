@@ -1,8 +1,14 @@
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Events;
+using Replay.Models.Replay;
+using Replay.Unreal.Bunches;
+using Replay.Unreal.Channels;
+using Replay.Unreal.Packets;
+using Replay.Unreal.World;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Readers;
 
 public class ReplayReaderContext
 {

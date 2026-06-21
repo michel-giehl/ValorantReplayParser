@@ -1,8 +1,8 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Unreal;
 
-namespace Replay.Encoding.Tests;
+namespace Replay.Encoding.Tests.Archives;
 
 public class FBinaryArchiveTests
 {

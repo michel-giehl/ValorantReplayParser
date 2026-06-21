@@ -2,9 +2,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
-using Replay.Models;
+using Replay.Models.Errors;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Exports;
 
 public class ExportDataReader
 {

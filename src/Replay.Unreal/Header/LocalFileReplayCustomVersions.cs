@@ -1,6 +1,7 @@
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Unreal;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Header;
 
 internal static class LocalFileReplayCustomVersions
 {

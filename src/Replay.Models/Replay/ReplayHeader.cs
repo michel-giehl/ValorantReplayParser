@@ -1,4 +1,6 @@
-namespace Replay.Models;
+using Replay.Models.Unreal;
+
+namespace Replay.Models.Replay;
 
 public class ReplayHeader
 {

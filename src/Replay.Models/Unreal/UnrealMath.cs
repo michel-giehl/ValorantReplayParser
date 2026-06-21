@@ -1,4 +1,4 @@
-namespace Replay.Models;
+namespace Replay.Models.Unreal;
 
 public readonly record struct FVector(double X, double Y, double Z)
 {

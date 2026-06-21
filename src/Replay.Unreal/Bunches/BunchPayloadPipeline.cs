@@ -1,7 +1,14 @@
 using Replay.Encoding.Archives;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Events;
+using Replay.Models.Net;
+using Replay.Models.Unreal;
+using Replay.Unreal.Channels;
+using Replay.Unreal.PackageMap;
+using Replay.Unreal.Readers;
+using Replay.Unreal.World;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Bunches;
 
 public sealed class BunchPayloadPipeline
 {

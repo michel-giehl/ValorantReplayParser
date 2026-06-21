@@ -1,4 +1,4 @@
-namespace Replay.Unreal;
+namespace Replay.Unreal.Bunches;
 
 public sealed class BunchPayloadStats
 {

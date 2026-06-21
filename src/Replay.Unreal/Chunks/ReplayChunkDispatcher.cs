@@ -2,9 +2,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
-using Replay.Models;
+using Replay.Models.Errors;
+using Replay.Models.Replay;
+using Replay.Unreal.Header;
+using Replay.Unreal.Readers;
 
-namespace Replay.Unreal;
+namespace Replay.Unreal.Chunks;
 
 public sealed class ReplayChunkDispatcher
 {
