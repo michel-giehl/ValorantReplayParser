@@ -9,6 +9,10 @@ public class ReplayReaderContext
     public ReplayReaderContext(FBinaryArchive archive)
     {
         Archive = archive;
+        BunchPayloadStats = new BunchPayloadStats();
+        ChannelStates = new Dictionary<uint, ActorChannelState>();
+        ActorChannelOpens = [];
+        BunchPayloadPipeline = new BunchPayloadPipeline(this);
     }
 
     public FBinaryArchive Archive { get; }
@@ -21,5 +25,9 @@ public class ReplayReaderContext
     public NetGuidCache NetGuidCache { get; } = new();
     public RawPacketStats PacketStats { get; } = new();
     internal RawPacketReader RawPacketReader { get; } = new();
+    public BunchPayloadStats BunchPayloadStats { get; }
+    public Dictionary<uint, ActorChannelState> ChannelStates { get; }
+    public List<ActorChannelState> ActorChannelOpens { get; }
+    public BunchPayloadPipeline BunchPayloadPipeline { get; }
     public List<ReplayParseError> Errors { get; } = [];
 }

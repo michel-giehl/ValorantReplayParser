@@ -37,7 +37,8 @@ public class PlaybackPacketReader
 
     private void ReadDemoFrame()
     {
-        var currentLevelIndex = _archive.ReadInt32();
+        // currentLevelIndex
+        _ = _archive.ReadInt32();
 
         var timeSeconds = _archive.ReadSingle();
         _logger.LogTrace("Read playback frame at {TimeSeconds} seconds.", timeSeconds);
@@ -53,10 +54,10 @@ public class PlaybackPacketReader
 
         while (true)
         {
-            var seenLevelIndex = 0u;
             if (_context.ReplayHeader.Flags.HasFlag(ReplayHeaderFlags.HasStreamingFixes))
             {
-                seenLevelIndex = _archive.ReadIntPacked();
+                // seenLevelIndex
+                _ = _archive.ReadIntPacked();
             }
 
             var packetSize = _archive.ReadInt32();
@@ -77,8 +78,9 @@ public class PlaybackPacketReader
 
             var packetIndex = _context.PacketStats.PacketCount;
             var packetData = _archive.ReadBytes(packetSize);
-            var result = _context.RawPacketReader.ReadPacket(packetData, packetIndex, static (ref RawBunchHeader _) => { });
+            var result = _context.RawPacketReader.ReadPacket(packetData, packetIndex, _context.BunchPayloadPipeline.HandleBunchPayload);
             _context.PacketStats.RecordPacket(packetSize, timeSeconds, result);
+            _context.BunchPayloadStats.PacketCount++;
             if (result.IsMalformed)
             {
                 throw new InvalidReplayInfoException($"Replay packet {packetIndex} is malformed.");

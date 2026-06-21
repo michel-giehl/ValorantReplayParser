@@ -3,11 +3,10 @@ using Replay.Models;
 
 namespace Replay.Unreal;
 
-public delegate void RawBunchHeaderCallback(ref RawBunchHeader header);
+public delegate void RawBunchPayloadCallback(ref RawBunchHeader header, FBitArchive payload);
 
 public readonly struct RawPacketReadResult
 {
-    public int PacketId { get; init; }
     public int BunchCount { get; init; }
     public bool IsMalformed { get; init; }
     public int PartialErrorCount { get; init; }
@@ -35,18 +34,18 @@ public sealed class RawPacketReader
     public RawPacketReadResult ReadPacket(
         ReadOnlyMemory<byte> packetData,
         int packetId,
-        RawBunchHeaderCallback callback)
+        RawBunchPayloadCallback callback)
     {
         if (packetData.Length == 0)
         {
-            return new RawPacketReadResult { PacketId = packetId };
+            return new RawPacketReadResult { };
         }
 
         var span = packetData.Span;
         var lastByte = span[^1];
         if (lastByte == 0)
         {
-            return new RawPacketReadResult { PacketId = packetId, IsMalformed = true };
+            return new RawPacketReadResult { IsMalformed = true };
         }
 
         var bitSize = ComputeBitSize(span, lastByte);
@@ -62,7 +61,6 @@ public sealed class RawPacketReader
             {
                 return new RawPacketReadResult
                 {
-                    PacketId = packetId,
                     BunchCount = bunchCount,
                     IsMalformed = true,
                     PartialErrorCount = partialErrorCount,
@@ -70,19 +68,14 @@ public sealed class RawPacketReader
             }
 
             TrackPartialBunch(ref header, ref partialErrorCount);
-            callback(ref header);
-
-            if (header.PayloadBitCount > 0)
-            {
-                reader.SkipBits(header.PayloadBitCount);
-            }
+            var payloadArchive = reader.ReadSubArchive(header.PayloadBitCount);
+            callback(ref header, payloadArchive);
 
             bunchCount++;
         }
 
         return new RawPacketReadResult
         {
-            PacketId = packetId,
             BunchCount = bunchCount,
             PartialErrorCount = partialErrorCount,
         };

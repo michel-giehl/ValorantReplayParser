@@ -47,15 +47,19 @@ public class ReplayReaderIntegrationTests
 
     [Test]
     public void ReadRawPackets_12_08_RecordsStats() =>
-        ReadRawPacketsRecordsStats("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf", expectedPartialErrors: 2);
+        ReadRawPacketsRecordsStats("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
 
     [Test]
     public void ReadRawPackets_12_10_RecordsStats() =>
-        ReadRawPacketsRecordsStats("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf", expectedPartialErrors: 2);
+        ReadRawPacketsRecordsStats("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
 
     [Test]
     public void ReadRawPackets_12_11_RecordsStats() =>
-        ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2);
+        ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
+
+    [Test]
+    public void ReadRawPackets_12_08_DecodesBaseReplayControllerSpawnLocation() =>
+        ReadRawPacketsDecodesBaseReplayControllerSpawnLocation("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
 
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
@@ -94,11 +98,12 @@ public class ReplayReaderIntegrationTests
         });
     }
 
-    private static void ReadRawPacketsRecordsStats(string replayFileName, int expectedPartialErrors)
+    private static void ReadRawPacketsRecordsStats(string replayFileName, int expectedPartialErrors, int expectedMalformedPayloads)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
         var context = ReadReplay(replayBytes);
         var stats = context.PacketStats;
+        var payloadStats = context.BunchPayloadStats;
 
         Assert.Multiple(() =>
         {
@@ -114,6 +119,35 @@ public class ReplayReaderIntegrationTests
             Assert.That(stats.MinTimeSeconds, Is.GreaterThanOrEqualTo(0f));
             Assert.That(stats.MaxTimeSeconds,
                 Is.LessThanOrEqualTo(context.ReplayInfo.LengthInMs / 1000f + 1f));
+            Assert.That(payloadStats.PayloadBunchCount, Is.GreaterThan(0));
+            Assert.That(payloadStats.ContentBlockCount, Is.GreaterThan(0));
+            Assert.That(payloadStats.PartialErrorCount, Is.EqualTo(expectedPartialErrors));
+            Assert.That(payloadStats.MalformedPayloadCount, Is.EqualTo(expectedMalformedPayloads),
+                $"Exceptions={payloadStats.MalformedPayloadExceptionCount}, MustMap={payloadStats.MalformedMustBeMappedGuidCount}, ActorOpen={payloadStats.MalformedActorOpenCount}, Content={payloadStats.MalformedContentBlockCount}, Trailing={payloadStats.TrailingPayloadCount}");
+        });
+    }
+
+    private static void ReadRawPacketsDecodesBaseReplayControllerSpawnLocation(string replayFileName)
+    {
+        var replayBytes = ReadReplayBytes(replayFileName);
+        var context = ReadReplay(replayBytes);
+        var replayControllers = context.ActorChannelOpens.Where(state =>
+            state.ArchetypePath?.EndsWith("Default__BaseReplayController_C", StringComparison.Ordinal) == true).ToArray();
+        var replayController = replayControllers.FirstOrDefault();
+
+        Assert.That(replayControllers, Is.Not.Empty, string.Join(", ",
+            context.ActorChannelOpens.Select(state => state.ArchetypePath).Where(path => path is not null)));
+
+        var location = replayController!.SpawnLocation;
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Errors, Is.Empty);
+            Assert.That(location, Is.Not.Null);
+            Assert.That(location!.Value.X, Is.EqualTo(2382.2d));
+            Assert.That(location.Value.Y, Is.EqualTo(-10417.9));
+            Assert.That(location.Value.Z, Is.EqualTo(400.0d));
+            Assert.That(location.Value.Bits, Is.EqualTo(18));
+            Assert.That(location.Value.ScaleFactor, Is.EqualTo(10));
         });
     }
 
