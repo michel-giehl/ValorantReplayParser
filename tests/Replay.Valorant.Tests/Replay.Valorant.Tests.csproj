@@ -21,8 +21,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
-      <ProjectReference Include="..\Replay.Valorant\Replay.Valorant.csproj" />
+      <ProjectReference Include="..\..\src\Replay.Models\Replay.Models.csproj" />
+      <ProjectReference Include="..\..\src\Replay.Valorant\Replay.Valorant.csproj" />
     </ItemGroup>
 
 </Project>

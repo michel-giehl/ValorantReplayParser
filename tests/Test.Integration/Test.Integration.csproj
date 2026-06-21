@@ -52,9 +52,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />
-      <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
-      <ProjectReference Include="..\Replay.Unreal\Replay.Unreal.csproj" />
+      <ProjectReference Include="..\..\src\Replay.Encoding\Replay.Encoding.csproj" />
+      <ProjectReference Include="..\..\src\Replay.Models\Replay.Models.csproj" />
+      <ProjectReference Include="..\..\src\Replay.Unreal\Replay.Unreal.csproj" />
     </ItemGroup>
 
 </Project>

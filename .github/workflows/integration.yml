@@ -17,10 +17,10 @@ jobs:
       with:
         dotnet-version: 10.0.x
     - name: Restore dependencies
-      run: dotnet restore Test.Integration/Test.Integration.csproj
+      run: dotnet restore tests/Test.Integration/Test.Integration.csproj
     - name: Build
-      run: dotnet build Test.Integration/Test.Integration.csproj --no-restore
+      run: dotnet build tests/Test.Integration/Test.Integration.csproj --no-restore
     - name: Test
-      run: dotnet test Test.Integration/Test.Integration.csproj --no-build --verbosity normal
+      run: dotnet test tests/Test.Integration/Test.Integration.csproj --no-build --verbosity normal
       env:
         SNAPSHOOTER_STRICT_MODE: true

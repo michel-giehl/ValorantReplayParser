@@ -21,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj"/>
+        <ProjectReference Include="..\..\src\Replay.Encoding\Replay.Encoding.csproj"/>
     </ItemGroup>
 
 </Project>

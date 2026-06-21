@@ -19,14 +19,14 @@ jobs:
         dotnet-version: 10.0.x
     - name: Restore dependencies
       run: |
-        dotnet restore CliReader/CliReader.csproj
-        dotnet restore Replay.Encoding.Tests/Replay.Encoding.Tests.csproj
-        dotnet restore Replay.Unreal.Tests/Replay.Unreal.Tests.csproj
-        dotnet restore Replay.Valorant.Tests/Replay.Valorant.Tests.csproj
+        dotnet restore src/CliReader/CliReader.csproj
+        dotnet restore tests/Replay.Encoding.Tests/Replay.Encoding.Tests.csproj
+        dotnet restore tests/Replay.Unreal.Tests/Replay.Unreal.Tests.csproj
+        dotnet restore tests/Replay.Valorant.Tests/Replay.Valorant.Tests.csproj
     - name: Build
-      run: dotnet build CliReader/CliReader.csproj --no-restore
+      run: dotnet build src/CliReader/CliReader.csproj --no-restore
     - name: Test
       run: |
-        dotnet test Replay.Encoding.Tests/Replay.Encoding.Tests.csproj --no-restore --verbosity normal
-        dotnet test Replay.Unreal.Tests/Replay.Unreal.Tests.csproj --no-restore --verbosity normal
-        dotnet test Replay.Valorant.Tests/Replay.Valorant.Tests.csproj --no-restore --verbosity normal
+        dotnet test tests/Replay.Encoding.Tests/Replay.Encoding.Tests.csproj --no-restore --verbosity normal
+        dotnet test tests/Replay.Unreal.Tests/Replay.Unreal.Tests.csproj --no-restore --verbosity normal
+        dotnet test tests/Replay.Valorant.Tests/Replay.Valorant.Tests.csproj --no-restore --verbosity normal

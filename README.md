@@ -48,7 +48,7 @@ dotnet test "ValorantReplayParser.sln"
 ## CLI
 
 ```powershell
-dotnet run --project "CliReader\CliReader.csproj" -- "C:\path\to\replay.vrf"
+dotnet run --project "src\CliReader\CliReader.csproj" -- "C:\path\to\replay.vrf"
 ```
 
 
