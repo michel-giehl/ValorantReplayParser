@@ -15,7 +15,11 @@ public sealed class BunchPayloadPipeline
         _context = context;
         _packageMapReader = new PackageMapReader(context.NetGuidCache);
         _partialBunchAccumulator = new PartialBunchAccumulator(_packageMapReader);
-        _contentBlockFramer = new ContentBlockFramer(_packageMapReader);
+        _contentBlockFramer = new ContentBlockFramer(
+            _packageMapReader,
+            context.NetGuidCache,
+            context.WorldState,
+            context.EventSink);
     }
 
     public void HandleBunchPayload(ref RawBunchHeader header, FBitArchive payload)
@@ -113,12 +117,14 @@ public sealed class BunchPayloadPipeline
                         ChannelIndex = header.ChIndex,
                         IsOpen = true,
                         OpenPacketId = header.PacketId,
+                        OpenTimeSeconds = _context.CurrentTimeSeconds,
                     };
 
                     SerializeNewActor(payload, channelState, header.bClose);
 
                     _context.ChannelStates[header.ChIndex] = channelState;
                     _context.ActorChannelOpens.Add(channelState);
+                    OpenActor(channelState, stats);
                     openedDynamicActor = channelState.ActorNetGuid.IsDynamic;
                     stats.ActorChannelOpenCount++;
                     stats.ActorSerializeNewActorCount++;
@@ -133,14 +139,6 @@ public sealed class BunchPayloadPipeline
             }
         }
 
-        if (header.bClose)
-        {
-            if (_context.ChannelStates.TryGetValue(header.ChIndex, out var closingChannel))
-            {
-                closingChannel.IsOpen = false;
-            }
-        }
-
         _context.ChannelStates.TryGetValue(header.ChIndex, out var channel);
 
         if (openedDynamicActor && !payload.AtEnd)
@@ -149,18 +147,27 @@ public sealed class BunchPayloadPipeline
             stats.DynamicOpenPayloadBunchCount++;
             stats.DynamicOpenPayloadBitsSkipped += payload.BitsRemaining;
             payload.SkipRemaining();
-            return;
         }
-
-        if (!payload.AtEnd)
+        else if (!payload.AtEnd)
         {
             if (channel is null)
             {
                 payload.SkipRemaining();
-                return;
             }
+            else
+            {
+                _contentBlockFramer.FrameContentBlocks(
+                    payload,
+                    channel,
+                    stats,
+                    _context.CurrentTimeSeconds,
+                    header.PacketId);
+            }
+        }
 
-            _contentBlockFramer.FrameContentBlocks(payload, channel, stats);
+        if (header.bClose && channel is not null)
+        {
+            CloseActorChannel(channel, header, stats);
         }
 
         if (payload.AtEnd) return;
@@ -168,6 +175,180 @@ public sealed class BunchPayloadPipeline
         payload.SkipBits(unconsumed);
         stats.MalformedPayloadCount++;
         stats.TrailingPayloadCount++;
+    }
+
+    private void OpenActor(ActorChannelState channel, BunchPayloadStats stats)
+    {
+        var actorNetGuid = channel.ActorNetGuid;
+        if (!actorNetGuid.IsValid)
+        {
+            return;
+        }
+
+        var worldState = _context.WorldState;
+        var isNew = !worldState.ActorsByNetGuid.TryGetValue(actorNetGuid.Value, out var actor);
+        if (actor?.LifecycleStatus == ActorLifecycleStatus.Destroyed)
+        {
+            throw new InvalidReplayInfoException(
+                $"Actor net GUID {actorNetGuid.Value} was reopened after destruction.");
+        }
+
+        if (isNew)
+        {
+            actor = new ActorState
+            {
+                NetGuid = actorNetGuid,
+                ChannelIndex = channel.ChannelIndex,
+                IsDynamic = actorNetGuid.IsDynamic,
+                LifecycleStatus = ActorLifecycleStatus.Open,
+                ActorPath = channel.ActorPath,
+                ArchetypeNetGuid = channel.ArchetypeNetGuid,
+                ArchetypePath = channel.ArchetypePath,
+                LevelNetGuid = channel.LevelGuid,
+                FirstObservedTimeSeconds = channel.OpenTimeSeconds,
+                FirstObservedPacketId = channel.OpenPacketId,
+                OpenTimeSeconds = channel.OpenTimeSeconds,
+                OpenPacketId = channel.OpenPacketId,
+                OpenCount = 1,
+                SpawnTimeSeconds = actorNetGuid.IsDynamic ? channel.OpenTimeSeconds : null,
+                SpawnPacketId = actorNetGuid.IsDynamic ? channel.OpenPacketId : null,
+                SpawnLocation = channel.SpawnLocation,
+                SpawnRotation = channel.SpawnRotation,
+                SpawnScale = channel.SpawnScale,
+                SpawnVelocity = channel.SpawnVelocity,
+                Location = channel.SpawnLocation,
+                Rotation = channel.SpawnRotation,
+                Scale = channel.SpawnScale,
+                Velocity = channel.SpawnVelocity,
+            };
+            worldState.ActorsByNetGuid.Add(actorNetGuid.Value, actor);
+            stats.ActorCreatedCount++;
+        }
+        else
+        {
+            actor!.ChannelIndex = channel.ChannelIndex;
+            actor.LifecycleStatus = ActorLifecycleStatus.Open;
+            actor.ActorPath ??= channel.ActorPath;
+            actor.ArchetypeNetGuid = channel.ArchetypeNetGuid.IsValid
+                ? channel.ArchetypeNetGuid
+                : actor.ArchetypeNetGuid;
+            actor.ArchetypePath ??= channel.ArchetypePath;
+            actor.LevelNetGuid = channel.LevelGuid.IsValid ? channel.LevelGuid : actor.LevelNetGuid;
+            actor.OpenTimeSeconds = channel.OpenTimeSeconds;
+            actor.OpenPacketId = channel.OpenPacketId;
+            actor.OpenCount++;
+            actor.CloseTimeSeconds = null;
+            actor.ClosePacketId = null;
+            actor.CloseReason = null;
+        }
+
+        _context.EventSink.Emit(new ActorOpened(
+            channel.OpenTimeSeconds,
+            channel.OpenPacketId,
+            actorNetGuid.Value,
+            channel.ChannelIndex,
+            actorNetGuid.IsDynamic,
+            actor!.ActorPath,
+            actor.ArchetypePath));
+
+        if (!isNew || !actorNetGuid.IsDynamic)
+        {
+            return;
+        }
+
+        _context.EventSink.Emit(new ActorSpawned(
+            channel.OpenTimeSeconds,
+            channel.OpenPacketId,
+            actorNetGuid.Value,
+            channel.ChannelIndex,
+            actor.ArchetypePath,
+            actor.SpawnLocation,
+            actor.SpawnRotation,
+            actor.SpawnScale,
+            actor.SpawnVelocity));
+    }
+
+    private void CloseActorChannel(
+        ActorChannelState channel,
+        RawBunchHeader header,
+        BunchPayloadStats stats)
+    {
+        if (!channel.IsOpen)
+        {
+            return;
+        }
+
+        channel.IsOpen = false;
+        channel.IsDormant = header.bDormant;
+        channel.ClosePacketId = header.PacketId;
+        channel.CloseTimeSeconds = _context.CurrentTimeSeconds;
+        channel.CloseReason = header.CloseReason;
+        stats.ActorChannelCloseCount++;
+
+        if (!_context.WorldState.ActorsByNetGuid.TryGetValue(channel.ActorNetGuid.Value, out var actor))
+        {
+            return;
+        }
+
+        actor.ClosePacketId = header.PacketId;
+        actor.CloseTimeSeconds = _context.CurrentTimeSeconds;
+        actor.CloseReason = header.CloseReason;
+        actor.LifecycleStatus = header.CloseReason switch
+        {
+            ChannelCloseReason.Destroyed => ActorLifecycleStatus.Destroyed,
+            ChannelCloseReason.Dormancy => ActorLifecycleStatus.Dormant,
+            _ => ActorLifecycleStatus.Closed,
+        };
+
+        _context.EventSink.Emit(new ActorClosed(
+            _context.CurrentTimeSeconds,
+            header.PacketId,
+            actor.NetGuid.Value,
+            channel.ChannelIndex,
+            header.CloseReason));
+
+        if (header.CloseReason == ChannelCloseReason.Dormancy)
+        {
+            stats.ActorDormantCount++;
+        }
+
+        if (header.CloseReason != ChannelCloseReason.Destroyed)
+        {
+            return;
+        }
+
+        actor.DestroyTimeSeconds = _context.CurrentTimeSeconds;
+        actor.DestroyPacketId = header.PacketId;
+        stats.ActorDestroyedCount++;
+
+        foreach (var objectNetGuid in actor.SubobjectNetGuids)
+        {
+            if (!_context.WorldState.ObjectsByNetGuid.TryGetValue(objectNetGuid, out var objectState) ||
+                !objectState.IsActive)
+            {
+                continue;
+            }
+
+            objectState.IsActive = false;
+            objectState.DestroyTimeSeconds = _context.CurrentTimeSeconds;
+            objectState.DestroyPacketId = header.PacketId;
+            objectState.DeleteFlags = 0;
+            stats.SubobjectDestroyedCount++;
+            _context.EventSink.Emit(new SubobjectDestroyed(
+                _context.CurrentTimeSeconds,
+                header.PacketId,
+                objectState.NetGuid.Value,
+                actor.NetGuid.Value,
+                channel.ChannelIndex,
+                DeleteFlags: 0,
+                DestroyedWithActor: true));
+        }
+
+        _context.EventSink.Emit(new ActorDestroyed(
+            _context.CurrentTimeSeconds,
+            header.PacketId,
+            actor.NetGuid.Value,
+            channel.ChannelIndex));
     }
 
     private void SerializeNewActor(
@@ -314,7 +495,6 @@ public sealed class BunchPayloadPipeline
     internal void Reset()
     {
         _partialBunchAccumulator.Reset();
-        _context.ChannelStates.Clear();
-        _context.ActorChannelOpens.Clear();
+        _context.WorldState.Reset();
     }
 }

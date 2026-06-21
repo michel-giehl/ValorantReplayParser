@@ -1,17 +1,34 @@
 using Replay.Encoding.Archives;
+using Replay.Encoding.Net;
+using Replay.Models;
 
 namespace Replay.Unreal;
 
 public class ContentBlockFramer
 {
     private readonly PackageMapReader _packageMapReader;
+    private readonly NetGuidCache _netGuidCache;
+    private readonly WorldState _worldState;
+    private readonly IReplayEventSink _eventSink;
 
-    public ContentBlockFramer(PackageMapReader packageMapReader)
+    public ContentBlockFramer(
+        PackageMapReader packageMapReader,
+        NetGuidCache netGuidCache,
+        WorldState worldState,
+        IReplayEventSink eventSink)
     {
         _packageMapReader = packageMapReader;
+        _netGuidCache = netGuidCache;
+        _worldState = worldState;
+        _eventSink = eventSink;
     }
 
-    public void FrameContentBlocks(FBitArchive payload, ActorChannelState channel, BunchPayloadStats stats)
+    public void FrameContentBlocks(
+        FBitArchive payload,
+        ActorChannelState channel,
+        BunchPayloadStats stats,
+        float timeSeconds,
+        int packetId)
     {
         while (!payload.AtEnd)
         {
@@ -22,6 +39,10 @@ public class ContentBlockFramer
             }
 
             var bIsActor = payload.ReadBit();
+            var objectNetGuid = default(NetworkGuid);
+            var classNetGuid = default(NetworkGuid);
+            var outerNetGuid = channel.ActorNetGuid;
+            var bStablyNamed = false;
 
             if (bIsActor)
             {
@@ -29,23 +50,45 @@ public class ContentBlockFramer
             }
             else
             {
-                _ = _packageMapReader.InternalLoadObject(payload, isExportingNetGuidBunch: false, recursionDepth: 0);
-                var bStablyNamed = payload.ReadBit();
+                objectNetGuid = _packageMapReader.InternalLoadObject(
+                    payload,
+                    isExportingNetGuidBunch: false,
+                    recursionDepth: 0);
+                bStablyNamed = payload.ReadBit();
 
                 if (!bStablyNamed)
                 {
                     var bIsDestroyMessage = payload.ReadBit();
                     if (bIsDestroyMessage)
                     {
-                        _ = payload.ReadByte();
+                        var deleteFlags = payload.ReadByte();
+                        DestroySubobject(
+                            objectNetGuid,
+                            channel,
+                            deleteFlags,
+                            destroyedWithActor: false,
+                            timeSeconds,
+                            packetId,
+                            stats);
                         stats.DeletedContentBlockCount++;
                         stats.ContentBlockCount++;
                         continue;
                     }
 
-                    var classNetGuid = _packageMapReader.InternalLoadObject(payload, isExportingNetGuidBunch: false, recursionDepth: 0);
+                    classNetGuid = _packageMapReader.InternalLoadObject(
+                        payload,
+                        isExportingNetGuidBunch: false,
+                        recursionDepth: 0);
                     if (!classNetGuid.IsValid)
                     {
+                        DestroySubobject(
+                            objectNetGuid,
+                            channel,
+                            deleteFlags: 0,
+                            destroyedWithActor: false,
+                            timeSeconds,
+                            packetId,
+                            stats);
                         stats.DeletedContentBlockCount++;
                         stats.ContentBlockCount++;
                         continue;
@@ -54,7 +97,10 @@ public class ContentBlockFramer
                     var bActorIsOuter = payload.ReadBit();
                     if (!bActorIsOuter)
                     {
-                        _ = _packageMapReader.InternalLoadObject(payload, isExportingNetGuidBunch: false, recursionDepth: 0);
+                        outerNetGuid = _packageMapReader.InternalLoadObject(
+                            payload,
+                            isExportingNetGuidBunch: false,
+                            recursionDepth: 0);
                     }
                 }
 
@@ -70,9 +116,190 @@ public class ContentBlockFramer
             }
 
             var contentPayload = payload.ReadSubArchive(payloadBits);
+            if (!bIsActor)
+            {
+                ObserveSubobject(
+                    objectNetGuid,
+                    classNetGuid,
+                    outerNetGuid,
+                    bStablyNamed,
+                    channel,
+                    timeSeconds,
+                    packetId,
+                    stats);
+            }
+
             contentPayload.SkipRemaining();
             stats.ContentPayloadBitsSkipped += payloadBits;
             stats.ContentBlockCount++;
+        }
+    }
+
+    private void ObserveSubobject(
+        NetworkGuid objectNetGuid,
+        NetworkGuid classNetGuid,
+        NetworkGuid outerNetGuid,
+        bool isStablyNamed,
+        ActorChannelState channel,
+        float timeSeconds,
+        int packetId,
+        BunchPayloadStats stats)
+    {
+        if (!objectNetGuid.IsValid)
+        {
+            return;
+        }
+
+        var isNew = !_worldState.ObjectsByNetGuid.TryGetValue(objectNetGuid.Value, out var objectState);
+        var isRecreated = objectState is { IsActive: false };
+
+        if (isNew)
+        {
+            objectState = new ObjectState
+            {
+                NetGuid = objectNetGuid,
+                ActorNetGuid = channel.ActorNetGuid,
+                ChannelIndex = channel.ChannelIndex,
+                IsActive = true,
+                IsStablyNamed = isStablyNamed,
+                ClassNetGuid = classNetGuid,
+                OuterNetGuid = outerNetGuid,
+                FirstObservedTimeSeconds = timeSeconds,
+                FirstObservedPacketId = packetId,
+                CreatedTimeSeconds = timeSeconds,
+                CreatedPacketId = packetId,
+            };
+            _worldState.ObjectsByNetGuid.Add(objectNetGuid.Value, objectState);
+        }
+        else
+        {
+            objectState!.ChannelIndex = channel.ChannelIndex;
+            objectState.IsActive = true;
+            objectState.IsStablyNamed |= isStablyNamed;
+            if (classNetGuid.IsValid)
+            {
+                objectState.ClassNetGuid = classNetGuid;
+            }
+
+            if (outerNetGuid.IsValid)
+            {
+                objectState.OuterNetGuid = outerNetGuid;
+            }
+
+            if (isRecreated)
+            {
+                objectState.CreatedTimeSeconds = timeSeconds;
+                objectState.CreatedPacketId = packetId;
+                objectState.DestroyTimeSeconds = null;
+                objectState.DestroyPacketId = null;
+                objectState.DeleteFlags = 0;
+            }
+        }
+
+        ResolveObjectPaths(objectState!);
+        channel.SubobjectNetGuids.Add(objectNetGuid.Value);
+        if (_worldState.ActorsByNetGuid.TryGetValue(channel.ActorNetGuid.Value, out var actor))
+        {
+            actor.SubobjectNetGuids.Add(objectNetGuid.Value);
+        }
+
+        if (!isNew && !isRecreated)
+        {
+            return;
+        }
+
+        stats.SubobjectCreatedCount++;
+        _eventSink.Emit(new SubobjectCreated(
+            timeSeconds,
+            packetId,
+            objectNetGuid.Value,
+            channel.ActorNetGuid.Value,
+            channel.ChannelIndex,
+            objectState!.ClassNetGuid.Value,
+            objectState.OuterNetGuid.Value,
+            objectState.ObjectPath,
+            objectState.ClassPath,
+            objectState.IsStablyNamed));
+    }
+
+    private void DestroySubobject(
+        NetworkGuid objectNetGuid,
+        ActorChannelState channel,
+        byte deleteFlags,
+        bool destroyedWithActor,
+        float timeSeconds,
+        int packetId,
+        BunchPayloadStats stats)
+    {
+        if (!objectNetGuid.IsValid)
+        {
+            return;
+        }
+
+        var shouldEmit = true;
+        if (!_worldState.ObjectsByNetGuid.TryGetValue(objectNetGuid.Value, out var objectState))
+        {
+            objectState = new ObjectState
+            {
+                NetGuid = objectNetGuid,
+                ActorNetGuid = channel.ActorNetGuid,
+                ChannelIndex = channel.ChannelIndex,
+                IsActive = false,
+                FirstObservedTimeSeconds = timeSeconds,
+                FirstObservedPacketId = packetId,
+                DestroyTimeSeconds = timeSeconds,
+                DestroyPacketId = packetId,
+                DeleteFlags = deleteFlags,
+            };
+            ResolveObjectPaths(objectState);
+            _worldState.ObjectsByNetGuid.Add(objectNetGuid.Value, objectState);
+        }
+        else
+        {
+            shouldEmit = objectState.IsActive || objectState.DestroyPacketId is null;
+            objectState.IsActive = false;
+            objectState.DestroyTimeSeconds = timeSeconds;
+            objectState.DestroyPacketId = packetId;
+            objectState.DeleteFlags = deleteFlags;
+        }
+
+        channel.SubobjectNetGuids.Add(objectNetGuid.Value);
+        if (_worldState.ActorsByNetGuid.TryGetValue(channel.ActorNetGuid.Value, out var actor))
+        {
+            actor.SubobjectNetGuids.Add(objectNetGuid.Value);
+        }
+
+        if (!shouldEmit)
+        {
+            return;
+        }
+
+        stats.SubobjectDestroyedCount++;
+        _eventSink.Emit(new SubobjectDestroyed(
+            timeSeconds,
+            packetId,
+            objectNetGuid.Value,
+            channel.ActorNetGuid.Value,
+            channel.ChannelIndex,
+            deleteFlags,
+            destroyedWithActor));
+    }
+
+    private void ResolveObjectPaths(ObjectState objectState)
+    {
+        if (_netGuidCache.TryGetPath(objectState.NetGuid.Value, out var objectPath))
+        {
+            objectState.ObjectPath = objectPath;
+        }
+
+        if (_netGuidCache.TryGetPath(objectState.ClassNetGuid.Value, out var classPath))
+        {
+            objectState.ClassPath = classPath;
+        }
+
+        if (_netGuidCache.TryGetPath(objectState.OuterNetGuid.Value, out var outerPath))
+        {
+            objectState.OuterPath = outerPath;
         }
     }
 }

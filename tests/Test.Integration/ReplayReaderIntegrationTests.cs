@@ -61,6 +61,34 @@ public class ReplayReaderIntegrationTests
     public void ReadRawPackets_12_08_DecodesBaseReplayControllerSpawnLocation() =>
         ReadRawPacketsDecodesBaseReplayControllerSpawnLocation("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
 
+    [Test]
+    public void ReadRawPackets_12_11_BuildsWorldStateAndEmitsTimedActorEvents()
+    {
+        var replayBytes = ReadReplayBytes("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
+        var eventSink = new CapturingReplayEventSink();
+        var context = new ValorantReplayReader(
+            new OozSharpOodleDecompressor(),
+            eventSink: eventSink).Read(new FBinaryArchive(replayBytes));
+
+        var openedEvents = eventSink.Events.OfType<ActorOpened>().ToArray();
+        var spawnedEvents = eventSink.Events.OfType<ActorSpawned>().ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Errors, Is.Empty);
+            Assert.That(context.WorldState.Channels, Is.Not.Empty);
+            Assert.That(context.WorldState.ActorsByNetGuid, Is.Not.Empty);
+            Assert.That(context.WorldState.ObjectsByNetGuid, Is.Not.Empty);
+            Assert.That(context.WorldState.ActorChannelHistory, Is.Not.Empty);
+            Assert.That(context.BunchPayloadStats.ActorCreatedCount, Is.GreaterThan(0));
+            Assert.That(context.BunchPayloadStats.SubobjectCreatedCount, Is.GreaterThan(0));
+            Assert.That(openedEvents, Is.Not.Empty);
+            Assert.That(spawnedEvents, Is.Not.Empty);
+            Assert.That(openedEvents.All(replayEvent => replayEvent.TimeSeconds >= 0f), Is.True);
+            Assert.That(openedEvents.All(replayEvent =>
+                replayEvent.TimeSeconds <= context.ReplayInfo.LengthInMs / 1000f + 1f), Is.True);
+        });
+    }
+
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
@@ -329,6 +357,13 @@ public class ReplayReaderIntegrationTests
         {
             TotalPayloadBytes += replayDataArchive.Length;
         }
+    }
+
+    private sealed class CapturingReplayEventSink : IReplayEventSink
+    {
+        public List<ReplayEvent> Events { get; } = [];
+
+        public void Emit(ReplayEvent replayEvent) => Events.Add(replayEvent);
     }
 
 }

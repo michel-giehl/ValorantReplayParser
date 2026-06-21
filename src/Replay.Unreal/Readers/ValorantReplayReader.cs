@@ -10,20 +10,25 @@ public sealed class ValorantReplayReader
 {
     private readonly ReplayChunkDispatcher _chunkDispatcher;
     private readonly ILogger<ValorantReplayReader> _logger;
+    private readonly IReplayEventSink _eventSink;
 
     public ValorantReplayReader(
         IOodleDecompressor? oodleDecompressor = null,
         IReplayDataChunkHandler? replayDataChunkHandler = null,
         ILogger<ValorantReplayReader>? logger = null,
-        ILogger<ReplayChunkDispatcher>? chunkDispatcherLogger = null)
+        ILogger<ReplayChunkDispatcher>? chunkDispatcherLogger = null,
+        IReplayEventSink? eventSink = null)
     {
         _chunkDispatcher = new ReplayChunkDispatcher(oodleDecompressor, replayDataChunkHandler, chunkDispatcherLogger);
         _logger = logger ?? NullLogger<ValorantReplayReader>.Instance;
+        _eventSink = eventSink ?? NullReplayEventSink.Instance;
     }
 
     public static ValorantReplayReader CreateDefault() => new(new OozSharpOodleDecompressor());
 
-    public static ValorantReplayReader CreateDefault(ILoggerFactory loggerFactory)
+    public static ValorantReplayReader CreateDefault(
+        ILoggerFactory loggerFactory,
+        IReplayEventSink? eventSink = null)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -33,14 +38,15 @@ public sealed class ValorantReplayReader
                 loggerFactory.CreateLogger<PlaybackPacketReplayDataChunkHandler>(),
                 loggerFactory),
             loggerFactory.CreateLogger<ValorantReplayReader>(),
-            loggerFactory.CreateLogger<ReplayChunkDispatcher>());
+            loggerFactory.CreateLogger<ReplayChunkDispatcher>(),
+            eventSink);
     }
 
     public ReplayReaderContext Read(FBinaryArchive archive)
     {
         ArgumentNullException.ThrowIfNull(archive);
 
-        var context = new ReplayReaderContext(archive);
+        var context = new ReplayReaderContext(archive, _eventSink);
         try
         {
             _logger.LogDebug("Reading VALORANT replay info.");

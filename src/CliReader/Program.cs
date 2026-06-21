@@ -26,7 +26,8 @@ try
     using var loggerFactory = LoggerFactory.Create(builder => builder
         .SetMinimumLevel(LogLevel.Information)
         .AddProvider(new SerilogLoggerProvider(Log.Logger)));
-    var context = ValorantReplayReader.CreateDefault(loggerFactory).Read(archive);
+    var actorEventLogger = new ActorEventLogger(Log.Logger);
+    var context = ValorantReplayReader.CreateDefault(loggerFactory, actorEventLogger).Read(archive);
 
     if (context.Errors.Count > 0)
     {
@@ -52,6 +53,7 @@ try
     Log.Information("File Size {FileSize} MB", file.Length / 1000_000);
     Log.Information("Packet Stats: Bunch Count={BunchCount}\tPacket Count={PC}\tMalformedPacketCount={MFPC}\tPartialErrorCount={PEC}\tTTL Bytes={TTLB} MB", context.PacketStats.BunchCount, context.PacketStats.PacketCount,
         context.PacketStats.MalformedPacketCount, context.PacketStats.PartialErrorCount, context.PacketStats.TotalPacketBytes / 1_000_000);
+    actorEventLogger.LogSummary(context.WorldState);
 
     return 0;
 }

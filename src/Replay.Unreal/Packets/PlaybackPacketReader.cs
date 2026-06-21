@@ -41,6 +41,7 @@ public class PlaybackPacketReader
         _ = _archive.ReadInt32();
 
         var timeSeconds = _archive.ReadSingle();
+        _context.CurrentTimeSeconds = timeSeconds;
         _logger.LogTrace("Read playback frame at {TimeSeconds} seconds.", timeSeconds);
 
         new ExportDataReader(

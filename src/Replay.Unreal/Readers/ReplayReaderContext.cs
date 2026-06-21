@@ -6,12 +6,12 @@ namespace Replay.Unreal;
 
 public class ReplayReaderContext
 {
-    public ReplayReaderContext(FBinaryArchive archive)
+    public ReplayReaderContext(FBinaryArchive archive, IReplayEventSink? eventSink = null)
     {
         Archive = archive;
         BunchPayloadStats = new BunchPayloadStats();
-        ChannelStates = new Dictionary<uint, ActorChannelState>();
-        ActorChannelOpens = [];
+        WorldState = new WorldState();
+        EventSink = eventSink ?? NullReplayEventSink.Instance;
         BunchPayloadPipeline = new BunchPayloadPipeline(this);
     }
 
@@ -26,8 +26,11 @@ public class ReplayReaderContext
     public RawPacketStats PacketStats { get; } = new();
     internal RawPacketReader RawPacketReader { get; } = new();
     public BunchPayloadStats BunchPayloadStats { get; }
-    public Dictionary<uint, ActorChannelState> ChannelStates { get; }
-    public List<ActorChannelState> ActorChannelOpens { get; }
+    public WorldState WorldState { get; }
+    public IReplayEventSink EventSink { get; }
+    public float CurrentTimeSeconds { get; internal set; }
+    public Dictionary<uint, ActorChannelState> ChannelStates => WorldState.Channels;
+    public List<ActorChannelState> ActorChannelOpens => WorldState.ActorChannelHistory;
     public BunchPayloadPipeline BunchPayloadPipeline { get; }
     public List<ReplayParseError> Errors { get; } = [];
 }
