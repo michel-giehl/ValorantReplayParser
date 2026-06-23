@@ -27,6 +27,7 @@ public sealed class BunchPayloadStats
     public int DeletedContentBlockCount { get; set; }
     public int RepLayoutContentBlockCount { get; set; }
     public long ContentPayloadBitsSkipped { get; set; }
+    public long ContentPayloadBitsParsed { get; set; }
     public int MalformedPayloadCount { get; set; }
     public int MalformedPayloadExceptionCount { get; set; }
     public int MalformedMustBeMappedGuidCount { get; set; }

@@ -26,7 +26,8 @@ public sealed class BunchPayloadPipeline
             _packageMapReader,
             context.NetGuidCache,
             context.WorldState,
-            context.EventSink);
+            context.EventSink,
+            context.ExportBindingRegistry);
     }
 
     public void HandleBunchPayload(ref RawBunchHeader header, FBitArchive payload)
@@ -255,7 +256,7 @@ public sealed class BunchPayloadPipeline
             actorNetGuid.Value,
             channel.ChannelIndex,
             actorNetGuid.IsDynamic,
-            actor!.ActorPath,
+            actor.ActorPath,
             actor.ArchetypePath));
 
         if (!isNew || !actorNetGuid.IsDynamic)

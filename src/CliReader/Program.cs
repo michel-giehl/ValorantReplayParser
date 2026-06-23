@@ -3,6 +3,7 @@ using CliReader.Logging;
 using Replay.Encoding.Archives;
 using Microsoft.Extensions.Logging;
 using Replay.Unreal.Readers;
+using Replay.Valorant.Descriptors;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -28,7 +29,10 @@ try
         .SetMinimumLevel(LogLevel.Information)
         .AddProvider(new SerilogLoggerProvider(Log.Logger)));
     var actorEventLogger = new ActorEventLogger(Log.Logger);
-    var context = ValorantReplayReader.CreateDefault(loggerFactory, actorEventLogger).Read(archive);
+    var context = ValorantReplayReader.CreateDefault(
+        loggerFactory,
+        actorEventLogger,
+        ValorantDescriptors.CreateCatalog()).Read(archive);
 
     if (context.Errors.Count > 0)
     {

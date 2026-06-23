@@ -65,6 +65,33 @@ public class ExportDataReaderTests
     }
 
     [Test]
+    public void ReadNetFieldExports_ReportsChangedGroupsOncePerRead()
+    {
+        var cache = new NetGuidCache();
+        var changedGroups = new List<NetFieldExportGroup>();
+        var bytes = BuildNetFieldExports(
+            writer =>
+            {
+                AddGroup(writer, 11, "/Game/Test.Test_C", 3, addField: true);
+                AddExistingGroupField(writer, 11, handle: 1, name: "LaterField");
+            },
+            exportCount: 2);
+
+        new ExportDataReader(
+            new FBinaryArchive(bytes),
+            cache,
+            exportGroupChanged: changedGroups.Add).ReadNetFieldExports();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(changedGroups, Has.Count.EqualTo(1));
+            Assert.That(changedGroups[0].PathName, Is.EqualTo("/Game/Test.Test_C"));
+            Assert.That(changedGroups[0].NetFieldExports[1]?.Name, Is.EqualTo("LaterField"));
+            Assert.That(changedGroups[0].NetFieldExports[2]?.Name, Is.EqualTo("FieldName"));
+        });
+    }
+
+    [Test]
     public void ReadNetFieldExports_ReExportedGroupExpandsWithoutLosingExistingField()
     {
         var cache = new NetGuidCache();

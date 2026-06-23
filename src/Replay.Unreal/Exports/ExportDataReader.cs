@@ -13,15 +13,18 @@ public class ExportDataReader
     private readonly FBinaryArchive _archive;
     private readonly NetGuidCache _netGuidCache;
     private readonly ILogger<ExportDataReader> _logger;
+    private readonly Action<NetFieldExportGroup>? _exportGroupChanged;
 
     public ExportDataReader(
         FBinaryArchive archive,
         NetGuidCache netGuidCache,
-        ILogger<ExportDataReader>? logger = null)
+        ILogger<ExportDataReader>? logger = null,
+        Action<NetFieldExportGroup>? exportGroupChanged = null)
     {
         _archive = archive;
         _netGuidCache = netGuidCache;
         _logger = logger ?? NullLogger<ExportDataReader>.Instance;
+        _exportGroupChanged = exportGroupChanged;
     }
 
     public void Read()
@@ -43,6 +46,7 @@ public class ExportDataReader
             _logger.LogTrace("Reading 0 net-field layout command exports.");
         }
 
+        Dictionary<uint, NetFieldExportGroup>? changedGroups = null;
         for (var i = 0; i < numLayoutCmdExports; i++)
         {
             var pathNameIndex = _archive.ReadIntPacked();
@@ -56,6 +60,7 @@ public class ExportDataReader
             if (isExported)
             {
                 group = _netGuidCache.AddExportGroup(ReadExportedGroup(pathNameIndex));
+                RecordChangedGroup(ref changedGroups, group);
             }
             else
             {
@@ -86,7 +91,31 @@ public class ExportDataReader
             }
 
             group.NetFieldExports[netFieldExport.Handle] = netFieldExport;
+            RecordChangedGroup(ref changedGroups, group);
         }
+
+        if (changedGroups is null)
+        {
+            return;
+        }
+
+        foreach (var changedGroup in changedGroups.Values)
+        {
+            _exportGroupChanged!(changedGroup);
+        }
+    }
+
+    private void RecordChangedGroup(
+        ref Dictionary<uint, NetFieldExportGroup>? changedGroups,
+        NetFieldExportGroup group)
+    {
+        if (_exportGroupChanged is null)
+        {
+            return;
+        }
+
+        changedGroups ??= [];
+        changedGroups[group.PathNameIndex] = group;
     }
 
     private NetFieldExportGroup ReadExportedGroup(uint pathNameIndex)

@@ -16,4 +16,14 @@ public sealed class WorldState
         ObjectsByNetGuid.Clear();
         ActorChannelHistory.Clear();
     }
+
+    public ActorState? GetActor(uint netGuid) =>
+        ActorsByNetGuid.GetValueOrDefault(netGuid);
+
+    public ObjectState? GetObject(uint netGuid) =>
+        ObjectsByNetGuid.GetValueOrDefault(netGuid);
+
+    public void RecordParseError(string message)
+    {
+    }
 }

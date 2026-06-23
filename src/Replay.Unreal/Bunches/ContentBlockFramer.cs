@@ -3,6 +3,7 @@ using Replay.Encoding.Net;
 using Replay.Models.Events;
 using Replay.Unreal.Channels;
 using Replay.Unreal.PackageMap;
+using Replay.Unreal.Parsing;
 using Replay.Unreal.World;
 
 namespace Replay.Unreal.Bunches;
@@ -13,17 +14,20 @@ public class ContentBlockFramer
     private readonly NetGuidCache _netGuidCache;
     private readonly WorldState _worldState;
     private readonly IReplayEventSink _eventSink;
+    private readonly ExportBindingRegistry _bindingRegistry;
 
     public ContentBlockFramer(
         PackageMapReader packageMapReader,
         NetGuidCache netGuidCache,
         WorldState worldState,
-        IReplayEventSink eventSink)
+        IReplayEventSink eventSink,
+        ExportBindingRegistry? bindingRegistry = null)
     {
         _packageMapReader = packageMapReader;
         _netGuidCache = netGuidCache;
         _worldState = worldState;
         _eventSink = eventSink;
+        _bindingRegistry = bindingRegistry ?? new ExportBindingRegistry();
     }
 
     public void FrameContentBlocks(
@@ -132,10 +136,101 @@ public class ContentBlockFramer
                     stats);
             }
 
-            contentPayload.SkipRemaining();
-            stats.ContentPayloadBitsSkipped += payloadBits;
+            var resolvedPath = ResolveClassPath(bIsActor, classNetGuid, channel);
+            if (resolvedPath is not null)
+            {
+                TryParseContentPayload(contentPayload, resolvedPath, channel, timeSeconds, packetId, stats);
+            }
+            else
+            {
+                contentPayload.SkipRemaining();
+                stats.ContentPayloadBitsSkipped += payloadBits;
+            }
+
             stats.ContentBlockCount++;
         }
+    }
+
+    private string? ResolveClassPath(bool bIsActor, NetworkGuid classNetGuid, ActorChannelState channel)
+    {
+        if (bIsActor)
+        {
+            if (channel.ArchetypePath is not null)
+            {
+                return channel.ArchetypePath;
+            }
+
+            if (channel.ArchetypeNetGuid.IsValid && _netGuidCache.TryGetPath(channel.ArchetypeNetGuid.Value, out var archetypePath))
+            {
+                return archetypePath;
+            }
+
+            if (channel.ActorPath is not null)
+            {
+                return channel.ActorPath;
+            }
+
+            return channel.ActorNetGuid.IsValid && _netGuidCache.TryGetPath(channel.ActorNetGuid.Value, out var actorPath)
+                ? actorPath
+                : null;
+        }
+
+        if (classNetGuid.IsValid && _netGuidCache.TryGetPath(classNetGuid.Value, out var path))
+        {
+            return path;
+        }
+
+        return null;
+    }
+
+    private void TryParseContentPayload(
+        FBitArchive contentPayload,
+        string classPath,
+        ActorChannelState channel,
+        float timeSeconds,
+        int packetId,
+        BunchPayloadStats stats)
+    {
+        var boundGroup = _bindingRegistry.GetBoundGroup(classPath);
+        if (boundGroup is not null && boundGroup.Enabled)
+        {
+            var context = new FieldDecodeContext
+            {
+                WorldState = _worldState,
+                NetGuidCache = _netGuidCache,
+                EventSink = _eventSink,
+                CurrentPacketId = packetId,
+                CurrentTimeSeconds = timeSeconds,
+                ChannelIndex = channel.ChannelIndex,
+                ActorNetGuid = channel.ActorNetGuid,
+                ExportGroupPath = classPath,
+            };
+            FieldPayloadParser.ParseContentPayload(contentPayload, boundGroup, ref context);
+            stats.ContentPayloadBitsParsed += (int)contentPayload.BitLength;
+            return;
+        }
+
+        var boundCache = _bindingRegistry.GetBoundCache(classPath);
+        if (boundCache is not null && boundCache.Enabled)
+        {
+            var context = new FieldDecodeContext
+            {
+                WorldState = _worldState,
+                NetGuidCache = _netGuidCache,
+                EventSink = _eventSink,
+                CurrentPacketId = packetId,
+                CurrentTimeSeconds = timeSeconds,
+                ChannelIndex = channel.ChannelIndex,
+                ActorNetGuid = channel.ActorNetGuid,
+                ExportGroupPath = classPath,
+            };
+            FieldPayloadParser.ParseClassNetCachePayload(contentPayload, boundCache, ref context);
+            stats.ContentPayloadBitsParsed += (int)contentPayload.BitLength;
+            return;
+        }
+
+        contentPayload.SkipRemaining();
+        stats.ContentPayloadBitsSkipped += (int)contentPayload.BitLength;
     }
 
     private void ObserveSubobject(
@@ -199,7 +294,7 @@ public class ContentBlockFramer
             }
         }
 
-        ResolveObjectPaths(objectState!);
+        ResolveObjectPaths(objectState);
         channel.SubobjectNetGuids.Add(objectNetGuid.Value);
         if (_worldState.ActorsByNetGuid.TryGetValue(channel.ActorNetGuid.Value, out var actor))
         {
@@ -218,7 +313,7 @@ public class ContentBlockFramer
             objectNetGuid.Value,
             channel.ActorNetGuid.Value,
             channel.ChannelIndex,
-            objectState!.ClassNetGuid.Value,
+            objectState.ClassNetGuid.Value,
             objectState.OuterNetGuid.Value,
             objectState.ObjectPath,
             objectState.ClassPath,

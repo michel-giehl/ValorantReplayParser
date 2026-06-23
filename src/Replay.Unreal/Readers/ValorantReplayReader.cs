@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
+using Replay.Models.Descriptors;
 using Replay.Models.Errors;
 using Replay.Models.Events;
 using Replay.Models.Replay;
@@ -15,24 +16,35 @@ public sealed class ValorantReplayReader
     private readonly ReplayChunkDispatcher _chunkDispatcher;
     private readonly ILogger<ValorantReplayReader> _logger;
     private readonly IReplayEventSink _eventSink;
+    private readonly DescriptorCatalog? _descriptorCatalog;
+    private readonly ParseProfile _parseProfile;
 
     public ValorantReplayReader(
         IOodleDecompressor? oodleDecompressor = null,
         IReplayDataChunkHandler? replayDataChunkHandler = null,
         ILogger<ValorantReplayReader>? logger = null,
         ILogger<ReplayChunkDispatcher>? chunkDispatcherLogger = null,
-        IReplayEventSink? eventSink = null)
+        IReplayEventSink? eventSink = null,
+        DescriptorCatalog? descriptorCatalog = null,
+        ParseProfile? parseProfile = null)
     {
         _chunkDispatcher = new ReplayChunkDispatcher(oodleDecompressor, replayDataChunkHandler, chunkDispatcherLogger);
         _logger = logger ?? NullLogger<ValorantReplayReader>.Instance;
         _eventSink = eventSink ?? NullReplayEventSink.Instance;
+        _descriptorCatalog = descriptorCatalog;
+        _parseProfile = parseProfile ?? ParseProfile.Default;
     }
 
-    public static ValorantReplayReader CreateDefault() => new(new OozSharpOodleDecompressor());
+    public static ValorantReplayReader CreateDefault(
+        DescriptorCatalog? descriptorCatalog = null,
+        ParseProfile? parseProfile = null) =>
+        new(new OozSharpOodleDecompressor(), descriptorCatalog: descriptorCatalog, parseProfile: parseProfile);
 
     public static ValorantReplayReader CreateDefault(
         ILoggerFactory loggerFactory,
-        IReplayEventSink? eventSink = null)
+        IReplayEventSink? eventSink = null,
+        DescriptorCatalog? descriptorCatalog = null,
+        ParseProfile? parseProfile = null)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -43,14 +55,16 @@ public sealed class ValorantReplayReader
                 loggerFactory),
             loggerFactory.CreateLogger<ValorantReplayReader>(),
             loggerFactory.CreateLogger<ReplayChunkDispatcher>(),
-            eventSink);
+            eventSink,
+            descriptorCatalog,
+            parseProfile);
     }
 
     public ReplayReaderContext Read(FBinaryArchive archive)
     {
         ArgumentNullException.ThrowIfNull(archive);
 
-        var context = new ReplayReaderContext(archive, _eventSink);
+        var context = new ReplayReaderContext(archive, _eventSink, _descriptorCatalog, _parseProfile);
         try
         {
             _logger.LogDebug("Reading VALORANT replay info.");

@@ -52,7 +52,8 @@ public class PlaybackPacketReader
         new ExportDataReader(
             _archive,
             _context.NetGuidCache,
-            _loggerFactory?.CreateLogger<ExportDataReader>()).Read();
+            _loggerFactory?.CreateLogger<ExportDataReader>(),
+            _context.ExportBindingRegistry.OnExportGroupChanged).Read();
 
         new StreamingLevelFixesReader(_context, _archive, _loggerFactory?.CreateLogger<StreamingLevelFixesReader>()).Read();
         ReadExternalData();
