@@ -15,7 +15,8 @@ public class FieldPayloadParserTests
             (0, true, PrimitiveDecoders.Int32, "Field"),
         ]);
 
-        var payload = new BitArchiveReader(ReadOnlySpan<byte>.Empty);
+        var payloadData = BuildFieldPayload();
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
         var context = new FieldDecodeContext
         {
             WorldState = new WorldState(),
@@ -35,9 +36,9 @@ public class FieldPayloadParserTests
             (0, true, PrimitiveDecoders.Int32, "KnownField"),
         ]);
 
-        var bytes = BuildFieldPayload(
+        var payloadData = BuildFieldPayload(
             (handle: 999u, bitCount: 16, data: new byte[] { 0xFF, 0xFF }));
-        var payload = new BitArchiveReader(bytes, bytes.Length * 8);
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
 
         var context = new FieldDecodeContext
         {
@@ -59,8 +60,8 @@ public class FieldPayloadParserTests
         ]);
 
         var intValue = BitConverter.GetBytes(42);
-        var bytes = BuildFieldPayload((handle: 0u, bitCount: 32, data: intValue));
-        var payload = new BitArchiveReader(bytes, bytes.Length * 8);
+        var payloadData = BuildFieldPayload((handle: 0u, bitCount: 32, data: intValue));
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
 
         var context = new FieldDecodeContext
         {
@@ -83,10 +84,10 @@ public class FieldPayloadParserTests
         ]);
 
         var intValue = BitConverter.GetBytes(99);
-        var bytes = BuildFieldPayload(
+        var payloadData = BuildFieldPayload(
             (handle: 0u, bitCount: 64, data: new byte[8]),
             (handle: 1u, bitCount: 32, data: intValue));
-        var payload = new BitArchiveReader(bytes, bytes.Length * 8);
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
 
         var context = new FieldDecodeContext
         {
@@ -110,10 +111,10 @@ public class FieldPayloadParserTests
 
         var floatBytes = BitConverter.GetBytes(3.14f);
         var intBytes = BitConverter.GetBytes(42);
-        var bytes = BuildFieldPayload(
+        var payloadData = BuildFieldPayload(
             (handle: 0u, bitCount: 32, data: intBytes),
             (handle: 1u, bitCount: 32, data: floatBytes));
-        var payload = new BitArchiveReader(bytes, bytes.Length * 8);
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
 
         var context = new FieldDecodeContext
         {
@@ -135,8 +136,8 @@ public class FieldPayloadParserTests
         ]);
 
         var guidBytes = EncodeIntPacked(42);
-        var bytes = BuildFieldPayload((handle: 0u, bitCount: guidBytes.Length * 8, data: guidBytes));
-        var payload = new BitArchiveReader(bytes, bytes.Length * 8);
+        var payloadData = BuildFieldPayload((handle: 0u, bitCount: guidBytes.Length * 8, data: guidBytes));
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
 
         var context = new FieldDecodeContext
         {
@@ -209,20 +210,51 @@ public class FieldPayloadParserTests
         };
     }
 
-    private static byte[] BuildFieldPayload(params (uint handle, int bitCount, byte[] data)[] fields)
+    private static FieldPayloadData BuildFieldPayload(params (uint handle, int bitCount, byte[] data)[] fields)
     {
-        using var ms = new MemoryStream();
+        var bits = new List<bool>();
+        bits.Add(false);
         foreach (var (handle, bitCount, data) in fields)
         {
-            ms.Write(EncodeIntPacked(handle + 1));
-            ms.Write(EncodeIntPacked((uint)bitCount));
-            ms.Write(data);
+            WriteIntPacked(bits, handle + 1);
+            WriteIntPacked(bits, (uint)bitCount);
+            WriteBits(bits, data, bitCount);
         }
 
-        ms.Write(EncodeIntPacked(0));
+        WriteIntPacked(bits, 0);
 
-        return ms.ToArray();
+        return new FieldPayloadData(PackBits(bits), bits.Count);
     }
+
+    private static void WriteIntPacked(List<bool> bits, uint value)
+    {
+        var bytes = EncodeIntPacked(value);
+        WriteBits(bits, bytes, bytes.Length * 8);
+    }
+
+    private static void WriteBits(List<bool> bits, byte[] data, int bitCount)
+    {
+        for (var i = 0; i < bitCount; i++)
+        {
+            bits.Add((data[i >> 3] & (1 << (i & 7))) != 0);
+        }
+    }
+
+    private static byte[] PackBits(List<bool> bits)
+    {
+        var bytes = new byte[(bits.Count + 7) / 8];
+        for (var i = 0; i < bits.Count; i++)
+        {
+            if (bits[i])
+            {
+                bytes[i >> 3] |= (byte)(1 << (i & 7));
+            }
+        }
+
+        return bytes;
+    }
+
+    private readonly record struct FieldPayloadData(byte[] Bytes, int BitCount);
 
     private static byte[] BuildClassNetCachePayload(int bitCount, byte[] data)
     {

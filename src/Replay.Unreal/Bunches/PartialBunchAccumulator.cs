@@ -1,23 +1,16 @@
 using System.Buffers;
 using Replay.Encoding.Archives;
 using Replay.Models.Net;
-using Replay.Unreal.PackageMap;
 
 namespace Replay.Unreal.Bunches;
 
-public sealed class PartialBunchAccumulator
+internal sealed class PartialBunchAccumulator : IPartialBunchAccumulator
 {
     private readonly Dictionary<uint, AccumulatorState> _fragments = [];
-    private readonly PackageMapReader _packageMapReader;
 
-    public PartialBunchAccumulator(PackageMapReader packageMapReader)
-    {
-        _packageMapReader = packageMapReader;
-    }
-
-    public void AddFragment(
+    public PartialBunchResult AddFragment(
         uint chIndex,
-        ref RawBunchHeader header,
+        RawBunchHeader header,
         FBitArchive payload,
         BunchPayloadStats stats)
     {
@@ -43,7 +36,7 @@ public sealed class PartialBunchAccumulator
             {
                 stats.PartialErrorCount++;
                 header.HasPartialError = true;
-                return;
+                return CreateResult(header);
             }
 
             bool sequenceMatches;
@@ -62,7 +55,7 @@ public sealed class PartialBunchAccumulator
                 header.HasPartialError = true;
                 header.IsPartialCompleted = header.bPartialFinal;
                 DiscardFragment(chIndex);
-                return;
+                return CreateResult(header);
             }
 
             state.ChSequence = header.ChSequence;
@@ -73,14 +66,12 @@ public sealed class PartialBunchAccumulator
 
         if (remainingBits == 0)
         {
-            if (header.bPartialFinal)
-            {
-                state2.IsComplete = true;
-                stats.CompletedPartialBunchCount++;
-                _fragments[chIndex] = state2;
-            }
+            if (!header.bPartialFinal) return CreateResult(header);
+            state2.IsComplete = true;
+            stats.CompletedPartialBunchCount++;
+            _fragments[chIndex] = state2;
 
-            return;
+            return CreateResult(header);
         }
 
         if (!header.bPartialFinal && remainingBits % 8 != 0)
@@ -88,7 +79,7 @@ public sealed class PartialBunchAccumulator
             stats.PartialErrorCount++;
             header.HasPartialError = true;
             DiscardFragment(chIndex);
-            return;
+            return CreateResult(header);
         }
 
         AppendPayloadBits(ref state2, payload, remainingBits);
@@ -102,6 +93,7 @@ public sealed class PartialBunchAccumulator
         }
 
         _fragments[chIndex] = state2;
+        return CreateResult(header);
     }
 
     public bool TryComplete(uint chIndex, out IMemoryOwner<byte> buffer, out int bitCount, out RawBunchHeader storedHeader)
@@ -131,8 +123,6 @@ public sealed class PartialBunchAccumulator
         _fragments.Clear();
     }
 
-    internal int PendingFragmentCount => _fragments.Count;
-
     private void DiscardFragment(uint chIndex)
     {
         if (_fragments.Remove(chIndex, out var state))
@@ -140,6 +130,12 @@ public sealed class PartialBunchAccumulator
             state.BufferOwner?.Dispose();
         }
     }
+
+    private static PartialBunchResult CreateResult(RawBunchHeader header) => new()
+    {
+        Header = header,
+        ShouldProcessCompletePayload = header is { bPartialFinal: true, HasPartialError: false },
+    };
 
     private static void AppendPayloadBits(ref AccumulatorState state, FBitArchive payload, int bitCount)
     {
@@ -190,7 +186,7 @@ public sealed class PartialBunchAccumulator
         state.BitCount = newTotalBits;
     }
 
-    internal struct AccumulatorState
+    private struct AccumulatorState
     {
         public int ChSequence;
         public bool Reliable;

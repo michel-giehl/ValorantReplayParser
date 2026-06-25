@@ -5,6 +5,7 @@ using Replay.Models.Errors;
 using Replay.Models.Events;
 using Replay.Models.Replay;
 using Replay.Unreal.Bunches;
+using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Channels;
 using Replay.Unreal.Packets;
 using Replay.Unreal.Parsing;

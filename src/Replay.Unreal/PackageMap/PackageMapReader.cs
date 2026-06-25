@@ -57,7 +57,7 @@ public class PackageMapReader
             return netGuid;
         }
 
-        ExportFlags exportFlags = ExportFlags.None;
+        var exportFlags = ExportFlags.None;
         if (netGuid.IsDefault || isExportingNetGuidBunch)
         {
             exportFlags = (ExportFlags)archive.ReadByte();

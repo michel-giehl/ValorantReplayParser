@@ -8,7 +8,15 @@ public static class FieldPayloadParser
     public static void ParseContentPayload(
         FBitArchive payload,
         BoundExportGroup boundGroup,
-        ref FieldDecodeContext context)
+        ref FieldDecodeContext context,
+        bool readPropertyChecksum = true) =>
+        ParseRepLayoutProperties(payload, boundGroup, ref context);
+
+    public static void ParseRepLayoutProperties(
+        FBitArchive payload,
+        BoundExportGroup boundGroup,
+        ref FieldDecodeContext context,
+        bool readPropertyChecksum = true)
     {
         if (boundGroup.Grammar is FieldStreamGrammar.ClassNetCache)
         {
@@ -18,38 +26,52 @@ public static class FieldPayloadParser
             return;
         }
 
+        if (readPropertyChecksum)
+        {
+            _ = payload.ReadBit();
+        }
+
         while (!payload.AtEnd)
         {
-            var encodedHandle = payload.ReadIntPacked();
-            if (encodedHandle == 0)
+            if (ParseProperty(payload, boundGroup, ref context))
             {
-                return;
+                return; // done
             }
-
-            var handle = checked((int)(encodedHandle - 1));
-            var payloadBits = payload.ReadIntPacked();
-            if (payloadBits > int.MaxValue || payload.BitsRemaining < payloadBits)
-            {
-                context.WorldState?.RecordParseError(
-                    $"Malformed field payload: handle={handle}, bits={payloadBits}, remaining={payload.BitsRemaining}");
-                payload.SkipRemaining();
-                return;
-            }
-
-            var fieldBinding = GetBinding(handle, boundGroup);
-            if (!fieldBinding.Enabled || fieldBinding.Decoder is null)
-            {
-                payload.SkipBits(payloadBits);
-                continue;
-            }
-
-            context.FieldName = fieldBinding.Name;
-            context.Categories = fieldBinding.Categories;
-
-            var fieldPayload = payload.ReadSubArchive((int)payloadBits);
-            fieldBinding.Decoder.Decode(ref context, fieldPayload);
-            fieldPayload.EnsureFullyConsumed($"field '{fieldBinding.Name}' (handle {handle})");
         }
+    }
+
+    private static bool ParseProperty(FBitArchive payload, BoundExportGroup boundGroup, ref FieldDecodeContext context)
+    {
+        var encodedHandle = payload.ReadIntPacked();
+        if (encodedHandle == 0)
+        {
+            return true;
+        }
+
+        var handle = checked((int)(encodedHandle - 1));
+        var payloadBits = payload.ReadIntPacked();
+        if (payloadBits > int.MaxValue || payload.BitsRemaining < payloadBits)
+        {
+            context.WorldState?.RecordParseError(
+                $"Malformed field payload: handle={handle}, bits={payloadBits}, remaining={payload.BitsRemaining}");
+            payload.SkipRemaining();
+            return true;
+        }
+
+        var fieldBinding = GetBinding(handle, boundGroup);
+        if (!fieldBinding.Enabled || fieldBinding.Decoder is null)
+        {
+            payload.SkipBits(payloadBits);
+            return false;
+        }
+
+        context.FieldName = fieldBinding.Name;
+        context.Categories = fieldBinding.Categories;
+
+        var fieldPayload = payload.ReadSubArchive((int)payloadBits);
+        fieldBinding.Decoder.Decode(ref context, fieldPayload);
+        fieldPayload.EnsureFullyConsumed($"field '{fieldBinding.Name}' (handle {handle})");
+        return false;
     }
 
     public static void ParseClassNetCachePayload(
@@ -105,7 +127,11 @@ public static class FieldPayloadParser
             }
             else if (rpcFunction.FunctionGroup is { Enabled: true })
             {
-                ParseContentPayload(rpcPayload, rpcFunction.FunctionGroup, ref context);
+                ParseRepLayoutProperties(
+                    rpcPayload,
+                    rpcFunction.FunctionGroup,
+                    ref context,
+                    readPropertyChecksum: rpcFunction.FunctionGroup.Grammar == FieldStreamGrammar.RepLayoutProperties);
             }
             else
             {

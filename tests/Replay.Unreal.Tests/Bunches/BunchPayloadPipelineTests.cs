@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
+using Replay.Models.Descriptors;
 using Replay.Models.Errors;
 using Replay.Models.Events;
 using Replay.Models.Net;
@@ -8,6 +9,7 @@ using Replay.Models.Protocol;
 using Replay.Models.Replay;
 using Replay.Unreal.Channels;
 using Replay.Unreal.Packets;
+using Replay.Unreal.Parsing;
 using Replay.Unreal.Readers;
 using Replay.Unreal.World;
 
@@ -450,6 +452,40 @@ public class BunchPayloadPipelineTests
     }
 
     [Test]
+    public void ContentBlock_ActorRepLayout_ConsumesChecksumBitBeforeFieldHandle()
+    {
+        CountingFieldDecoder.Reset();
+        var context = CreateContext();
+        var catalog = new DescriptorCatalog();
+        catalog.Add(new TestContentDescriptor());
+        context.ExportBindingRegistry.SetCatalog(catalog);
+        context.ExportBindingRegistry.OnExportGroupChanged(CreateNetFieldExportGroup(TestPath, (0u, "FieldA")));
+        context.NetGuidCache.SetNetGuidPath(TestArchetypeGuid, TestPath);
+        AddOpenChannel(context, 6);
+        var reader = new RawPacketReader();
+        var contentBits = BuildRepLayoutPropertyBits(handle: 0, bitCount: 32, data: BitConverter.GetBytes(42));
+        var packet = BuildPacket(w =>
+        {
+            WriteBunchHeaderBits(w, chIndex: 6);
+            w.BeginPayload();
+            w.WriteBit(true);
+            w.WriteBit(true);
+            w.WriteIntPacked((uint)contentBits.Count);
+            w.WriteBits(contentBits);
+        });
+
+        reader.ReadPacket(packet, 0, context.BunchPayloadPipeline.HandleBunchPayload);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(CountingFieldDecoder.DecodeCount, Is.EqualTo(1));
+            Assert.That(context.BunchPayloadStats.RepLayoutContentBlockCount, Is.EqualTo(1));
+            Assert.That(context.BunchPayloadStats.ContentPayloadBitsParsed, Is.EqualTo(contentBits.Count));
+            Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
     public void ContentBlock_Subobject_ReadsObjectAndClass()
     {
         var eventSink = new CapturingReplayEventSink();
@@ -786,6 +822,68 @@ public class BunchPayloadPipelineTests
             ArchetypeNetGuid = new NetworkGuid(TestArchetypeGuid),
         };
 
+    private static NetFieldExportGroup CreateNetFieldExportGroup(
+        string path,
+        params (uint Handle, string Name)[] exports)
+    {
+        var length = exports.Length == 0 ? 0 : exports.Max(export => export.Handle) + 1;
+        var netFields = new NetFieldExport?[length];
+        foreach (var export in exports)
+        {
+            netFields[export.Handle] = new NetFieldExport
+            {
+                Handle = export.Handle,
+                CompatibleChecksum = 0,
+                Name = export.Name,
+            };
+        }
+
+        return new NetFieldExportGroup
+        {
+            PathName = path,
+            PathNameIndex = 42,
+            NetFieldExportsLength = length,
+            NetFieldExports = netFields,
+        };
+    }
+
+    private static List<bool> BuildRepLayoutPropertyBits(uint handle, int bitCount, byte[] data)
+    {
+        var bits = new List<bool>();
+        bits.Add(false);
+        WriteIntPackedBits(bits, handle + 1);
+        WriteIntPackedBits(bits, (uint)bitCount);
+        WriteByteBits(bits, data, bitCount);
+        WriteIntPackedBits(bits, 0);
+        return bits;
+    }
+
+    private static void WriteIntPackedBits(List<bool> bits, uint value)
+    {
+        do
+        {
+            var nextByte = (byte)((value & 0x7F) << 1);
+            value >>= 7;
+            if (value != 0)
+            {
+                nextByte |= 1;
+            }
+
+            for (var i = 0; i < 8; i++)
+            {
+                bits.Add((nextByte & (1 << i)) != 0);
+            }
+        } while (value != 0);
+    }
+
+    private static void WriteByteBits(List<bool> bits, byte[] data, int bitCount)
+    {
+        for (var i = 0; i < bitCount; i++)
+        {
+            bits.Add((data[i >> 3] & (1 << (i & 7))) != 0);
+        }
+    }
+
     private static void WriteBunchHeaderBits(
         PacketBuilder w,
         uint chIndex = 0,
@@ -978,6 +1076,8 @@ public class BunchPayloadPipelineTests
 
         public void WriteBit(bool value) => _writeTarget.Add(value);
 
+        public void WriteBits(List<bool> bits) => _writeTarget.AddRange(bits);
+
         public void WriteByte(byte value)
         {
             for (var i = 0; i < 8; i++)
@@ -1148,6 +1248,35 @@ public class BunchPayloadPipelineTests
         {
             WriteBit(true);
             WriteIntPacked(nameIndex);
+        }
+    }
+
+    private sealed class TestContentDescriptor : ExportGroupDescriptor<TestContentDescriptor>
+    {
+        public override string Path => TestPath;
+        public override ExportCategory Categories => ExportCategory.Debug;
+        public override ExportGroupKind Kind => ExportGroupKind.Actor;
+
+        public int FieldA { get; set; }
+
+        protected override void Configure()
+        {
+            AddProperty(x => x.FieldA).Decode(CountingFieldDecoder.Instance);
+        }
+    }
+
+    private sealed class CountingFieldDecoder : IFieldDecoder
+    {
+        public static readonly CountingFieldDecoder Instance = new();
+
+        public static int DecodeCount { get; private set; }
+
+        public static void Reset() => DecodeCount = 0;
+
+        public void Decode(ref FieldDecodeContext context, FBitArchive archive)
+        {
+            _ = archive.ReadInt32();
+            DecodeCount++;
         }
     }
 
