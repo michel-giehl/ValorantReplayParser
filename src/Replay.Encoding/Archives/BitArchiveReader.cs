@@ -164,14 +164,50 @@ public sealed class BitArchiveReader : FBitArchive
             throw EndOfArchive(nameof(CopyBitsTo), Position, Length, bitCount);
         }
 
-        destination[..byteCount].Clear();
-        for (var i = 0; i < bitCount; i++)
+        if (bitCount == 0)
         {
-            if (ReadBit())
-            {
-                destination[i >> 3] |= (byte)(1 << (i & 7));
-            }
+            return;
         }
+
+        var absoluteBit = _startBit + BitPosition;
+        var sourceByteIndex = (int)(absoluteBit >> 3);
+        var sourceBitOffset = (int)(absoluteBit & 7);
+        var source = _buffer.Span;
+        var output = destination[..byteCount];
+        var tailBits = bitCount & 7;
+
+        if (sourceBitOffset == 0)
+        {
+            var fullBytes = bitCount >> 3;
+            source.Slice(sourceByteIndex, fullBytes).CopyTo(output);
+
+            if (tailBits != 0)
+            {
+                output[fullBytes] = (byte)(source[sourceByteIndex + fullBytes] & ((1 << tailBits) - 1));
+            }
+
+            BitPosition += bitCount;
+            return;
+        }
+
+        for (var i = 0; i < byteCount; i++)
+        {
+            var value = source[sourceByteIndex + i] >> sourceBitOffset;
+            var nextByteIndex = sourceByteIndex + i + 1;
+            if (nextByteIndex < source.Length)
+            {
+                value |= source[nextByteIndex] << (8 - sourceBitOffset);
+            }
+
+            output[i] = (byte)value;
+        }
+
+        if (tailBits != 0)
+        {
+            output[^1] &= (byte)((1 << tailBits) - 1);
+        }
+
+        BitPosition += bitCount;
     }
 
     public override FBitArchive ReadSubArchive(int bitCount)
