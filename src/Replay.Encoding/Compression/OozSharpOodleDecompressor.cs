@@ -6,19 +6,18 @@ public sealed class OozSharpOodleDecompressor : IOodleDecompressor
 {
     private readonly Kraken _kraken = new();
 
-    public int Decompress(ReadOnlySpan<byte> compressed, Span<byte> destination)
+    public ReadOnlyMemory<byte> Decompress(ReadOnlySpan<byte> compressed, int decompressedSize)
     {
         try
         {
-            var decompressed = _kraken.Decompress(compressed, destination.Length);
-            if (decompressed.Length > destination.Length)
+            var decompressed = _kraken.Decompress(compressed, decompressedSize);
+            if (decompressed.Length != decompressedSize)
             {
                 throw new OodleDecompressionException(
-                    $"Oodle decompressed {decompressed.Length} bytes into a {destination.Length} byte destination.");
+                    $"Oodle decompressed {decompressed.Length} bytes; expected {decompressedSize}.");
             }
 
-            decompressed.Span.CopyTo(destination);
-            return decompressed.Length;
+            return decompressed;
         }
         catch (OodleDecompressionException)
         {

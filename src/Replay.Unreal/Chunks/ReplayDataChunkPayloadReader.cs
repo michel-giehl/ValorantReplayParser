@@ -32,7 +32,6 @@ public sealed class ReplayDataChunkPayloadReader
                 $"Replay-data memory size {dataChunk.MemorySizeInBytes} is invalid.");
         }
 
-        var output = new byte[dataChunk.MemorySizeInBytes];
         if (!info.Compressed)
         {
             if (dataChunk.SizeInBytes != dataChunk.MemorySizeInBytes)
@@ -41,8 +40,7 @@ public sealed class ReplayDataChunkPayloadReader
                     $"Uncompressed replay-data chunk size {dataChunk.SizeInBytes} does not match memory size {dataChunk.MemorySizeInBytes}.");
             }
 
-            chunkArchive.ReadBytes(dataChunk.SizeInBytes).Span.CopyTo(output);
-            return new FBinaryArchive(output);
+            return new FBinaryArchive(chunkArchive.ReadBytes(dataChunk.SizeInBytes));
         }
 
         if (_oodleDecompressor is null)
@@ -72,14 +70,14 @@ public sealed class ReplayDataChunkPayloadReader
         }
 
         var compressedSource = chunkArchive.ReadBytes(compressedSize).Span;
-        var bytesWritten = _oodleDecompressor.Decompress(compressedSource, output);
-        if (bytesWritten != dataChunk.MemorySizeInBytes)
+        var decompressed = _oodleDecompressor.Decompress(compressedSource, dataChunk.MemorySizeInBytes);
+        if (decompressed.Length != dataChunk.MemorySizeInBytes)
         {
             throw new OodleDecompressionException(
-                $"Oodle decompressed {bytesWritten} bytes; expected {dataChunk.MemorySizeInBytes}.");
+                $"Oodle decompressed {decompressed.Length} bytes; expected {dataChunk.MemorySizeInBytes}.");
         }
 
-        return new FBinaryArchive(output);
+        return new FBinaryArchive(decompressed);
     }
 
 }

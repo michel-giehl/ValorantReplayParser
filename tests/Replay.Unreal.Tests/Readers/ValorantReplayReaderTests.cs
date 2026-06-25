@@ -434,11 +434,11 @@ public class ValorantReplayReaderTests
             _outputs = new Queue<byte[]>(outputs);
         }
 
-        public int Decompress(ReadOnlySpan<byte> compressed, Span<byte> destination)
+        public ReadOnlyMemory<byte> Decompress(ReadOnlySpan<byte> compressed, int decompressedSize)
         {
             var output = _outputs.Dequeue();
-            output.CopyTo(destination);
-            return output.Length;
+            Assert.That(output.Length, Is.EqualTo(decompressedSize));
+            return output;
         }
     }
 

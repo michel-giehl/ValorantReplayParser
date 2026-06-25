@@ -5,11 +5,13 @@ namespace Replay.Unreal.Parsing;
 
 public sealed class ExportBindingRegistry
 {
+    private const string ClassNetCacheSuffix = "_ClassNetCache";
     private static readonly StringComparer PathComparer = StringComparer.Ordinal;
 
     private readonly Dictionary<string, BoundExportGroup> _boundGroupsByPath = new(PathComparer);
     private readonly Dictionary<string, BoundClassNetCache> _boundCachesByPath = new(PathComparer);
     private readonly Dictionary<string, ExportGroupDescriptor> _exportDescriptorsByPath = new(PathComparer);
+    private readonly Dictionary<string, ExportGroupKind> _exportKindsByDefaultObjectName = new(PathComparer);
     private readonly Dictionary<string, ClassNetCacheDescriptor> _cacheDescriptorsByPath = new(PathComparer);
     private readonly Dictionary<string, List<BoundRpcFunction>> _pendingRpcFunctionsByExportPath = new(PathComparer);
     private readonly Dictionary<uint, string> _pathIndexToPath = new();
@@ -32,11 +34,13 @@ public sealed class ExportBindingRegistry
 
         Clear();
         _exportDescriptorsByPath.Clear();
+        _exportKindsByDefaultObjectName.Clear();
         _cacheDescriptorsByPath.Clear();
 
         foreach (var descriptor in descriptorCatalog.ExportGroupDescriptors)
         {
             _exportDescriptorsByPath[descriptor.Path] = descriptor;
+            IndexDefaultObjectKind(descriptor);
         }
 
         foreach (var descriptor in descriptorCatalog.ClassNetCacheDescriptors)
@@ -65,7 +69,7 @@ public sealed class ExportBindingRegistry
         if (_cacheDescriptorsByPath.TryGetValue(path, out var cacheDescriptor))
         {
             var bound = BindClassNetCache(replayGroup, cacheDescriptor);
-            _boundCachesByPath[path] = bound;
+            IndexBoundClassNetCache(path, bound);
         }
     }
 
@@ -87,6 +91,18 @@ public sealed class ExportBindingRegistry
     public BoundClassNetCache? GetBoundCache(string path)
     {
         return _boundCachesByPath.GetValueOrDefault(path);
+    }
+
+    public ExportGroupKind GetExportGroupKind(string path)
+    {
+        if (_boundGroupsByPath.TryGetValue(path, out var boundGroup))
+        {
+            return boundGroup.SourceDescriptor.Kind;
+        }
+
+        return _exportDescriptorsByPath.TryGetValue(path, out var descriptor)
+            ? descriptor.Kind
+            : _exportKindsByDefaultObjectName.GetValueOrDefault(path, ExportGroupKind.Unknown);
     }
 
     public BoundClassNetCache? GetBoundCacheByIndex(uint pathNameIndex)
@@ -233,19 +249,6 @@ public sealed class ExportBindingRegistry
             }
         }
 
-        for (var i = 0; i < maxHandle; i++)
-        {
-            if (functions[i] is null)
-            {
-                functions[i] = new BoundRpcFunction
-                {
-                    Name = replayGroup.NetFieldExports[i]?.Name ?? $"Handle{i}",
-                    FunctionExportPath = string.Empty,
-                    Enabled = false,
-                };
-            }
-        }
-
         return new BoundClassNetCache
         {
             Path = descriptor.Path,
@@ -254,6 +257,35 @@ public sealed class ExportBindingRegistry
             Enabled = cacheEnabled,
             FunctionsByHandle = functions,
         };
+    }
+
+    private void IndexBoundClassNetCache(string path, BoundClassNetCache bound)
+    {
+        _boundCachesByPath[path] = bound;
+
+        var aliasLength = path.Length - ClassNetCacheSuffix.Length;
+        if (aliasLength <= 0 || !path.EndsWith(ClassNetCacheSuffix, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var alias = path[..aliasLength];
+        if (!_boundCachesByPath.TryGetValue(alias, out var existing) || existing.Path == path)
+        {
+            _boundCachesByPath[alias] = bound;
+        }
+    }
+
+    private void IndexDefaultObjectKind(ExportGroupDescriptor descriptor)
+    {
+        var leafStart = descriptor.Path.LastIndexOfAny(['/', '.', ':']);
+        var leaf = leafStart >= 0 ? descriptor.Path[(leafStart + 1)..] : descriptor.Path;
+        if (leaf.Length == 0)
+        {
+            return;
+        }
+
+        _exportKindsByDefaultObjectName["Default__" + leaf] = descriptor.Kind;
     }
 
     private void AddPendingRpcFunction(string functionExportPath, BoundRpcFunction function)
