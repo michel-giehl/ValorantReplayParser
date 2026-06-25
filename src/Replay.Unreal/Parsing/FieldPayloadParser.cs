@@ -70,7 +70,11 @@ public static class FieldPayloadParser
 
         var fieldPayload = payload.ReadSubArchive((int)payloadBits);
         fieldBinding.Decoder.Decode(ref context, fieldPayload);
-        fieldPayload.EnsureFullyConsumed($"field '{fieldBinding.Name}' (handle {handle})");
+        if (!fieldPayload.AtEnd)
+        {
+            fieldPayload.EnsureFullyConsumed($"field '{fieldBinding.Name}' (handle {handle})");
+        }
+
         return false;
     }
 

@@ -16,7 +16,7 @@ internal sealed class ActorChannelOpenBunchStage : IBunchPayloadStage
         _lifecycleService = lifecycleService;
     }
 
-    public BunchStageResult Process(BunchPayloadContext context)
+    public BunchStageResult Process(ref BunchPayloadContext context)
     {
         if (!ShouldOpenChannel(context))
         {
@@ -25,7 +25,7 @@ internal sealed class ActorChannelOpenBunchStage : IBunchPayloadStage
 
         try
         {
-            OpenChannel(context);
+            OpenChannel(ref context);
             return BunchStageResult.Continue;
         }
         catch (ArchiveReadException)
@@ -43,7 +43,7 @@ internal sealed class ActorChannelOpenBunchStage : IBunchPayloadStage
     private static bool HasOpenChannel(BunchPayloadContext context) =>
         context.ReaderContext.ChannelStates.TryGetValue(context.Header.ChIndex, out var channel) && channel.IsOpen;
 
-    private void OpenChannel(BunchPayloadContext context)
+    private void OpenChannel(ref BunchPayloadContext context)
     {
         var channel = CreateChannelState(context);
         _newActorSerializer.Serialize(context.Payload, channel, context.Header.bClose);

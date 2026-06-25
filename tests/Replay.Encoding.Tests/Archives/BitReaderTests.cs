@@ -75,6 +75,67 @@ public class BitReaderTests
     }
 
     [Test]
+    public void CopyBitsTo_ByteAligned_CopiesBytesAndMasksTail()
+    {
+        var reader = new BitArchiveReader([0x12, 0x34, 0xF5], 20);
+        var output = new byte[] { 0xCC, 0xCC, 0xCC };
+
+        reader.CopyBitsTo(output, 20);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Is.EqualTo(new byte[] { 0x12, 0x34, 0x05 }));
+            Assert.That(reader.BitPosition, Is.EqualTo(20));
+        });
+    }
+
+    [Test]
+    public void CopyBitsTo_Unaligned_CopiesAcrossByteBoundaries()
+    {
+        var reader = new BitArchiveReader([0x12, 0x34, 0x56]);
+        var output = new byte[2];
+
+        reader.SkipBits(4);
+        reader.CopyBitsTo(output, 16);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Is.EqualTo(new byte[] { 0x41, 0x63 }));
+            Assert.That(reader.BitPosition, Is.EqualTo(20));
+        });
+    }
+
+    [Test]
+    public void CopyBitsTo_UnalignedPartialByte_MasksTail()
+    {
+        var reader = new BitArchiveReader([0xF1, 0x2E]);
+        var output = new byte[] { 0xCC, 0xCC };
+
+        reader.SkipBits(3);
+        reader.CopyBitsTo(output, 9);
+
+        Assert.That(output, Is.EqualTo(new byte[] { 0xDE, 0x01 }));
+    }
+
+    [Test]
+    public void CopyBitsTo_SubArchive_UsesAbsoluteBitOffset()
+    {
+        var reader = new BitArchiveReader([0x12, 0x34, 0x56]);
+        reader.SkipBits(4);
+        var child = reader.ReadSubArchive(16);
+        var output = new byte[2];
+
+        child.CopyBitsTo(output, 16);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Is.EqualTo(new byte[] { 0x41, 0x63 }));
+            Assert.That(child.BitPosition, Is.EqualTo(16));
+            Assert.That(reader.BitPosition, Is.EqualTo(20));
+        });
+    }
+
+    [Test]
     public void Checkpoint_RollsBackUnlessCommitted()
     {
         var reader = new BitArchiveReader([0xFF]);

@@ -23,6 +23,8 @@ public class BunchPayloadPipelineTests
     private const uint TestArchetypeGuid = 101;
     private const uint TestLevelGuid = 201;
     private const string TestPath = "/Game/Test.Test_C";
+    private const string TestPlayerControllerPath = "/Game/Characters/BaseReplayController.BaseReplayController_C";
+    private const string TestControllerNamedActorPath = "/Game/FakeController.FakeController_C";
 
     [Test]
     public void NonPartial_ZeroPayload_FramesSuccessfully()
@@ -261,7 +263,7 @@ public class BunchPayloadPipelineTests
     }
 
     [Test]
-    public void OpenActorChannel_DynamicActor_SkipsResidualOpenPayload()
+    public void OpenActorChannel_DynamicActor_FramesResidualContentPayload()
     {
         var context = CreateContext();
         var reader = new RawPacketReader();
@@ -270,7 +272,10 @@ public class BunchPayloadPipelineTests
             WriteBunchHeaderBits(w, chIndex: 5, bControl: true, bOpen: true);
             w.BeginPayload();
             WriteSerializeNewActor(w);
-            w.WriteBits(16, 0xFFFF);
+            w.WriteBit(false);
+            w.WriteBit(true);
+            w.WriteIntPacked(8);
+            w.WriteBits(8, 0xAB);
         });
 
         reader.ReadPacket(packet, 2, context.BunchPayloadPipeline.HandleBunchPayload);
@@ -279,9 +284,80 @@ public class BunchPayloadPipelineTests
         Assert.Multiple(() =>
         {
             Assert.That(stats.ActorChannelOpenCount, Is.EqualTo(1));
-            Assert.That(stats.ContentBlockCount, Is.EqualTo(0));
-            Assert.That(stats.DynamicOpenPayloadBunchCount, Is.EqualTo(1));
-            Assert.That(stats.DynamicOpenPayloadBitsSkipped, Is.EqualTo(16));
+            Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(stats.ActorContentBlockCount, Is.EqualTo(1));
+            Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
+            Assert.That(stats.DynamicOpenPayloadBunchCount, Is.EqualTo(0));
+            Assert.That(stats.DynamicOpenPayloadBitsSkipped, Is.EqualTo(0));
+            Assert.That(stats.MalformedPayloadCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    public void OpenActorChannel_PlayerController_ConsumesNetPlayerIndexBeforeContentBlocks()
+    {
+        var context = CreateContext();
+        var catalog = new DescriptorCatalog();
+        catalog.Add(new TestPlayerControllerDescriptor());
+        context.ExportBindingRegistry.SetCatalog(catalog);
+        context.NetGuidCache.SetNetGuidPath(TestArchetypeGuid, "Default__BaseReplayController_C", new NetworkGuid(301));
+        context.NetGuidCache.SetNetGuidPath(301, "/Game/Characters/_Core/BaseReplayController");
+        var reader = new RawPacketReader();
+        var packet = BuildPacket(w =>
+        {
+            WriteBunchHeaderBits(w, chIndex: 5, bControl: true, bOpen: true);
+            w.BeginPayload();
+            WriteSerializeNewActor(w);
+            w.WriteByte(0x02);
+            w.WriteBit(false);
+            w.WriteBit(true);
+            w.WriteIntPacked(8);
+            w.WriteBits(8, 0xAB);
+        });
+
+        reader.ReadPacket(packet, 2, context.BunchPayloadPipeline.HandleBunchPayload);
+
+        var stats = context.BunchPayloadStats;
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.ChannelStates[5].ArchetypePath, Is.EqualTo("Default__BaseReplayController_C"));
+            Assert.That(context.ChannelStates[5].ReplicationClassPath, Is.EqualTo("/Game/Characters/_Core/BaseReplayController"));
+            Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(stats.ActorContentBlockCount, Is.EqualTo(1));
+            Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
+            Assert.That(stats.MalformedPayloadCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    public void OpenActorChannel_ControllerNamedActor_DoesNotConsumeNetPlayerIndex()
+    {
+        var context = CreateContext();
+        var catalog = new DescriptorCatalog();
+        catalog.Add(new ControllerNamedActorDescriptor());
+        context.ExportBindingRegistry.SetCatalog(catalog);
+        context.NetGuidCache.SetNetGuidPath(TestArchetypeGuid, "Default__FakeController_C");
+        var reader = new RawPacketReader();
+        var packet = BuildPacket(w =>
+        {
+            WriteBunchHeaderBits(w, chIndex: 5, bControl: true, bOpen: true);
+            w.BeginPayload();
+            WriteSerializeNewActor(w);
+            w.WriteBit(false);
+            w.WriteBit(true);
+            w.WriteIntPacked(8);
+            w.WriteBits(8, 0xAB);
+        });
+
+        reader.ReadPacket(packet, 2, context.BunchPayloadPipeline.HandleBunchPayload);
+
+        var stats = context.BunchPayloadStats;
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.ChannelStates[5].ArchetypePath, Is.EqualTo("Default__FakeController_C"));
+            Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(stats.ActorContentBlockCount, Is.EqualTo(1));
+            Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
             Assert.That(stats.MalformedPayloadCount, Is.EqualTo(0));
         });
     }
@@ -481,6 +557,43 @@ public class BunchPayloadPipelineTests
             Assert.That(CountingFieldDecoder.DecodeCount, Is.EqualTo(1));
             Assert.That(context.BunchPayloadStats.RepLayoutContentBlockCount, Is.EqualTo(1));
             Assert.That(context.BunchPayloadStats.ContentPayloadBitsParsed, Is.EqualTo(contentBits.Count));
+            Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    public void ContentBlock_ActorRepLayout_UsesArchetypeOuterPathForDescriptorBinding()
+    {
+        CountingFieldDecoder.Reset();
+        var context = CreateContext();
+        var catalog = new DescriptorCatalog();
+        catalog.Add(new TestContentDescriptor());
+        context.ExportBindingRegistry.SetCatalog(catalog);
+        context.ExportBindingRegistry.OnExportGroupChanged(CreateNetFieldExportGroup(TestPath, (0u, "FieldA")));
+        context.NetGuidCache.SetNetGuidPath(TestArchetypeGuid, "Default__Test_C", new NetworkGuid(301));
+        context.NetGuidCache.SetNetGuidPath(301, TestPath);
+        var reader = new RawPacketReader();
+        var contentBits = BuildRepLayoutPropertyBits(handle: 0, bitCount: 32, data: BitConverter.GetBytes(42));
+        var packet = BuildPacket(w =>
+        {
+            WriteBunchHeaderBits(w, chIndex: 6, bControl: true, bOpen: true);
+            w.BeginPayload();
+            WriteSerializeNewActor(w);
+            w.WriteBit(true);
+            w.WriteBit(true);
+            w.WriteIntPacked((uint)contentBits.Count);
+            w.WriteBits(contentBits);
+        });
+
+        reader.ReadPacket(packet, 0, context.BunchPayloadPipeline.HandleBunchPayload);
+
+        var channel = context.ChannelStates[6];
+        Assert.Multiple(() =>
+        {
+            Assert.That(channel.ArchetypePath, Is.EqualTo("Default__Test_C"));
+            Assert.That(channel.ReplicationClassPath, Is.EqualTo(TestPath));
+            Assert.That(CountingFieldDecoder.DecodeCount, Is.EqualTo(1));
+            Assert.That(context.BunchPayloadStats.ContentPayloadBitsSkipped, Is.EqualTo(0));
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(0));
         });
     }
@@ -1262,6 +1375,28 @@ public class BunchPayloadPipelineTests
         protected override void Configure()
         {
             AddProperty(x => x.FieldA).Decode(CountingFieldDecoder.Instance);
+        }
+    }
+
+    private sealed class TestPlayerControllerDescriptor : ExportGroupDescriptor<TestPlayerControllerDescriptor>
+    {
+        public override string Path => TestPlayerControllerPath;
+        public override ExportCategory Categories => ExportCategory.Movement;
+        public override ExportGroupKind Kind => ExportGroupKind.PlayerController;
+
+        protected override void Configure()
+        {
+        }
+    }
+
+    private sealed class ControllerNamedActorDescriptor : ExportGroupDescriptor<ControllerNamedActorDescriptor>
+    {
+        public override string Path => TestControllerNamedActorPath;
+        public override ExportCategory Categories => ExportCategory.Debug;
+        public override ExportGroupKind Kind => ExportGroupKind.Actor;
+
+        protected override void Configure()
+        {
         }
     }
 

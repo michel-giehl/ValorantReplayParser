@@ -1,6 +1,7 @@
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Events;
+using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Channels;
 using Replay.Unreal.PackageMap;
 using Replay.Unreal.Parsing;
@@ -8,26 +9,29 @@ using Replay.Unreal.World;
 
 namespace Replay.Unreal.Bunches;
 
-public class ContentBlockFramer
+internal sealed class ContentBlockFramer
 {
     private readonly PackageMapReader _packageMapReader;
     private readonly NetGuidCache _netGuidCache;
     private readonly WorldState _worldState;
     private readonly IReplayEventSink _eventSink;
     private readonly ExportBindingRegistry _bindingRegistry;
+    private readonly IPropertyPayloadDecoder? _propertyPayloadDecoder;
 
     public ContentBlockFramer(
         PackageMapReader packageMapReader,
         NetGuidCache netGuidCache,
         WorldState worldState,
         IReplayEventSink eventSink,
-        ExportBindingRegistry? bindingRegistry = null)
+        ExportBindingRegistry? bindingRegistry = null,
+        IPropertyPayloadDecoder? propertyPayloadDecoder = null)
     {
         _packageMapReader = packageMapReader;
         _netGuidCache = netGuidCache;
         _worldState = worldState;
         _eventSink = eventSink;
         _bindingRegistry = bindingRegistry ?? new ExportBindingRegistry();
+        _propertyPayloadDecoder = propertyPayloadDecoder;
     }
 
     public void FrameContentBlocks(
@@ -35,7 +39,8 @@ public class ContentBlockFramer
         ActorChannelState channel,
         BunchPayloadStats stats,
         float timeSeconds,
-        int packetId)
+        int packetId,
+        string replayVersionBranch)
     {
         while (!payload.AtEnd)
         {
@@ -58,9 +63,39 @@ public class ContentBlockFramer
                 ObserveSubobject(header, channel, timeSeconds, packetId, stats);
             }
 
-            DispatchContentPayload(contentPayload, header, channel, timeSeconds, packetId, stats);
+            var classPath = ResolveClassPath(header, channel);
+            if (classPath is null)
+            {
+                SkipRemainingContentPayload(contentPayload, stats);
+                stats.ContentBlockCount++;
+                continue;
+            }
+
+            if (!ShouldParseContentPayload(contentPayload, header, classPath, stats))
+            {
+                stats.ContentBlockCount++;
+                continue;
+            }
+
+            using var decodedPayload = DecodeContentPayload(contentPayload, channel, replayVersionBranch);
+            DispatchContentPayload(decodedPayload, header, channel, classPath, timeSeconds, packetId, stats);
             stats.ContentBlockCount++;
         }
+    }
+
+    private FBitArchive DecodeContentPayload(
+        FBitArchive contentPayload,
+        ActorChannelState channel,
+        string replayVersionBranch)
+    {
+        if (_propertyPayloadDecoder is null ||
+            !channel.ActorNetGuid.IsValid ||
+            string.IsNullOrWhiteSpace(replayVersionBranch))
+        {
+            return contentPayload;
+        }
+
+        return _propertyPayloadDecoder.Decode(contentPayload, channel.ActorNetGuid.Value, replayVersionBranch);
     }
 
     private ContentBlockHeader ReadContentBlockHeader(FBitArchive payload, ActorChannelState channel)
@@ -206,24 +241,7 @@ public class ContentBlockFramer
     {
         if (header.IsActor)
         {
-            if (channel.ArchetypePath is not null)
-            {
-                return channel.ArchetypePath;
-            }
-
-            if (channel.ArchetypeNetGuid.IsValid && _netGuidCache.TryGetPath(channel.ArchetypeNetGuid.Value, out var archetypePath))
-            {
-                return archetypePath;
-            }
-
-            if (channel.ActorPath is not null)
-            {
-                return channel.ActorPath;
-            }
-
-            return channel.ActorNetGuid.IsValid && _netGuidCache.TryGetPath(channel.ActorNetGuid.Value, out var actorPath)
-                ? actorPath
-                : null;
+            return ResolveActorClassPath(channel);
         }
 
         if (header.ClassNetGuid.IsValid && _netGuidCache.TryGetPath(header.ClassNetGuid.Value, out var path))
@@ -234,21 +252,90 @@ public class ContentBlockFramer
         return null;
     }
 
+    private string? ResolveActorClassPath(ActorChannelState channel)
+    {
+        if (channel.ReplicationClassPath is not null)
+        {
+            return channel.ReplicationClassPath;
+        }
+
+        if (channel.ArchetypeNetGuid.IsValid &&
+            _netGuidCache.TryGetOuterPath(channel.ArchetypeNetGuid.Value, out var outerPath))
+        {
+            return outerPath;
+        }
+
+        if (channel.ArchetypePath is not null && !IsClassDefaultObjectPath(channel.ArchetypePath))
+        {
+            return channel.ArchetypePath;
+        }
+
+        if (channel.ArchetypeNetGuid.IsValid &&
+            _netGuidCache.TryGetPath(channel.ArchetypeNetGuid.Value, out var archetypePath) &&
+            !IsClassDefaultObjectPath(archetypePath))
+        {
+            return archetypePath;
+        }
+
+        if (channel.ActorPath is not null)
+        {
+            return channel.ActorPath;
+        }
+
+        return channel.ActorNetGuid.IsValid && _netGuidCache.TryGetPath(channel.ActorNetGuid.Value, out var actorPath)
+            ? actorPath
+            : null;
+    }
+
+    private bool ShouldParseContentPayload(
+        FBitArchive contentPayload,
+        ContentBlockHeader header,
+        string classPath,
+        BunchPayloadStats stats)
+    {
+        if (header.HasRepLayout)
+        {
+            var boundGroup = _bindingRegistry.GetBoundGroup(classPath);
+            if (boundGroup is not null && boundGroup.Enabled)
+            {
+                return true;
+            }
+
+            SkipRemainingContentPayload(contentPayload, stats);
+            return false;
+        }
+
+        if (contentPayload.AtEnd)
+        {
+            return false;
+        }
+
+        var boundCache = GetBoundClassNetCache(classPath);
+        if (boundCache is not null && boundCache.Enabled)
+        {
+            return true;
+        }
+
+        SkipRemainingContentPayload(contentPayload, stats);
+        return false;
+    }
+
+    private static bool IsClassDefaultObjectPath(string path)
+    {
+        var leafStart = path.LastIndexOfAny(['/', '.', ':']);
+        var leaf = leafStart >= 0 ? path[(leafStart + 1)..] : path;
+        return leaf.StartsWith("Default__", StringComparison.Ordinal);
+    }
+
     private void DispatchContentPayload(
         FBitArchive contentPayload,
         ContentBlockHeader header,
         ActorChannelState channel,
+        string classPath,
         float timeSeconds,
         int packetId,
         BunchPayloadStats stats)
     {
-        var classPath = ResolveClassPath(header, channel);
-        if (classPath is null)
-        {
-            SkipRemainingContentPayload(contentPayload, stats);
-            return;
-        }
-
         var context = CreateDecodeContext(classPath, channel, timeSeconds, packetId);
         if (header.HasRepLayout && !ParseRepLayoutContent(contentPayload, classPath, ref context, stats))
         {
@@ -325,8 +412,7 @@ public class ContentBlockFramer
 
     private BoundClassNetCache? GetBoundClassNetCache(string classPath)
     {
-        return _bindingRegistry.GetBoundCache(classPath)
-            ?? _bindingRegistry.GetBoundCache(classPath + "_ClassNetCache");
+        return _bindingRegistry.GetBoundCache(classPath);
     }
 
     private void ObserveSubobject(

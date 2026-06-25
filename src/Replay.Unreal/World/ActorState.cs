@@ -13,6 +13,7 @@ public sealed class ActorState
     public string? ActorPath { get; set; }
     public NetworkGuid ArchetypeNetGuid { get; set; }
     public string? ArchetypePath { get; set; }
+    public string? ReplicationClassPath { get; set; }
     public NetworkGuid LevelNetGuid { get; set; }
     public float FirstObservedTimeSeconds { get; init; }
     public int FirstObservedPacketId { get; init; }

@@ -65,6 +65,24 @@ public class NetGuidCacheTests
     }
 
     [Test]
+    public void SetNetGuidPath_StoresOuterNetGuid()
+    {
+        var cache = new NetGuidCache();
+        var outerNetGuid = new NetworkGuid(11);
+
+        cache.SetNetGuidPath(17, "Default__Test_C", outerNetGuid);
+        cache.SetNetGuidPath(outerNetGuid.Value, "/Game/Test.Test_C");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(cache.TryGetOuterNetGuid(17, out var resolvedOuter), Is.True);
+            Assert.That(resolvedOuter, Is.EqualTo(outerNetGuid));
+            Assert.That(cache.TryGetOuterPath(17, out var outerPath), Is.True);
+            Assert.That(outerPath, Is.EqualTo("/Game/Test.Test_C"));
+        });
+    }
+
+    [Test]
     public void Clear_RemovesAllState()
     {
         var cache = new NetGuidCache();
@@ -78,6 +96,7 @@ public class NetGuidCacheTests
             Assert.That(cache.ExportGroupsByPath, Is.Empty);
             Assert.That(cache.ExportGroupsByPathIndex, Is.Empty);
             Assert.That(cache.PathByNetGuid, Is.Empty);
+            Assert.That(cache.OuterNetGuidByNetGuid, Is.Empty);
         });
     }
 

@@ -68,7 +68,7 @@ public class PackageMapReader
             return netGuid;
         }
 
-        _ = InternalLoadObject(archive, isExportingNetGuidBunch, recursionDepth + 1);
+        var outerNetGuid = InternalLoadObject(archive, isExportingNetGuidBunch, recursionDepth + 1);
         var pathName = archive.ReadFString();
 
         if (exportFlags.HasFlag(ExportFlags.HasNetworkChecksum))
@@ -76,7 +76,7 @@ public class PackageMapReader
             _ = archive.ReadUInt32();
         }
 
-        _netGuidCache.SetNetGuidPath(netGuid.Value, pathName);
+        _netGuidCache.SetNetGuidPath(netGuid.Value, pathName, outerNetGuid);
         return netGuid;
     }
 }

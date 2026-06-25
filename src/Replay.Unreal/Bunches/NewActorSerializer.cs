@@ -43,6 +43,11 @@ internal sealed class NewActorSerializer : INewActorSerializer
             channelState.ArchetypePath = archetypePath;
         }
 
+        if (_netGuidCache.TryGetOuterPath(archetype.Value, out var replicationClassPath))
+        {
+            channelState.ReplicationClassPath = replicationClassPath;
+        }
+
         channelState.LevelGuid = _packageMapReader.InternalLoadObject(
             payload,
             isExportingNetGuidBunch: false,

@@ -4,6 +4,7 @@ public enum ExportGroupKind
 {
     Unknown,
     Actor,
+    PlayerController,
     Component,
     AttributeSet,
     FastArray,

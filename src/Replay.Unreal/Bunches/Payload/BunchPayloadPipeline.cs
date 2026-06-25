@@ -1,4 +1,5 @@
 using Replay.Encoding.Archives;
+using Replay.Encoding.PayloadEncryption;
 using Replay.Models.Net;
 using Replay.Unreal.Bunches.Payload.Stages;
 using Replay.Unreal.PackageMap;
@@ -19,9 +20,16 @@ public sealed class BunchPayloadPipeline
 
     public void HandleBunchPayload(ref RawBunchHeader header, FBitArchive payload)
     {
-        using var context = new BunchPayloadContext(_context, header, payload);
-        _processor.Process(context);
-        header = context.Header;
+        var context = new BunchPayloadContext(_context, header, payload);
+        try
+        {
+            _processor.Process(ref context);
+            header = context.Header;
+        }
+        finally
+        {
+            context.Dispose();
+        }
     }
 
     internal void Reset()
@@ -34,12 +42,14 @@ public sealed class BunchPayloadPipeline
     {
         var packageMapReader = new PackageMapReader(context.NetGuidCache);
         var partialBunchAccumulator = new PartialBunchAccumulator();
+        var propertyPayloadDecoder = new PropertyPayloadDecoder(PayloadTransformRegistry.CreateDefault());
         var contentBlockFramer = new ContentBlockFramer(
             packageMapReader,
             context.NetGuidCache,
             context.WorldState,
             context.EventSink,
-            context.ExportBindingRegistry);
+            context.ExportBindingRegistry,
+            propertyPayloadDecoder);
         var newActorSerializer = new NewActorSerializer(packageMapReader, context.NetGuidCache);
         var lifecycleService = new ActorChannelLifecycleService(context);
 
@@ -50,7 +60,7 @@ public sealed class BunchPayloadPipeline
             new MustBeMappedGuidsBunchStage(),
             new ActorChannelOpenBunchStage(newActorSerializer, lifecycleService),
             new ActorChannelLookupBunchStage(),
-            new DynamicActorOpenPayloadBunchStage(),
+            new ReadNetPlayerIndexStage(),
             new ContentBlocksBunchStage(contentBlockFramer),
             new ActorChannelCloseBunchStage(lifecycleService),
             new TrailingPayloadBunchStage(),

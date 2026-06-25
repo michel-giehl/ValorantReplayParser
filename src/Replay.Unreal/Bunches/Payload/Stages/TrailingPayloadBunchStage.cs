@@ -2,7 +2,7 @@ namespace Replay.Unreal.Bunches.Payload.Stages;
 
 internal sealed class TrailingPayloadBunchStage : IBunchPayloadStage
 {
-    public BunchStageResult Process(BunchPayloadContext context)
+    public BunchStageResult Process(ref BunchPayloadContext context)
     {
         if (context.Payload.AtEnd)
         {

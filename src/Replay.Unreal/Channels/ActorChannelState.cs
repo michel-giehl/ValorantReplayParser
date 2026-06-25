@@ -14,6 +14,7 @@ public sealed class ActorChannelState
     public NetworkGuid LevelGuid { get; set; }
     public string? ActorPath { get; set; }
     public string? ArchetypePath { get; set; }
+    public string? ReplicationClassPath { get; set; }
     public FVector? SpawnLocation { get; set; }
     public FRotator? SpawnRotation { get; set; }
     public FVector? SpawnScale { get; set; }

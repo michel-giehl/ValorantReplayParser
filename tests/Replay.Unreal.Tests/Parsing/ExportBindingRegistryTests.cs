@@ -24,6 +24,18 @@ public class ExportBindingRegistryTests
     }
 
     [Test]
+    public void GetExportGroupKind_UsesDescriptorBeforeReplayGroupIsBound()
+    {
+        var registry = CreateRegistry(catalog => catalog.Add(new TestDescriptor()));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.GetExportGroupKind("/Game/Test.Test_C"), Is.EqualTo(ExportGroupKind.Actor));
+            Assert.That(registry.GetExportGroupKind("Default__Test_C"), Is.EqualTo(ExportGroupKind.Actor));
+        });
+    }
+
+    [Test]
     public void OnExportGroupAdded_ResolvesFieldDescriptorByExportName()
     {
         var registry = CreateRegistry(catalog => catalog.Add(new TestDescriptor()));
@@ -159,6 +171,21 @@ public class ExportBindingRegistryTests
             Assert.That(bound.FunctionsByHandle[0].FunctionExportPath,
                 Is.EqualTo("/Script/GameModule.SomeClass:SomeFunction"));
         });
+    }
+
+    [Test]
+    public void ClassNetCache_IndexesSuffixlessClassPathAlias()
+    {
+        var registry = CreateRegistry(catalog => catalog.Add(new CacheDescriptor()));
+        var cacheGroup = CreateReplayGroup("/Game/Cache.SomeCache_C_ClassNetCache", exports:
+        [
+            (0u, "SomeFunction"),
+        ]);
+
+        registry.OnExportGroupAdded(cacheGroup);
+
+        var bound = registry.GetBoundCache("/Game/Cache.SomeCache_C_ClassNetCache");
+        Assert.That(registry.GetBoundCache("/Game/Cache.SomeCache_C"), Is.SameAs(bound));
     }
 
     [Test]

@@ -11,7 +11,7 @@ internal sealed class ContentBlocksBunchStage : IBunchPayloadStage
         _contentBlockFramer = contentBlockFramer;
     }
 
-    public BunchStageResult Process(BunchPayloadContext context)
+    public BunchStageResult Process(ref BunchPayloadContext context)
     {
         if (context.Payload.AtEnd)
         {
@@ -31,7 +31,8 @@ internal sealed class ContentBlocksBunchStage : IBunchPayloadStage
                 context.Channel,
                 context.Stats,
                 context.ReaderContext.CurrentTimeSeconds,
-                context.Header.PacketId);
+                context.Header.PacketId,
+                context.ReaderContext.ReplayVersion.Branch);
             return BunchStageResult.Continue;
         }
         catch (ArchiveReadException)

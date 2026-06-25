@@ -4,7 +4,7 @@ namespace Replay.Unreal.Bunches.Payload.Stages;
 
 internal sealed class MustBeMappedGuidsBunchStage : IBunchPayloadStage
 {
-    public BunchStageResult Process(BunchPayloadContext context)
+    public BunchStageResult Process(ref BunchPayloadContext context)
     {
         if (!context.Header.bHasMustBeMappedGUIDs)
         {

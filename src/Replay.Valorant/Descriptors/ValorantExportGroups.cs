@@ -65,7 +65,7 @@ internal sealed class BaseReplayControllerDescriptor : ExportGroupDescriptor<Bas
 {
     public override string Path => "/Game/Characters/BaseReplayController.BaseReplayController_C";
     public override ExportCategory Categories => ExportCategory.Movement;
-    public override ExportGroupKind Kind => ExportGroupKind.Actor;
+    public override ExportGroupKind Kind => ExportGroupKind.PlayerController;
 
     public uint RemoteCharacterUpdatesArray { get; set; }
 

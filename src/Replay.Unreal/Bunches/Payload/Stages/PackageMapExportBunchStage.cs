@@ -11,7 +11,7 @@ internal sealed class PackageMapExportBunchStage : IBunchPayloadStage
         _packageMapReader = packageMapReader;
     }
 
-    public BunchStageResult Process(BunchPayloadContext context)
+    public BunchStageResult Process(ref BunchPayloadContext context)
     {
         if (!context.Header.bHasPackageMapExports)
         {

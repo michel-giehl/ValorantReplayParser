@@ -9,7 +9,7 @@ internal sealed class ActorChannelCloseBunchStage : IBunchPayloadStage
         _lifecycleService = lifecycleService;
     }
 
-    public BunchStageResult Process(BunchPayloadContext context)
+    public BunchStageResult Process(ref BunchPayloadContext context)
     {
         if (context.Header.bClose && context.Channel is not null)
         {

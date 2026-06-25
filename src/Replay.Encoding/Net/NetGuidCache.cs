@@ -10,6 +10,8 @@ public sealed class NetGuidCache
 
     public Dictionary<uint, string> PathByNetGuid { get; } = [];
 
+    public Dictionary<uint, NetworkGuid> OuterNetGuidByNetGuid { get; } = [];
+
     public NetFieldExportGroup AddExportGroup(NetFieldExportGroup group)
     {
         ArgumentNullException.ThrowIfNull(group);
@@ -59,10 +61,18 @@ public sealed class NetGuidCache
         [NotNullWhen(true)] out NetFieldExportGroup? group) =>
         ExportGroupsByPathIndex.TryGetValue(pathNameIndex, out group);
 
-    public void SetNetGuidPath(uint netGuid, string pathName)
+    public void SetNetGuidPath(uint netGuid, string pathName, NetworkGuid outerNetGuid = default)
     {
         ArgumentNullException.ThrowIfNull(pathName);
         PathByNetGuid[netGuid] = pathName;
+        if (outerNetGuid.IsValid)
+        {
+            OuterNetGuidByNetGuid[netGuid] = outerNetGuid;
+        }
+        else
+        {
+            OuterNetGuidByNetGuid.Remove(netGuid);
+        }
     }
 
     public bool TryGetPath(uint netGuid, out string pathName)
@@ -77,11 +87,26 @@ public sealed class NetGuidCache
         return false;
     }
 
+    public bool TryGetOuterNetGuid(uint netGuid, out NetworkGuid outerNetGuid) =>
+        OuterNetGuidByNetGuid.TryGetValue(netGuid, out outerNetGuid);
+
+    public bool TryGetOuterPath(uint netGuid, out string outerPath)
+    {
+        if (TryGetOuterNetGuid(netGuid, out var outerNetGuid) && TryGetPath(outerNetGuid.Value, out outerPath))
+        {
+            return true;
+        }
+
+        outerPath = string.Empty;
+        return false;
+    }
+
     public void Clear()
     {
         ExportGroupsByPath.Clear();
         ExportGroupsByPathIndex.Clear();
         PathByNetGuid.Clear();
+        OuterNetGuidByNetGuid.Clear();
     }
 
     private static void CopyExports(NetFieldExport?[] source, NetFieldExport?[] destination)

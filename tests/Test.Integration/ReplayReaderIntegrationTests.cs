@@ -1,10 +1,12 @@
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
+using Replay.Models.Errors;
 using Replay.Models.Events;
 using Replay.Models.Replay;
 using Replay.Unreal.Chunks;
 using Replay.Unreal.Header;
 using Replay.Unreal.Readers;
+using Replay.Valorant.Descriptors;
 using Snapshooter.NUnit;
 
 namespace Test.Integration;
@@ -12,9 +14,12 @@ namespace Test.Integration;
 [Category("Integration")]
 public class ReplayReaderIntegrationTests
 {
+    private const string Replay12_08 = "c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf";
+    private const string Branch12_08 = "++Ares-Core+release-12.08";
+
     [Test]
-    public void ReadReplayInfo_12_08_MatchesSnapshot() =>
-        ReadReplayInfoMatchesSnapshot("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
+    public void ReadReplayInfo_12_08_ReportsUnsupportedPayloadTransform() =>
+        ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
 
     [Test]
     public void ReadReplayInfo_12_10_MatchesSnapshot() =>
@@ -25,8 +30,8 @@ public class ReplayReaderIntegrationTests
         ReadReplayInfoMatchesSnapshot("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
     [Test]
-    public void ReadReplayHeader_12_08_MatchesSnapshot() =>
-        ReadReplayHeaderMatchesSnapshot("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
+    public void ReadReplayHeader_12_08_ReportsUnsupportedPayloadTransform() =>
+        ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
 
     [Test]
     public void ReadReplayHeader_12_10_MatchesSnapshot() =>
@@ -38,7 +43,7 @@ public class ReplayReaderIntegrationTests
 
     [Test]
     public void DecompressReplayData_12_08_MaterializesExpectedSize() =>
-        DecompressReplayDataMaterializesExpectedSize("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
+        DecompressReplayDataMaterializesExpectedSize(Replay12_08);
 
     [Test]
     public void DecompressReplayData_12_10_MaterializesExpectedSize() =>
@@ -49,8 +54,8 @@ public class ReplayReaderIntegrationTests
         DecompressReplayDataMaterializesExpectedSize("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
     [Test]
-    public void ReadRawPackets_12_08_RecordsStats() =>
-        ReadRawPacketsRecordsStats("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
+    public void ReadRawPackets_12_08_ReportsUnsupportedPayloadTransform() =>
+        ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
 
     [Test]
     public void ReadRawPackets_12_10_RecordsStats() =>
@@ -61,8 +66,8 @@ public class ReplayReaderIntegrationTests
         ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
 
     [Test]
-    public void ReadRawPackets_12_08_DecodesBaseReplayControllerSpawnLocation() =>
-        ReadRawPacketsDecodesBaseReplayControllerSpawnLocation("c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf");
+    public void ReadBaseReplayController_12_08_ReportsUnsupportedPayloadTransform() =>
+        ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
 
     [Test]
     public void ReadRawPackets_12_11_BuildsWorldStateAndEmitsTimedActorEvents()
@@ -71,7 +76,8 @@ public class ReplayReaderIntegrationTests
         var eventSink = new CapturingReplayEventSink();
         var context = new ValorantReplayReader(
             new OozSharpOodleDecompressor(),
-            eventSink: eventSink).Read(new FBinaryArchive(replayBytes));
+            eventSink: eventSink,
+            descriptorCatalog: ValorantDescriptors.CreateCatalog()).Read(new FBinaryArchive(replayBytes));
 
         var openedEvents = eventSink.Events.OfType<ActorOpened>().ToArray();
         var spawnedEvents = eventSink.Events.OfType<ActorSpawned>().ToArray();
@@ -100,6 +106,21 @@ public class ReplayReaderIntegrationTests
         Assert.That(context.Errors, Is.Empty);
 
         Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, context));
+    }
+
+    private static void ReadReplayReportsUnsupportedPayloadTransform(string replayFileName, string branch)
+    {
+        var replayBytes = ReadReplayBytes(replayFileName);
+        var context = ReadReplay(replayBytes);
+
+        var error = context.Errors.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(error, Is.TypeOf<InvalidReplayInfoError>());
+            Assert.That(error.Exception, Is.TypeOf<InvalidReplayInfoException>());
+            Assert.That(error.Exception!.Message, Does.Contain("Unsupported VALORANT property payload transform"));
+            Assert.That(error.Exception.Message, Does.Contain(branch));
+        });
     }
 
     private static void ReadReplayHeaderMatchesSnapshot(string replayFileName)
@@ -185,7 +206,7 @@ public class ReplayReaderIntegrationTests
     private static ReplayReaderContext ReadReplay(byte[] replayBytes)
     {
         var archive = new FBinaryArchive(replayBytes);
-        return ValorantReplayReader.CreateDefault().Read(archive);
+        return ValorantReplayReader.CreateDefault(ValorantDescriptors.CreateCatalog()).Read(archive);
     }
 
     private static byte[] ReadReplayBytes(string replayFileName)

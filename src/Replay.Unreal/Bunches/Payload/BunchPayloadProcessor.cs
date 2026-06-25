@@ -9,11 +9,11 @@ internal sealed class BunchPayloadProcessor : IBunchPayloadProcessor
         _stages = stages;
     }
 
-    public void Process(BunchPayloadContext context)
+    public void Process(ref BunchPayloadContext context)
     {
         foreach (var stage in _stages)
         {
-            if (!stage.Process(context).ShouldContinue)
+            if (!stage.Process(ref context).ShouldContinue)
             {
                 return;
             }

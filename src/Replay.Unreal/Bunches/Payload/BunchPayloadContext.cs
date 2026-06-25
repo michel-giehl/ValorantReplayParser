@@ -5,7 +5,7 @@ using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Bunches.Payload;
 
-internal sealed class BunchPayloadContext : IDisposable
+internal struct BunchPayloadContext : IDisposable
 {
     private FBitArchive? _ownedPayload;
 

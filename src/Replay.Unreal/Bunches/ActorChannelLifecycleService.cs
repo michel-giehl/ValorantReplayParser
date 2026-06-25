@@ -84,6 +84,7 @@ internal sealed class ActorChannelLifecycleService : IActorChannelLifecycleServi
         ActorPath = channel.ActorPath,
         ArchetypeNetGuid = channel.ArchetypeNetGuid,
         ArchetypePath = channel.ArchetypePath,
+        ReplicationClassPath = channel.ReplicationClassPath,
         LevelNetGuid = channel.LevelGuid,
         FirstObservedTimeSeconds = channel.OpenTimeSeconds,
         FirstObservedPacketId = channel.OpenPacketId,
@@ -111,6 +112,7 @@ internal sealed class ActorChannelLifecycleService : IActorChannelLifecycleServi
             ? channel.ArchetypeNetGuid
             : actor.ArchetypeNetGuid;
         actor.ArchetypePath ??= channel.ArchetypePath;
+        actor.ReplicationClassPath ??= channel.ReplicationClassPath;
         actor.LevelNetGuid = channel.LevelGuid.IsValid ? channel.LevelGuid : actor.LevelNetGuid;
         actor.OpenTimeSeconds = channel.OpenTimeSeconds;
         actor.OpenPacketId = channel.OpenPacketId;

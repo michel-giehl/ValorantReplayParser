@@ -11,7 +11,7 @@ internal sealed class PartialBunchStage : IBunchPayloadStage, IResettableBunchPa
         _accumulator = accumulator;
     }
 
-    public BunchStageResult Process(BunchPayloadContext context)
+    public BunchStageResult Process(ref BunchPayloadContext context)
     {
         if (!context.Header.bPartial)
         {
