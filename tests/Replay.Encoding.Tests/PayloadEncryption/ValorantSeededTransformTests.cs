@@ -34,6 +34,7 @@ public class ValorantSeededTransformTests
 
         Assert.That(registry.GetRequired("++Ares-Core+release-12.10"), Is.Not.Null);
         Assert.That(registry.GetRequired("++Ares-Core+release-12.11"), Is.Not.Null);
+        Assert.That(registry.GetRequired("++Ares-Core+release-13.00"), Is.Not.Null);
     }
 
     [Test]
