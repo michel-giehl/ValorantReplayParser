@@ -28,7 +28,6 @@ public sealed class ReplayChunkDispatcher
     public void DispatchAll(ReplayReaderContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        ResetChunkState(context.ReplayInfo);
 
         while (!context.Archive.AtEnd)
         {
@@ -122,16 +121,5 @@ public sealed class ReplayChunkDispatcher
         var replayDataArchive = _replayDataChunkPayloadReader.ReadPayload(context.ReplayInfo, dataChunk, chunkArchive);
         context.ReplayDataStream = replayDataArchive;
         _replayDataChunkHandler.Handle(context, dataChunk, replayDataArchive);
-    }
-
-    private static void ResetChunkState(ReplayInfo info)
-    {
-        info.TotalDataSizeInBytes = 0;
-        info.IsValid = false;
-        info.HeaderChunkIndex = ReplayInfo.NoChunkIndex;
-        info.Chunks.Clear();
-        info.Checkpoints.Clear();
-        info.Events.Clear();
-        info.DataChunks.Clear();
     }
 }

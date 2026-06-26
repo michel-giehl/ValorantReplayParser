@@ -293,45 +293,6 @@ public class RawPacketReaderTests
         });
     }
 
-    [Test]
-    public void ReadPacket_Reset_ClearsPartialState()
-    {
-        var reader = new RawPacketReader();
-
-        var p1 = BuildPacket(w =>
-        {
-            w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
-            w.WriteIntPacked(4);
-            w.WriteBit(false); w.WriteBit(false);
-            w.WriteBit(true); w.WriteBit(true); w.WriteBit(false);
-            w.WriteBit(false);
-            w.WriteFName(1);
-            w.WritePayloadSize(0);
-        });
-        reader.ReadPacket(p1, 0, static (ref RawBunchHeader _, FBitArchive _) => { });
-
-        reader.Reset();
-
-        var p2 = BuildPacket(w =>
-        {
-            w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
-            w.WriteIntPacked(4);
-            w.WriteBit(false); w.WriteBit(false);
-            w.WriteBit(true); w.WriteBit(false); w.WriteBit(true);
-            w.WriteBit(false);
-            w.WriteFName(1);
-            w.WritePayloadSize(0);
-        });
-        var headers = new List<RawBunchHeader>();
-        var result = reader.ReadPacket(p2, 1, (ref RawBunchHeader header, FBitArchive _) => headers.Add(header));
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(result.PartialErrorCount, Is.EqualTo(1));
-            Assert.That(headers[0].HasPartialError, Is.True);
-        });
-    }
-
     private static byte[] BuildPacket(params Action<PacketBuilder>[] writeBunches)
     {
         var totalBits = new List<bool>();

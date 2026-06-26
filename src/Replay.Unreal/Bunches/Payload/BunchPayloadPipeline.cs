@@ -32,12 +32,6 @@ public sealed class BunchPayloadPipeline
         }
     }
 
-    internal void Reset()
-    {
-        _processor.Reset();
-        _context.WorldState.Reset();
-    }
-
     private static BunchPayloadProcessor CreateProcessor(ReplayReaderContext context)
     {
         var packageMapReader = new PackageMapReader(context.NetGuidCache);

@@ -113,16 +113,6 @@ internal sealed class PartialBunchAccumulator : IPartialBunchAccumulator
         return false;
     }
 
-    public void Reset()
-    {
-        foreach (var state in _fragments.Values)
-        {
-            state.BufferOwner?.Dispose();
-        }
-
-        _fragments.Clear();
-    }
-
     private void DiscardFragment(uint chIndex)
     {
         if (_fragments.Remove(chIndex, out var state))

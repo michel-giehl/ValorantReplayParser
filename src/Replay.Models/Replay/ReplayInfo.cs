@@ -17,29 +17,7 @@ public sealed class ReplayInfo
     public byte[] EncryptionKey { get; set; } = [];
     public int HeaderChunkIndex { get; set; } = NoChunkIndex;
     public List<ReplayChunkInfo> Chunks { get; } = [];
-    public List<ReplayEventInfo> Checkpoints { get; } = [];
-    public List<ReplayEventInfo> Events { get; } = [];
     public List<ReplayDataChunkInfo> DataChunks { get; } = [];
-
-    public void Reset()
-    {
-        LengthInMs = 0;
-        NetworkVersion = 0;
-        Changelist = 0;
-        FriendlyName = string.Empty;
-        Timestamp = 0;
-        TotalDataSizeInBytes = 0;
-        IsLive = false;
-        IsValid = false;
-        Compressed = false;
-        Encrypted = false;
-        EncryptionKey = [];
-        HeaderChunkIndex = NoChunkIndex;
-        Chunks.Clear();
-        Checkpoints.Clear();
-        Events.Clear();
-        DataChunks.Clear();
-    }
 }
 
 public sealed class ReplayChunkInfo
@@ -48,18 +26,6 @@ public sealed class ReplayChunkInfo
     public int SizeInBytes { get; set; }
     public long TypeOffset { get; set; }
     public long DataOffset { get; set; }
-}
-
-public sealed class ReplayEventInfo
-{
-    public int ChunkIndex { get; set; } = ReplayInfo.NoChunkIndex;
-    public string Id { get; set; } = string.Empty;
-    public string Group { get; set; } = string.Empty;
-    public string Metadata { get; set; } = string.Empty;
-    public uint Time1 { get; set; }
-    public uint Time2 { get; set; }
-    public int SizeInBytes { get; set; }
-    public long EventDataOffset { get; set; }
 }
 
 public sealed class ReplayDataChunkInfo

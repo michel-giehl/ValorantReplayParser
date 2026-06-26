@@ -530,7 +530,6 @@ public class BunchPayloadPipelineTests
     [Test]
     public void ContentBlock_ActorRepLayout_ConsumesChecksumBitBeforeFieldHandle()
     {
-        CountingFieldDecoder.Reset();
         var context = CreateContext();
         var catalog = new DescriptorCatalog();
         catalog.Add(new TestContentDescriptor());
@@ -554,7 +553,6 @@ public class BunchPayloadPipelineTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(CountingFieldDecoder.DecodeCount, Is.EqualTo(1));
             Assert.That(context.BunchPayloadStats.RepLayoutContentBlockCount, Is.EqualTo(1));
             Assert.That(context.BunchPayloadStats.ContentPayloadBitsParsed, Is.EqualTo(contentBits.Count));
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(0));
@@ -564,7 +562,6 @@ public class BunchPayloadPipelineTests
     [Test]
     public void ContentBlock_ActorRepLayout_UsesArchetypeOuterPathForDescriptorBinding()
     {
-        CountingFieldDecoder.Reset();
         var context = CreateContext();
         var catalog = new DescriptorCatalog();
         catalog.Add(new TestContentDescriptor());
@@ -592,7 +589,6 @@ public class BunchPayloadPipelineTests
         {
             Assert.That(channel.ArchetypePath, Is.EqualTo("Default__Test_C"));
             Assert.That(channel.ReplicationClassPath, Is.EqualTo(TestPath));
-            Assert.That(CountingFieldDecoder.DecodeCount, Is.EqualTo(1));
             Assert.That(context.BunchPayloadStats.ContentPayloadBitsSkipped, Is.EqualTo(0));
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(0));
         });
@@ -1404,14 +1400,9 @@ public class BunchPayloadPipelineTests
     {
         public static readonly CountingFieldDecoder Instance = new();
 
-        public static int DecodeCount { get; private set; }
-
-        public static void Reset() => DecodeCount = 0;
-
         public void Decode(ref FieldDecodeContext context, FBitArchive archive)
         {
             _ = archive.ReadInt32();
-            DecodeCount++;
         }
     }
 

@@ -26,12 +26,6 @@ public sealed class RawPacketReader
     private readonly Dictionary<uint, PartialBunchState> _partialBunches = [];
     private int _inReliableSequence;
 
-    public void Reset()
-    {
-        _partialBunches.Clear();
-        _inReliableSequence = 0;
-    }
-
     public RawPacketReadResult ReadPacket(
         ReadOnlyMemory<byte> packetData,
         int packetId,

@@ -2,7 +2,7 @@ using Replay.Encoding.Archives;
 
 namespace Replay.Unreal.Bunches.Payload.Stages;
 
-internal sealed class PartialBunchStage : IBunchPayloadStage, IResettableBunchPayloadStage
+internal sealed class PartialBunchStage : IBunchPayloadStage
 {
     private readonly IPartialBunchAccumulator _accumulator;
 
@@ -38,10 +38,5 @@ internal sealed class PartialBunchStage : IBunchPayloadStage, IResettableBunchPa
         context.UseOwnedPayload(new BitArchiveReader(stitchedBuffer, stitchedBitCount));
         return BunchStageResult.Continue;
 
-    }
-
-    public void Reset()
-    {
-        _accumulator.Reset();
     }
 }

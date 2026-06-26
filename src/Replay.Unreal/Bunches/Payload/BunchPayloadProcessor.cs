@@ -19,15 +19,4 @@ internal sealed class BunchPayloadProcessor : IBunchPayloadProcessor
             }
         }
     }
-
-    public void Reset()
-    {
-        foreach (var stage in _stages)
-        {
-            if (stage is IResettableBunchPayloadStage resettable)
-            {
-                resettable.Reset();
-            }
-        }
-    }
 }
