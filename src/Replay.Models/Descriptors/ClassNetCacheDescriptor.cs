@@ -16,7 +16,6 @@ public class ClassNetCacheDescriptor
         IReadOnlyList<RpcDescriptor>? functionFields = null,
         FieldStreamGrammar grammar = FieldStreamGrammar.ClassNetCache)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
         _path = path;
         _grammar = grammar;
         _functionFields = functionFields ?? [];

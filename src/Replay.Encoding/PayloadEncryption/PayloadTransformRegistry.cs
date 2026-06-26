@@ -8,8 +8,6 @@ public sealed class PayloadTransformRegistry
 
     private PayloadTransformRegistry(IEnumerable<IPayloadTransform> transforms)
     {
-        ArgumentNullException.ThrowIfNull(transforms);
-
         _transforms = new Dictionary<string, IPayloadTransform>(StringComparer.Ordinal);
         foreach (var transform in transforms)
         {
@@ -32,8 +30,6 @@ public sealed class PayloadTransformRegistry
 
     public IPayloadTransform GetRequired(string replayVersion)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(replayVersion);
-
         if (_transforms.TryGetValue(replayVersion, out var transform))
         {
             return transform;

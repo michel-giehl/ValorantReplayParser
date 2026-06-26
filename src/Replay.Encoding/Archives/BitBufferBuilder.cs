@@ -9,7 +9,6 @@ public sealed class BitBufferBuilder
 
     public void Append(FBitArchive source, int bitCount)
     {
-        ArgumentNullException.ThrowIfNull(source);
         if (bitCount < 0)
         {
             throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(Append), source.Position,

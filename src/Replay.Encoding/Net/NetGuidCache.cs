@@ -14,8 +14,6 @@ public sealed class NetGuidCache
 
     public NetFieldExportGroup AddExportGroup(NetFieldExportGroup group)
     {
-        ArgumentNullException.ThrowIfNull(group);
-
         ExportGroupsByPath.TryGetValue(group.PathName, out var existingByPath);
         ExportGroupsByPathIndex.TryGetValue(group.PathNameIndex, out var existingByIndex);
 
@@ -63,7 +61,6 @@ public sealed class NetGuidCache
 
     public void SetNetGuidPath(uint netGuid, string pathName, NetworkGuid outerNetGuid = default)
     {
-        ArgumentNullException.ThrowIfNull(pathName);
         PathByNetGuid[netGuid] = pathName;
         if (outerNetGuid.IsValid)
         {

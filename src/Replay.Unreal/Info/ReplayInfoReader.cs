@@ -22,9 +22,6 @@ public sealed class ReplayInfoReader
         ReplayInfo info,
         ReplayInfoSerializationMetadata metadata)
     {
-        ArgumentNullException.ThrowIfNull(info);
-        ArgumentNullException.ThrowIfNull(metadata);
-
         if (_archive.Length == 0)
         {
             throw new InvalidReplayInfoException("Replay info archive is empty.");

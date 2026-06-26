@@ -30,8 +30,6 @@ public sealed class ExportBindingRegistry
 
     public void SetCatalog(DescriptorCatalog descriptorCatalog)
     {
-        ArgumentNullException.ThrowIfNull(descriptorCatalog);
-
         Clear();
         _exportDescriptorsByPath.Clear();
         _exportKindsByDefaultObjectName.Clear();

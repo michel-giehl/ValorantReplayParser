@@ -27,7 +27,6 @@ public class ExportGroupDescriptor
         ExportGroupDescriptor? baseDescriptor = null,
         IReadOnlyList<FieldDescriptor>? fields = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
         _path = path;
         _categories = categories;
         _kind = kind;
@@ -83,7 +82,6 @@ public abstract class ExportGroupDescriptor<TDescriptor> : ExportGroupDescriptor
         Expression<Func<TDescriptor, TValue>> property,
         ExportCategory categories = ExportCategory.None)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(exportName);
         return AddField(exportName, GetPropertyName(property), handle: null, categories);
     }
 
@@ -101,7 +99,6 @@ public abstract class ExportGroupDescriptor<TDescriptor> : ExportGroupDescriptor
         Expression<Func<TDescriptor, TValue>> property,
         ExportCategory categories = ExportCategory.None)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(exportName);
         return AddField(exportName, GetPropertyName(property), handle, categories);
     }
 
@@ -155,8 +152,6 @@ public abstract class ExportGroupDescriptor<TDescriptor> : ExportGroupDescriptor
 
     private static string GetPropertyName<TValue>(Expression<Func<TDescriptor, TValue>> property)
     {
-        ArgumentNullException.ThrowIfNull(property);
-
         var expression = property.Body;
         if (expression is UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked } unary)
         {

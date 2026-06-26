@@ -18,7 +18,6 @@ public sealed class NullReplayEventSink : IReplayEventSink
 
     public void Emit(ReplayEvent replayEvent)
     {
-        ArgumentNullException.ThrowIfNull(replayEvent);
     }
 }
 

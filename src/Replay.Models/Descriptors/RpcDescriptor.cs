@@ -17,8 +17,6 @@ public sealed class RpcDescriptorBuilder
 
     internal RpcDescriptorBuilder(string name, string functionExportPath, ExportCategory categories)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(functionExportPath);
         _name = name;
         _functionExportPath = functionExportPath;
         Categories = categories;
@@ -36,7 +34,6 @@ public sealed class RpcDescriptorBuilder
 
     public RpcDescriptorBuilder Decode(IRpcDecoderDescriptor decoder)
     {
-        ArgumentNullException.ThrowIfNull(decoder);
         Decoder = decoder;
         return this;
     }
@@ -46,8 +43,6 @@ public sealed class RpcDescriptorBuilder
         string propertyName,
         ExportCategory categories = ExportCategory.None)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(exportName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
         _fieldBuilders.Add(new FieldDescriptorBuilder(exportName, propertyName, handle: null, categories));
         return this;
     }
@@ -57,7 +52,6 @@ public sealed class RpcDescriptorBuilder
         string propertyName,
         ExportCategory categories = ExportCategory.None)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(propertyName);
         _fieldBuilders.Add(new FieldDescriptorBuilder(exportName: null, propertyName, handle, categories));
         return this;
     }

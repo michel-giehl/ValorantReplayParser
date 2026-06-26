@@ -46,8 +46,6 @@ public sealed class ValorantReplayReader
         DescriptorCatalog? descriptorCatalog = null,
         ParseProfile? parseProfile = null)
     {
-        ArgumentNullException.ThrowIfNull(loggerFactory);
-
         return new ValorantReplayReader(
             new OozSharpOodleDecompressor(),
             new PlaybackPacketReplayDataChunkHandler(
@@ -62,8 +60,6 @@ public sealed class ValorantReplayReader
 
     public ReplayReaderContext Read(FBinaryArchive archive)
     {
-        ArgumentNullException.ThrowIfNull(archive);
-
         var context = new ReplayReaderContext(archive, _eventSink, _descriptorCatalog, _parseProfile);
         try
         {

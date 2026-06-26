@@ -85,12 +85,15 @@ public sealed class ReplayHeaderReader
 
     private static void ValidateCustomVersionCount(int customVersionCount)
     {
-        Validate(customVersionCount >= 0 && customVersionCount <= Constants.MaxCustomVersionCount,
+        Validate(customVersionCount is >= 0 and <= Constants.MaxCustomVersionCount,
             $"Unexpected custom version count: expected 0..{Constants.MaxCustomVersionCount}, got {customVersionCount}");
     }
 
     private static void Validate(bool predicate, string message)
     {
-        InvalidReplayHeaderException.ThrowIf(!predicate, message);
+        if (!predicate)
+        {
+            throw new InvalidReplayHeaderException($"Error while parsing replay header: {message}");
+        }
     }
 }

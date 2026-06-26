@@ -37,7 +37,6 @@ public sealed class FieldDescriptorBuilder
 
     public FieldDescriptorBuilder Decode(IFieldDecoderDescriptor decoder)
     {
-        ArgumentNullException.ThrowIfNull(decoder);
         Decoder = decoder;
         return this;
     }

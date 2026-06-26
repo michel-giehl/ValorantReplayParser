@@ -17,10 +17,6 @@ public sealed class ReplayDataChunkPayloadReader
 
     public FBinaryArchive ReadPayload(ReplayInfo info, ReplayDataChunkInfo dataChunk, FBinaryArchive chunkArchive)
     {
-        ArgumentNullException.ThrowIfNull(info);
-        ArgumentNullException.ThrowIfNull(dataChunk);
-        ArgumentNullException.ThrowIfNull(chunkArchive);
-
         if (info.Encrypted)
         {
             throw new InvalidReplayInfoException("Encrypted VALORANT replay-data chunks are not supported.");

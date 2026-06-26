@@ -11,13 +11,11 @@ public sealed class DescriptorCatalog
 
     public void Add(ExportGroupDescriptor descriptor)
     {
-        ArgumentNullException.ThrowIfNull(descriptor);
         _exportGroupDescriptors.Add(descriptor);
     }
 
     public void Add(ClassNetCacheDescriptor descriptor)
     {
-        ArgumentNullException.ThrowIfNull(descriptor);
         _classNetCacheDescriptors.Add(descriptor);
     }
 

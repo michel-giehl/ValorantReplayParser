@@ -21,7 +21,6 @@ public class ByteArchiveReader : FArchive
 
     public ByteArchiveReader(IMemoryOwner<byte> owner, int length)
     {
-        ArgumentNullException.ThrowIfNull(owner);
         if (length < 0 || length > owner.Memory.Length)
         {
             throw InvalidCount(nameof(ByteArchiveReader), 0, owner.Memory.Length, length);

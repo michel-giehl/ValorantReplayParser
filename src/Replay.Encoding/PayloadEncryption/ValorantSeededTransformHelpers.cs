@@ -19,7 +19,6 @@ internal static class ValorantSeededTransformHelpers
 
     internal static int CopyInputToOutput(FBitArchive input, Span<byte> output)
     {
-        ArgumentNullException.ThrowIfNull(input);
         if (input.BitsRemaining > int.MaxValue)
         {
             throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(CopyInputToOutput), input.Position,
