@@ -49,5 +49,4 @@ public class ReplayReaderContext
     public BunchPayloadPipeline BunchPayloadPipeline { get; }
     public ExportBindingRegistry ExportBindingRegistry { get; }
     public ParseProfile ParseProfile { get; set; }
-    public List<ReplayParseError> Errors { get; } = [];
 }

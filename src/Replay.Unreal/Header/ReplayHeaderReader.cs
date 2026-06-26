@@ -21,6 +21,24 @@ public sealed class ReplayHeaderReader
 
     public ReplayHeaderReadResult Read()
     {
+        try
+        {
+            return ReadCore();
+        }
+        catch (ArchiveReadException exception)
+        {
+            throw new InvalidReplayHeaderException(
+                $"Error while parsing replay header: {exception.Message}", exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw new InvalidReplayHeaderException(
+                $"Error while parsing replay header: {exception.Message}", exception);
+        }
+    }
+
+    private ReplayHeaderReadResult ReadCore()
+    {
         var netMagic = _archive.ReadUInt32();
         Validate(netMagic == Constants.NetworkMagic,
             $"Network magic mismatch: expected {Constants.NetworkMagic}, got {netMagic}");
@@ -33,7 +51,8 @@ public sealed class ReplayHeaderReader
             $"Unexpected network version: expected {Constants.ExpectedNetworkVersion}, got {header.NetworkVersion}");
 
         var customVersionCount = _archive.ReadInt32();
-        ValidateCustomVersionCount(customVersionCount);
+        Validate(customVersionCount is >= 0 and <= Constants.MaxCustomVersionCount,
+            $"Unexpected custom version count: expected 0..{Constants.MaxCustomVersionCount}, got {customVersionCount}");
         _archive.Skip(checked(customVersionCount * CustomVersionEntryByteCount));
 
         header.NetworkChecksum = _archive.ReadUInt32();
@@ -46,9 +65,9 @@ public sealed class ReplayHeaderReader
 
         var replayVersion = ReadReplayVersion();
 
-        // Valorant specific bytes. Unknown what this is for
-        var i = _archive.ReadUInt32();
-        _archive.Skip(i);
+        // Valorant specific bytes. Unknown what this is for.
+        var valorantSkipByteCount = _archive.ReadUInt32();
+        _archive.Skip(valorantSkipByteCount);
 
         var ueVersion = new UEVersion
         {
@@ -81,13 +100,6 @@ public sealed class ReplayHeaderReader
         Changelist = _archive.ReadUInt32(),
         Branch = _archive.ReadFString(),
     };
-
-
-    private static void ValidateCustomVersionCount(int customVersionCount)
-    {
-        Validate(customVersionCount is >= 0 and <= Constants.MaxCustomVersionCount,
-            $"Unexpected custom version count: expected 0..{Constants.MaxCustomVersionCount}, got {customVersionCount}");
-    }
 
     private static void Validate(bool predicate, string message)
     {

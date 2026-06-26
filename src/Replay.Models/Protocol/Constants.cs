@@ -8,8 +8,6 @@ public static class Constants
 
     public const uint ExpectedEngineNetworkProtocolVersion = 32;
 
-    public const uint MetadataMagic = 0x3D06B24E;
-
     public const int MaxPacketSizeInBits = 2 * 1024 * 8;
 
     public const int MaxGuidCount = 2048;

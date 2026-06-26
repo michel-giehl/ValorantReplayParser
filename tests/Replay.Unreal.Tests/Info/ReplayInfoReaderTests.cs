@@ -81,7 +81,7 @@ public class ReplayInfoReaderTests
     }
 
     [Test]
-    public void Read_FriendlyNameExceedsBound_ThrowsArchiveReadException()
+    public void Read_FriendlyNameExceedsBound_ThrowsInvalidReplayInfoException()
     {
         var bytes = new List<byte>();
         AddReplayInfoPrefix(bytes, fileVersion: 7, customVersion: 7);
@@ -92,7 +92,7 @@ public class ReplayInfoReaderTests
 
         var archive = new FBinaryArchive(bytes.ToArray());
 
-        Assert.Throws<ArchiveReadException>(() => Read(archive));
+        Assert.Throws<InvalidReplayInfoException>(() => Read(archive));
     }
 
     [Test]

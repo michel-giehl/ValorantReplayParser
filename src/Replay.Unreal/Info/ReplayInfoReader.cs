@@ -22,6 +22,26 @@ public sealed class ReplayInfoReader
         ReplayInfo info,
         ReplayInfoSerializationMetadata metadata)
     {
+        try
+        {
+            return ReadCore(info, metadata);
+        }
+        catch (ArchiveReadException exception)
+        {
+            throw new InvalidReplayInfoException(
+                $"Error while parsing replay info: {exception.Message}", exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw new InvalidReplayInfoException(
+                $"Error while parsing replay info: {exception.Message}", exception);
+        }
+    }
+
+    private ReplayInfoReadResult ReadCore(
+        ReplayInfo info,
+        ReplayInfoSerializationMetadata metadata)
+    {
         if (_archive.Length == 0)
         {
             throw new InvalidReplayInfoException("Replay info archive is empty.");

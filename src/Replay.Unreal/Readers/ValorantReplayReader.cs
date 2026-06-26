@@ -61,41 +61,20 @@ public sealed class ValorantReplayReader
     public ReplayReaderContext Read(FBinaryArchive archive)
     {
         var context = new ReplayReaderContext(archive, _eventSink, _descriptorCatalog, _parseProfile);
-        try
-        {
-            var info = new ReplayInfo();
-            var metadata = new ReplayInfoSerializationMetadata();
-            var replayInfoResult = new ReplayInfoReader(archive).Read(info, metadata);
+        var info = new ReplayInfo();
+        var metadata = new ReplayInfoSerializationMetadata();
+        var replayInfoResult = new ReplayInfoReader(archive).Read(info, metadata);
 
-            context.ReplayInfo = replayInfoResult.Info;
-            context.ReplayInfoSerializationMetadata = replayInfoResult.SerializationMetadata;
+        context.ReplayInfo = replayInfoResult.Info;
+        context.ReplayInfoSerializationMetadata = replayInfoResult.SerializationMetadata;
 
-            _chunkDispatcher.DispatchAll(context);
-            context.ReplayInfo.IsValid = context.ReplayInfo.HeaderChunkIndex != ReplayInfo.NoChunkIndex;
-            if (!context.ReplayInfo.IsValid)
-            {
-                throw new InvalidReplayInfoException("Replay info does not contain a valid header chunk.");
-            }
-        }
-        catch (Exception exception) when (IsReplayParseException(exception))
+        _chunkDispatcher.DispatchAll(context);
+        context.ReplayInfo.IsValid = context.ReplayInfo.HeaderChunkIndex != ReplayInfo.NoChunkIndex;
+        if (!context.ReplayInfo.IsValid)
         {
-            context.Errors.Add(ToParseError(exception));
+            throw new InvalidReplayInfoException("Replay info does not contain a valid header chunk.");
         }
 
         return context;
     }
-
-    private static bool IsReplayParseException(Exception exception) =>
-        exception is InvalidReplayInfoException
-            or InvalidReplayHeaderException
-            or ArchiveReadException
-            or OodleDecompressionException
-            or OverflowException;
-
-    private static ReplayParseError ToParseError(Exception exception) => exception switch
-    {
-        InvalidReplayHeaderException => new InvalidReplayHeaderError("Invalid replay header.", exception),
-        OodleDecompressionException => new InvalidReplayDataError("Invalid replay data.", exception),
-        _ => new InvalidReplayInfoError("Invalid replay info.", exception),
-    };
 }

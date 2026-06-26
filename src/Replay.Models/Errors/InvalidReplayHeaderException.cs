@@ -1,3 +1,4 @@
 namespace Replay.Models.Errors;
 
-public class InvalidReplayHeaderException(string message) : Exception(message);
+public sealed class InvalidReplayHeaderException(string message, Exception? innerException = null)
+    : ReplayParseException(message, innerException);

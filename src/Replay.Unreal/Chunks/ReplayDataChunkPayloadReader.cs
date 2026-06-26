@@ -17,6 +17,29 @@ public sealed class ReplayDataChunkPayloadReader
 
     public FBinaryArchive ReadPayload(ReplayInfo info, ReplayDataChunkInfo dataChunk, FBinaryArchive chunkArchive)
     {
+        try
+        {
+            return ReadPayloadCore(info, dataChunk, chunkArchive);
+        }
+        catch (ArchiveReadException exception)
+        {
+            throw new InvalidReplayDataException(
+                $"Error while parsing replay-data payload: {exception.Message}", exception);
+        }
+        catch (OodleDecompressionException exception)
+        {
+            throw new InvalidReplayDataException(
+                $"Error while decompressing replay-data payload: {exception.Message}", exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw new InvalidReplayDataException(
+                $"Error while parsing replay-data payload: {exception.Message}", exception);
+        }
+    }
+
+    private FBinaryArchive ReadPayloadCore(ReplayInfo info, ReplayDataChunkInfo dataChunk, FBinaryArchive chunkArchive)
+    {
         if (info.Encrypted)
         {
             throw new InvalidReplayInfoException("Encrypted VALORANT replay-data chunks are not supported.");
@@ -69,7 +92,7 @@ public sealed class ReplayDataChunkPayloadReader
         var decompressed = _oodleDecompressor.Decompress(compressedSource, dataChunk.MemorySizeInBytes);
         if (decompressed.Length != dataChunk.MemorySizeInBytes)
         {
-            throw new OodleDecompressionException(
+            throw new InvalidReplayDataException(
                 $"Oodle decompressed {decompressed.Length} bytes; expected {dataChunk.MemorySizeInBytes}.");
         }
 

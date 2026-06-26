@@ -83,7 +83,6 @@ public class ReplayReaderIntegrationTests
         var spawnedEvents = eventSink.Events.OfType<ActorSpawned>().ToArray();
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.WorldState.Channels, Is.Not.Empty);
             Assert.That(context.WorldState.ActorsByNetGuid, Is.Not.Empty);
             Assert.That(context.WorldState.ObjectsByNetGuid, Is.Not.Empty);
@@ -103,23 +102,18 @@ public class ReplayReaderIntegrationTests
         var replayBytes = ReadReplayBytes(replayFileName);
         var context = ReadReplay(replayBytes);
 
-        Assert.That(context.Errors, Is.Empty);
-
         Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, context));
     }
 
     private static void ReadReplayReportsUnsupportedPayloadTransform(string replayFileName, string branch)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
-        var context = ReadReplay(replayBytes);
+        var exception = Assert.Throws<InvalidReplayInfoException>(() => ReadReplay(replayBytes));
 
-        var error = context.Errors.Single();
         Assert.Multiple(() =>
         {
-            Assert.That(error, Is.TypeOf<InvalidReplayInfoError>());
-            Assert.That(error.Exception, Is.TypeOf<InvalidReplayInfoException>());
-            Assert.That(error.Exception!.Message, Does.Contain("Unsupported VALORANT property payload transform"));
-            Assert.That(error.Exception.Message, Does.Contain(branch));
+            Assert.That(exception!.Message, Does.Contain("Unsupported VALORANT property payload transform"));
+            Assert.That(exception.Message, Does.Contain(branch));
         });
     }
 
@@ -144,7 +138,6 @@ public class ReplayReaderIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.ReplayInfo.Compressed, Is.True);
             Assert.That(replayDataHandler.TotalPayloadBytes, Is.EqualTo(context.ReplayInfo.TotalDataSizeInBytes));
         });
@@ -159,7 +152,6 @@ public class ReplayReaderIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.NetGuidCache.ExportGroupsByPath, Is.Not.Empty);
             Assert.That(context.NetGuidCache.PathByNetGuid, Is.Not.Empty);
             Assert.That(stats.PacketCount, Is.GreaterThan(0));
@@ -179,30 +171,6 @@ public class ReplayReaderIntegrationTests
         });
     }
 
-    private static void ReadRawPacketsDecodesBaseReplayControllerSpawnLocation(string replayFileName)
-    {
-        var replayBytes = ReadReplayBytes(replayFileName);
-        var context = ReadReplay(replayBytes);
-        var replayControllers = context.ActorChannelOpens.Where(state =>
-            state.ArchetypePath?.EndsWith("Default__BaseReplayController_C", StringComparison.Ordinal) == true).ToArray();
-        var replayController = replayControllers.FirstOrDefault();
-
-        Assert.That(replayControllers, Is.Not.Empty, string.Join(", ",
-            context.ActorChannelOpens.Select(state => state.ArchetypePath).Where(path => path is not null)));
-
-        var location = replayController!.SpawnLocation;
-        Assert.Multiple(() =>
-        {
-            Assert.That(context.Errors, Is.Empty);
-            Assert.That(location, Is.Not.Null);
-            Assert.That(location!.Value.X, Is.EqualTo(2382.2d));
-            Assert.That(location.Value.Y, Is.EqualTo(-10417.9));
-            Assert.That(location.Value.Z, Is.EqualTo(400.0d));
-            Assert.That(location.Value.Bits, Is.EqualTo(18));
-            Assert.That(location.Value.ScaleFactor, Is.EqualTo(10));
-        });
-    }
-
     private static ReplayReaderContext ReadReplay(byte[] replayBytes)
     {
         var archive = new FBinaryArchive(replayBytes);
@@ -218,7 +186,6 @@ public class ReplayReaderIntegrationTests
     private static byte[] ReadHeaderPayload(byte[] replayBytes)
     {
         var context = ReadReplay(replayBytes);
-        Assert.That(context.Errors, Is.Empty);
 
         if (context.ReplayInfo.HeaderChunkIndex == ReplayInfo.NoChunkIndex)
         {

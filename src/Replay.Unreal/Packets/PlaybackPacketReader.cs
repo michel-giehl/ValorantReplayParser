@@ -37,6 +37,24 @@ public class PlaybackPacketReader
 
     public void Read()
     {
+        try
+        {
+            ReadCore();
+        }
+        catch (ArchiveReadException exception)
+        {
+            throw new InvalidReplayDataException(
+                $"Error while parsing replay-data packet stream: {exception.Message}", exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw new InvalidReplayDataException(
+                $"Error while parsing replay-data packet stream: {exception.Message}", exception);
+        }
+    }
+
+    private void ReadCore()
+    {
         ValidatePayloadTransformSupport(_context.ReplayVersion.Branch);
 
         while (!_archive.AtEnd)

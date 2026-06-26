@@ -33,7 +33,12 @@ public sealed class RawPacketReader
     {
         if (packetData.Length == 0)
         {
-            return new RawPacketReadResult { };
+            return new RawPacketReadResult
+            {
+                BunchCount = 0,
+                IsMalformed = false,
+                PartialErrorCount = 0,
+            };
         }
 
         var span = packetData.Span;

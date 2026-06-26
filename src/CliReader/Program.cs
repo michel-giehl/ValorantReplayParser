@@ -2,6 +2,7 @@ using CliReader;
 using CliReader.Logging;
 using Replay.Encoding.Archives;
 using Microsoft.Extensions.Logging;
+using Replay.Models.Errors;
 using Replay.Unreal.Readers;
 using Replay.Valorant.Descriptors;
 using Serilog;
@@ -34,22 +35,6 @@ try
         actorEventLogger,
         ValorantDescriptors.CreateCatalog()).Read(archive);
 
-    if (context.Errors.Count > 0)
-    {
-        foreach (var error in context.Errors)
-        {
-            if (error.Exception is null)
-            {
-                Log.Error("{ReplayParseError}", error.Message);
-                continue;
-            }
-
-            Log.Error(error.Exception, "{ReplayParseError}", error.Message);
-        }
-
-        return 1;
-    }
-
     Log.Information("Read replay {ReplayName}", context.ReplayInfo.FriendlyName);
     Log.Information("Version {ReplayVersion}", context.ReplayVersion.Branch);
     Log.Information("Chunks {ChunkCount}", context.ReplayInfo.Chunks.Count);
@@ -62,9 +47,9 @@ try
 
     return 0;
 }
-catch (Exception exception)
+catch (ReplayParseException exception)
 {
-    Log.Fatal(exception, "Failed to read replay.");
+    Log.Error(exception, "Failed to parse replay.");
     return 1;
 }
 finally

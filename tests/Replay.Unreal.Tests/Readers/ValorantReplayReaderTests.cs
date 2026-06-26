@@ -28,7 +28,6 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.ReplayInfo.HeaderChunkIndex, Is.EqualTo(0));
             Assert.That(context.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
             Assert.That(context.ReplayVersion.Branch, Is.EqualTo("++Ares-Core+release-12.10"));
@@ -51,14 +50,13 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.ReplayInfo.DataChunks, Has.Count.EqualTo(1));
             Assert.That(replayDataHandler.Payloads, Is.EqualTo(new[] { new byte[] { 0xAA, 0xBB } }));
         });
     }
 
     [Test]
-    public void Read_EncryptedReplayData_RecordsInvalidReplayInfoError()
+    public void Read_EncryptedReplayData_ThrowsInvalidReplayInfoException()
     {
         var archive = new FBinaryArchive(BuildReplayInfo(
             compressed: true,
@@ -70,33 +68,25 @@ public class ValorantReplayReaderTests
                 ReplayDataChunk(0, 10, BuildOodlePayload(1, [0x10])),
             ]));
 
-        var context = new ValorantReplayReader(new FakeOodleDecompressor([0xAA])).Read(archive);
+        var exception = Assert.Throws<InvalidReplayInfoException>(() =>
+            new ValorantReplayReader(new FakeOodleDecompressor([0xAA])).Read(archive));
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(context.Errors, Has.Count.EqualTo(1));
-            Assert.That(context.Errors[0], Is.TypeOf<InvalidReplayInfoError>());
-            Assert.That(context.Errors[0].Exception?.Message, Does.Contain("Encrypted VALORANT replay-data chunks are not supported"));
-        });
+        Assert.That(exception!.Message, Does.Contain("Encrypted VALORANT replay-data chunks are not supported"));
     }
 
     [Test]
-    public void Read_DuplicateHeaderChunks_RecordsInvalidReplayInfoError()
+    public void Read_DuplicateHeaderChunks_ThrowsInvalidReplayInfoException()
     {
         var archive = new FBinaryArchive(BuildReplayInfo(chunks: [HeaderChunk(BuildHeader()), HeaderChunk(BuildHeader())]));
 
-        var context = new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive);
+        var exception = Assert.Throws<InvalidReplayInfoException>(() =>
+            new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive));
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(context.Errors, Has.Count.EqualTo(1));
-            Assert.That(context.Errors[0], Is.TypeOf<InvalidReplayInfoError>());
-            Assert.That(context.Errors[0].Exception?.Message, Does.Contain("multiple header chunks"));
-        });
+        Assert.That(exception!.Message, Does.Contain("multiple header chunks"));
     }
 
     [Test]
-    public void Read_ReplayDataMetadataCannotReadPastDeclaredChunkSize_RecordsInvalidReplayInfoError()
+    public void Read_ReplayDataMetadataCannotReadPastDeclaredChunkSize_ThrowsInvalidReplayInfoException()
     {
         var archive = new FBinaryArchive(BuildReplayInfo(chunks:
         [
@@ -104,14 +94,7 @@ public class ValorantReplayReaderTests
             RawChunk(ReplayChunkType.ReplayData, 15, new byte[15]),
         ]));
 
-        var context = new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(context.Errors, Has.Count.EqualTo(1));
-            Assert.That(context.Errors[0], Is.TypeOf<InvalidReplayInfoError>());
-            Assert.That(context.Errors[0].Exception, Is.TypeOf<ArchiveReadException>());
-        });
+        Assert.Throws<InvalidReplayInfoException>(() => new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive));
     }
 
     [Test]
@@ -128,7 +111,6 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.ReplayInfo.DataChunks, Has.Count.EqualTo(2));
             Assert.That(context.ReplayInfo.DataChunks[0].Time1, Is.EqualTo(1u));
             Assert.That(context.ReplayInfo.DataChunks[0].Time2, Is.EqualTo(10u));
@@ -147,7 +129,6 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.ReplayInfo.Chunks, Has.Count.EqualTo(2));
             Assert.That(context.ReplayInfo.HeaderChunkIndex, Is.EqualTo(1));
             Assert.That(context.ReplayInfo.Chunks[1].DataOffset, Is.GreaterThan(context.ReplayInfo.Chunks[0].DataOffset));
@@ -169,7 +150,6 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.Errors, Is.Empty);
             Assert.That(context.PacketStats.PacketCount, Is.EqualTo(1));
             Assert.That(context.PacketStats.TotalPacketBytes, Is.EqualTo(packet.Length));
             Assert.That(context.PacketStats.BunchCount, Is.EqualTo(1));

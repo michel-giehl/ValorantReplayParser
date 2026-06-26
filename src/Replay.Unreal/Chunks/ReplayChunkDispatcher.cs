@@ -35,6 +35,24 @@ public sealed class ReplayChunkDispatcher
 
     private void DispatchNext(ReplayReaderContext context)
     {
+        try
+        {
+            DispatchNextCore(context);
+        }
+        catch (ArchiveReadException exception)
+        {
+            throw new InvalidReplayInfoException(
+                $"Error while parsing replay chunk: {exception.Message}", exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw new InvalidReplayInfoException(
+                $"Error while parsing replay chunk: {exception.Message}", exception);
+        }
+    }
+
+    private void DispatchNextCore(ReplayReaderContext context)
+    {
         var typeOffset = context.Archive.Position;
         var chunkType = (ReplayChunkType)context.Archive.ReadUInt32();
         var chunk = new ReplayChunkInfo
