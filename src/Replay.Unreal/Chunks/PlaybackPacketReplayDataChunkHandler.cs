@@ -28,7 +28,6 @@ public sealed class PlaybackPacketReplayDataChunkHandler : IReplayDataChunkHandl
             replayDataArchive,
             _loggerFactory?.CreateLogger<PlaybackPacketReader>(),
             _loggerFactory);
-        _logger.LogDebug("Reading playback packets from replay-data chunk {ChunkIndex}.", dataChunk.ChunkIndex);
         reader.Read();
     }
 }

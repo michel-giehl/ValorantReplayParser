@@ -29,7 +29,6 @@ public class ExportDataReader
 
     public void Read()
     {
-        _logger.LogTrace("Reading replay export data at offset {Offset}.", _archive.Position);
         ReadNetFieldExports();
         ReadExportGuids();
     }
@@ -39,11 +38,9 @@ public class ExportDataReader
         var numLayoutCmdExports = _archive.ReadIntPacked();
         if (numLayoutCmdExports > 0)
         {
+#pragma warning disable CA1873
             _logger.LogDebug("Reading {ExportCount} net-field layout command exports.", numLayoutCmdExports);
-        }
-        else
-        {
-            _logger.LogTrace("Reading 0 net-field layout command exports.");
+#pragma warning restore CA1873
         }
 
         Dictionary<uint, NetFieldExportGroup>? changedGroups = null;
@@ -52,10 +49,6 @@ public class ExportDataReader
             var pathNameIndex = _archive.ReadIntPacked();
             var isExported = _archive.ReadIntPacked() == 1;
 
-            _logger.LogTrace(
-                "Read net-field export for path index {PathNameIndex}; exported group: {IsExported}.",
-                pathNameIndex,
-                isExported);
             NetFieldExportGroup group;
             if (isExported)
             {
@@ -122,7 +115,6 @@ public class ExportDataReader
     {
         var pathName = _archive.ReadFString();
         var numExports = _archive.ReadIntPacked();
-        _logger.LogDebug("Read exported net-field group {PathName} with {ExportCount} exports.", pathName, numExports);
 
         return new NetFieldExportGroup
         {
@@ -144,7 +136,6 @@ public class ExportDataReader
         var handle = _archive.ReadIntPacked();
         var compatibleChecksum = _archive.ReadUInt32();
         var name = _archive.ReadFName();
-        _logger.LogTrace("Read net-field export {Name} with handle {Handle}.", name, handle);
 
         return new NetFieldExport
         {
@@ -159,12 +150,11 @@ public class ExportDataReader
         var numGuids = _archive.ReadIntPacked();
         if (numGuids > 0)
         {
+#pragma warning disable CA1873
             _logger.LogDebug("Reading {GuidCount} exported net GUID payloads.", numGuids);
+#pragma warning restore CA1873
         }
-        else
-        {
-            _logger.LogTrace("Reading 0 exported net GUID payloads.");
-        }
+        
         for (var i = 0; i < numGuids; i++)
         {
             var size = _archive.ReadInt32();

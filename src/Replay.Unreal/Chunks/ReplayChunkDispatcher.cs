@@ -27,8 +27,6 @@ public sealed class ReplayChunkDispatcher
 
     public void DispatchAll(ReplayReaderContext context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
         while (!context.Archive.AtEnd)
         {
             DispatchNext(context);
@@ -53,6 +51,8 @@ public sealed class ReplayChunkDispatcher
         var chunkArchive = new FBinaryArchive(chunkBytes);
         var chunkEndOffset = checked(chunk.DataOffset + chunk.SizeInBytes);
 
+// Logs are cheap and only get called a few hundred times
+#pragma warning disable CA1873
         _logger.LogDebug("Dispatching replay chunk {ChunkIndex} of type {ChunkType}.", chunkIndex, chunkType);
 
         switch (chunkType)
@@ -71,10 +71,11 @@ public sealed class ReplayChunkDispatcher
                 break;
             case ReplayChunkType.Unknown:
             default:
-                _logger.LogDebug("Skipping unknown replay chunk {ChunkIndex} of type {ChunkType}.", chunkIndex, chunkType);
+                _logger.LogDebug("Skipping unknown replay chunk {ChunkIndex} of type {ChunkType}.", chunkIndex,
+                    chunkType);
                 break;
         }
-
+#pragma warning restore CA1873
         context.Archive.Seek(chunkEndOffset);
     }
 
@@ -115,7 +116,8 @@ public sealed class ReplayChunkDispatcher
                 $"Replay-data memory size {dataChunk.MemorySizeInBytes} is negative.");
         }
 
-        context.ReplayInfo.TotalDataSizeInBytes = checked(context.ReplayInfo.TotalDataSizeInBytes + dataChunk.MemorySizeInBytes);
+        context.ReplayInfo.TotalDataSizeInBytes =
+            checked(context.ReplayInfo.TotalDataSizeInBytes + dataChunk.MemorySizeInBytes);
         context.ReplayInfo.DataChunks.Add(dataChunk);
 
         var replayDataArchive = _replayDataChunkPayloadReader.ReadPayload(context.ReplayInfo, dataChunk, chunkArchive);

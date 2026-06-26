@@ -70,7 +70,6 @@ public class PlaybackPacketReader
 
         var timeSeconds = _archive.ReadSingle();
         _context.CurrentTimeSeconds = timeSeconds;
-        _logger.LogTrace("Read playback frame at {TimeSeconds} seconds.", timeSeconds);
 
         new ExportDataReader(
             _archive,
@@ -131,7 +130,6 @@ public class PlaybackPacketReader
             var netGuid = _archive.ReadIntPacked();
             var byteCount = checked((int)((numBits + 7) >> 3));
 
-            _logger.LogTrace("Skipping external data for net GUID {NetGuid} with {BitCount} bits.", netGuid, numBits);
             _archive.Skip(byteCount);
         }
     }

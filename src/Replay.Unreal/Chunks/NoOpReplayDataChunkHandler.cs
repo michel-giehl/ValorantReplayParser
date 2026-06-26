@@ -17,9 +17,11 @@ public sealed class NoOpReplayDataChunkHandler : IReplayDataChunkHandler
 
     public void Handle(ReplayReaderContext context, ReplayDataChunkInfo dataChunk, FBinaryArchive replayDataArchive)
     {
+#pragma warning disable CA1873
         _logger.LogDebug(
             "Skipping replay-data chunk {ChunkIndex} with {ByteCount} decompressed bytes.",
             dataChunk.ChunkIndex,
             replayDataArchive.Length);
+#pragma warning restore CA1873
     }
 }

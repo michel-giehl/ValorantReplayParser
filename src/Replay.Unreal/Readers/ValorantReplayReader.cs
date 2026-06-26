@@ -67,7 +67,6 @@ public sealed class ValorantReplayReader
         var context = new ReplayReaderContext(archive, _eventSink, _descriptorCatalog, _parseProfile);
         try
         {
-            _logger.LogDebug("Reading VALORANT replay info.");
             var info = new ReplayInfo();
             var metadata = new ReplayInfoSerializationMetadata();
             var replayInfoResult = new ReplayInfoReader(archive).Read(info, metadata);
@@ -75,7 +74,6 @@ public sealed class ValorantReplayReader
             context.ReplayInfo = replayInfoResult.Info;
             context.ReplayInfoSerializationMetadata = replayInfoResult.SerializationMetadata;
 
-            _logger.LogDebug("Dispatching VALORANT replay chunks.");
             _chunkDispatcher.DispatchAll(context);
             context.ReplayInfo.IsValid = context.ReplayInfo.HeaderChunkIndex != ReplayInfo.NoChunkIndex;
             if (!context.ReplayInfo.IsValid)

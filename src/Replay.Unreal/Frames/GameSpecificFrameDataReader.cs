@@ -35,7 +35,6 @@ public class GameSpecificFrameDataReader
             return;
         }
 
-        _logger.LogTrace("Skipping {ByteCount} bytes of game-specific frame data.", skipExternalOffset);
         _archive.Skip(checked((long)skipExternalOffset));
     }
 }
