@@ -14,8 +14,4 @@ public sealed class WorldState
 
     public ObjectState? GetObject(uint netGuid) =>
         ObjectsByNetGuid.GetValueOrDefault(netGuid);
-
-    public void RecordParseError(string message)
-    {
-    }
 }

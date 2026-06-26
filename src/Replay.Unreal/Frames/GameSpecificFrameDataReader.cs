@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Models.Replay;
 using Replay.Unreal.Readers;
@@ -10,16 +8,13 @@ public class GameSpecificFrameDataReader
 {
     private readonly ReplayReaderContext _context;
     private readonly FBinaryArchive _archive;
-    private readonly ILogger<GameSpecificFrameDataReader> _logger;
 
     public GameSpecificFrameDataReader(
         ReplayReaderContext context,
-        FBinaryArchive archive,
-        ILogger<GameSpecificFrameDataReader>? logger = null)
+        FBinaryArchive archive)
     {
         _context = context;
         _archive = archive;
-        _logger = logger ?? NullLogger<GameSpecificFrameDataReader>.Instance;
     }
 
     public void Read()

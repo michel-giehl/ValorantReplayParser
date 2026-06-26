@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
@@ -10,6 +11,7 @@ public sealed class FieldDecodeContext
     public WorldState? WorldState { get; init; }
     public NetGuidCache? NetGuidCache { get; init; }
     public IReplayEventSink? EventSink { get; init; }
+    public ILoggerFactory? LoggerFactory { get; init; }
     public int CurrentPacketId { get; init; }
     public float CurrentTimeSeconds { get; init; }
     public uint ChannelIndex { get; init; }

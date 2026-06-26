@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Encoding.PayloadEncryption;
 using Replay.Models.Errors;
@@ -18,21 +17,15 @@ public class PlaybackPacketReader
     private readonly ReplayReaderContext _context;
     private readonly ReplayDataChunkInfo _dataChunk;
     private readonly FBinaryArchive _archive;
-    private readonly ILogger<PlaybackPacketReader> _logger;
-    private readonly ILoggerFactory? _loggerFactory;
 
     public PlaybackPacketReader(
         ReplayReaderContext context,
         ReplayDataChunkInfo dataChunk,
-        FBinaryArchive archive,
-        ILogger<PlaybackPacketReader>? logger = null,
-        ILoggerFactory? loggerFactory = null)
+        FBinaryArchive archive)
     {
         _context = context;
         _dataChunk = dataChunk;
         _archive = archive;
-        _logger = logger ?? NullLogger<PlaybackPacketReader>.Instance;
-        _loggerFactory = loggerFactory;
     }
 
     public void Read()
@@ -92,12 +85,12 @@ public class PlaybackPacketReader
         new ExportDataReader(
             _archive,
             _context.NetGuidCache,
-            _loggerFactory?.CreateLogger<ExportDataReader>(),
+            _context.LoggerFactory?.CreateLogger<ExportDataReader>(),
             _context.ExportBindingRegistry.OnExportGroupChanged).Read();
 
-        new StreamingLevelFixesReader(_context, _archive, _loggerFactory?.CreateLogger<StreamingLevelFixesReader>()).Read();
+        new StreamingLevelFixesReader(_context, _archive).Read();
         ReadExternalData();
-        new GameSpecificFrameDataReader(_context, _archive, _loggerFactory?.CreateLogger<GameSpecificFrameDataReader>()).Read();
+        new GameSpecificFrameDataReader(_context, _archive).Read();
 
         while (true)
         {

@@ -23,7 +23,7 @@ public class FieldPayloadParserTests
             ExportGroupPath = "/Game/Test.Test_C",
         };
 
-        FieldPayloadParser.ParseContentPayload(payload, boundGroup, ref context);
+        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
 
         Assert.That(payload.AtEnd, Is.True);
     }
@@ -46,7 +46,7 @@ public class FieldPayloadParserTests
             ExportGroupPath = "/Game/Test.Test_C",
         };
 
-        FieldPayloadParser.ParseContentPayload(payload, boundGroup, ref context);
+        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
 
         Assert.That(payload.AtEnd, Is.True);
     }
@@ -69,7 +69,7 @@ public class FieldPayloadParserTests
             ExportGroupPath = "/Game/Test.Test_C",
         };
 
-        FieldPayloadParser.ParseContentPayload(payload, boundGroup, ref context);
+        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
 
         Assert.That(payload.AtEnd, Is.True);
     }
@@ -95,7 +95,7 @@ public class FieldPayloadParserTests
             ExportGroupPath = "/Game/Test.Test_C",
         };
 
-        FieldPayloadParser.ParseContentPayload(payload, boundGroup, ref context);
+        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
 
         Assert.That(payload.AtEnd, Is.True);
     }
@@ -122,7 +122,7 @@ public class FieldPayloadParserTests
             ExportGroupPath = "/Game/Test.Test_C",
         };
 
-        FieldPayloadParser.ParseContentPayload(payload, boundGroup, ref context);
+        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
 
         Assert.That(payload.AtEnd, Is.True);
     }
@@ -145,7 +145,7 @@ public class FieldPayloadParserTests
             ExportGroupPath = "/Game/Test.Test_C",
         };
 
-        FieldPayloadParser.ParseContentPayload(payload, boundGroup, ref context);
+        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
 
         Assert.That(payload.AtEnd, Is.True);
     }
@@ -179,7 +179,7 @@ public class FieldPayloadParserTests
             ExportGroupPath = "/Game/Test.Test_C_ClassNetCache",
         };
 
-        FieldPayloadParser.ParseClassNetCachePayload(payload, boundCache, ref context);
+        new FieldPayloadParser().ParseClassNetCachePayload(payload, boundCache, ref context);
 
         Assert.That(payload.AtEnd, Is.True);
     }

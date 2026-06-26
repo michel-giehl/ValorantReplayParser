@@ -110,12 +110,6 @@ public class FBinaryArchive : ByteArchiveReader
     {
         var count = ReadInt32();
         ValidateArrayCount(count, Constants.MaxCustomVersionCount, nameof(ReadCustomVersionContainer));
-        if (count > Constants.MaxCustomVersionCount)
-        {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadCustomVersionContainer),
-                Position, Length, count,
-                $"Custom version count {count} exceeds maximum {Constants.MaxCustomVersionCount}.");
-        }
 
         var container = new CustomVersionContainer();
         for (var i = 0; i < count; i++)

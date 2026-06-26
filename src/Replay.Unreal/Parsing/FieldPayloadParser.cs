@@ -1,18 +1,19 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
 
 namespace Replay.Unreal.Parsing;
 
-public static class FieldPayloadParser
+public class FieldPayloadParser
 {
-    public static void ParseContentPayload(
+    public void ParseContentPayload(
         FBitArchive payload,
         BoundExportGroup boundGroup,
-        ref FieldDecodeContext context,
-        bool readPropertyChecksum = true) =>
+        ref FieldDecodeContext context) =>
         ParseRepLayoutProperties(payload, boundGroup, ref context);
 
-    public static void ParseRepLayoutProperties(
+    public void ParseRepLayoutProperties(
         FBitArchive payload,
         BoundExportGroup boundGroup,
         ref FieldDecodeContext context,
@@ -20,8 +21,9 @@ public static class FieldPayloadParser
     {
         if (boundGroup.Grammar is FieldStreamGrammar.ClassNetCache)
         {
-            context.WorldState?.RecordParseError(
-                $"Export group '{context.ExportGroupPath}' cannot be parsed with class-net-cache grammar as content payload.");
+            GetLogger(context).LogWarning(
+                "Export group '{ExportGroupPath}' cannot be parsed with class-net-cache grammar as content payload.",
+                context.ExportGroupPath ?? boundGroup.SourceDescriptor.Path);
             payload.SkipRemaining();
             return;
         }
@@ -40,7 +42,7 @@ public static class FieldPayloadParser
         }
     }
 
-    private static bool ParseProperty(FBitArchive payload, BoundExportGroup boundGroup, ref FieldDecodeContext context)
+    private bool ParseProperty(FBitArchive payload, BoundExportGroup boundGroup, ref FieldDecodeContext context)
     {
         var encodedHandle = payload.ReadIntPacked();
         if (encodedHandle == 0)
@@ -52,8 +54,11 @@ public static class FieldPayloadParser
         var payloadBits = payload.ReadIntPacked();
         if (payloadBits > int.MaxValue || payload.BitsRemaining < payloadBits)
         {
-            context.WorldState?.RecordParseError(
-                $"Malformed field payload: handle={handle}, bits={payloadBits}, remaining={payload.BitsRemaining}");
+            GetLogger(context).LogWarning(
+                "Malformed field payload: handle={Handle}, bits={PayloadBits}, remaining={PayloadBitsRemaining}",
+                handle,
+                payloadBits,
+                payload.BitsRemaining);
             payload.SkipRemaining();
             return true;
         }
@@ -78,15 +83,17 @@ public static class FieldPayloadParser
         return false;
     }
 
-    public static void ParseClassNetCachePayload(
+    public void ParseClassNetCachePayload(
         FBitArchive payload,
         BoundClassNetCache boundCache,
         ref FieldDecodeContext context)
     {
         if (boundCache.Grammar is not FieldStreamGrammar.ClassNetCache)
         {
-            context.WorldState?.RecordParseError(
-                $"Class net cache '{boundCache.Path}' has unsupported grammar '{boundCache.Grammar}'.");
+            GetLogger(context).LogWarning(
+                "Class net cache '{BoundCachePath}' has unsupported grammar '{FieldStreamGrammar}'.",
+                boundCache.Path,
+                boundCache.Grammar);
             payload.SkipRemaining();
             return;
         }
@@ -103,8 +110,11 @@ public static class FieldPayloadParser
             var payloadBits = payload.ReadIntPacked();
             if (payloadBits > int.MaxValue || payload.BitsRemaining < payloadBits)
             {
-                context.WorldState?.RecordParseError(
-                    $"Malformed class net cache payload: handle={handle}, bits={payloadBits}, remaining={payload.BitsRemaining}");
+                GetLogger(context).LogWarning(
+                    "Malformed class net cache payload: handle={Handle}, bits={PayloadBits}, remaining={PayloadBitsRemaining}",
+                    handle,
+                    payloadBits,
+                    payload.BitsRemaining);
                 payload.SkipRemaining();
                 return;
             }
@@ -144,7 +154,7 @@ public static class FieldPayloadParser
         }
     }
 
-    private static FieldBinding GetBinding(int handle, BoundExportGroup boundGroup)
+    private FieldBinding GetBinding(int handle, BoundExportGroup boundGroup)
     {
         if ((uint)handle < (uint)boundGroup.FieldsByHandle.Length)
         {
@@ -153,4 +163,7 @@ public static class FieldPayloadParser
 
         return default;
     }
+
+    private static ILogger<FieldPayloadParser> GetLogger(FieldDecodeContext context) =>
+        context.LoggerFactory?.CreateLogger<FieldPayloadParser>() ?? NullLogger<FieldPayloadParser>.Instance;
 }

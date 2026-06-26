@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Events;
@@ -5,6 +6,7 @@ using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Channels;
 using Replay.Unreal.PackageMap;
 using Replay.Unreal.Parsing;
+using Replay.Unreal.Readers;
 using Replay.Unreal.World;
 
 namespace Replay.Unreal.Bunches;
@@ -15,23 +17,65 @@ internal sealed class ContentBlockFramer
     private readonly NetGuidCache _netGuidCache;
     private readonly WorldState _worldState;
     private readonly IReplayEventSink _eventSink;
+    private readonly FieldPayloadParser _fieldPayloadParser;
     private readonly ExportBindingRegistry _bindingRegistry;
     private readonly IPropertyPayloadDecoder? _propertyPayloadDecoder;
+    private readonly ILoggerFactory? _loggerFactory;
 
     public ContentBlockFramer(
         PackageMapReader packageMapReader,
         NetGuidCache netGuidCache,
         WorldState worldState,
         IReplayEventSink eventSink,
+        FieldPayloadParser fieldPayloadParser,
         ExportBindingRegistry? bindingRegistry = null,
         IPropertyPayloadDecoder? propertyPayloadDecoder = null)
+        : this(
+            packageMapReader,
+            netGuidCache,
+            worldState,
+            eventSink,
+            fieldPayloadParser,
+            bindingRegistry,
+            propertyPayloadDecoder,
+            loggerFactory: null)
+    {
+    }
+
+    public ContentBlockFramer(
+        PackageMapReader packageMapReader,
+        ReplayReaderContext context,
+        IPropertyPayloadDecoder? propertyPayloadDecoder = null)
+        : this(
+            packageMapReader,
+            context.NetGuidCache,
+            context.WorldState,
+            context.EventSink,
+            new FieldPayloadParser(),
+            context.ExportBindingRegistry,
+            propertyPayloadDecoder,
+            context.LoggerFactory)
+    {
+    }
+
+    private ContentBlockFramer(
+        PackageMapReader packageMapReader,
+        NetGuidCache netGuidCache,
+        WorldState worldState,
+        IReplayEventSink eventSink,
+        FieldPayloadParser fieldPayloadParser,
+        ExportBindingRegistry? bindingRegistry,
+        IPropertyPayloadDecoder? propertyPayloadDecoder,
+        ILoggerFactory? loggerFactory)
     {
         _packageMapReader = packageMapReader;
         _netGuidCache = netGuidCache;
         _worldState = worldState;
         _eventSink = eventSink;
+        _fieldPayloadParser = fieldPayloadParser;
         _bindingRegistry = bindingRegistry ?? new ExportBindingRegistry();
         _propertyPayloadDecoder = propertyPayloadDecoder;
+        _loggerFactory = loggerFactory;
     }
 
     public void FrameContentBlocks(
@@ -359,7 +403,7 @@ internal sealed class ContentBlockFramer
         }
 
         var beforeRepLayout = contentPayload.BitsRemaining;
-        FieldPayloadParser.ParseRepLayoutProperties(contentPayload, boundGroup, ref context);
+        _fieldPayloadParser.ParseRepLayoutProperties(contentPayload, boundGroup, ref context);
         stats.ContentPayloadBitsParsed += beforeRepLayout - contentPayload.BitsRemaining;
         return true;
     }
@@ -383,7 +427,7 @@ internal sealed class ContentBlockFramer
         }
 
         var beforeClassNetCache = contentPayload.BitsRemaining;
-        FieldPayloadParser.ParseClassNetCachePayload(contentPayload, boundCache, ref context);
+        _fieldPayloadParser.ParseClassNetCachePayload(contentPayload, boundCache, ref context);
         stats.ContentPayloadBitsParsed += beforeClassNetCache - contentPayload.BitsRemaining;
     }
 
@@ -403,6 +447,7 @@ internal sealed class ContentBlockFramer
         WorldState = _worldState,
         NetGuidCache = _netGuidCache,
         EventSink = _eventSink,
+        LoggerFactory = _loggerFactory,
         CurrentPacketId = packetId,
         CurrentTimeSeconds = timeSeconds,
         ChannelIndex = channel.ChannelIndex,

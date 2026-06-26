@@ -10,7 +10,7 @@ namespace Replay.Unreal.Bunches.Payload;
 public sealed class BunchPayloadPipeline
 {
     private readonly ReplayReaderContext _context;
-    private readonly IBunchPayloadProcessor _processor;
+    private readonly BunchPayloadProcessor _processor;
 
     public BunchPayloadPipeline(ReplayReaderContext context)
     {
@@ -32,17 +32,15 @@ public sealed class BunchPayloadPipeline
         }
     }
 
-    private static BunchPayloadProcessor CreateProcessor(ReplayReaderContext context)
+    private BunchPayloadProcessor CreateProcessor(ReplayReaderContext context)
     {
         var packageMapReader = new PackageMapReader(context.NetGuidCache);
         var partialBunchAccumulator = new PartialBunchAccumulator();
         var propertyPayloadDecoder = new PropertyPayloadDecoder(PayloadTransformRegistry.CreateDefault());
+
         var contentBlockFramer = new ContentBlockFramer(
             packageMapReader,
-            context.NetGuidCache,
-            context.WorldState,
-            context.EventSink,
-            context.ExportBindingRegistry,
+            context,
             propertyPayloadDecoder);
         var newActorSerializer = new NewActorSerializer(packageMapReader, context.NetGuidCache);
         var lifecycleService = new ActorChannelLifecycleService(context);

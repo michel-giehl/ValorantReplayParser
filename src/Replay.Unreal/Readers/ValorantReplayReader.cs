@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
 using Replay.Models.Descriptors;
@@ -14,25 +13,24 @@ namespace Replay.Unreal.Readers;
 public sealed class ValorantReplayReader
 {
     private readonly ReplayChunkDispatcher _chunkDispatcher;
-    private readonly ILogger<ValorantReplayReader> _logger;
     private readonly IReplayEventSink _eventSink;
     private readonly DescriptorCatalog? _descriptorCatalog;
     private readonly ParseProfile _parseProfile;
+    private readonly ILoggerFactory? _loggerFactory;
 
     public ValorantReplayReader(
         IOodleDecompressor? oodleDecompressor = null,
         IReplayDataChunkHandler? replayDataChunkHandler = null,
-        ILogger<ValorantReplayReader>? logger = null,
-        ILogger<ReplayChunkDispatcher>? chunkDispatcherLogger = null,
         IReplayEventSink? eventSink = null,
         DescriptorCatalog? descriptorCatalog = null,
-        ParseProfile? parseProfile = null)
+        ParseProfile? parseProfile = null,
+        ILoggerFactory? loggerFactory = null)
     {
-        _chunkDispatcher = new ReplayChunkDispatcher(oodleDecompressor, replayDataChunkHandler, chunkDispatcherLogger);
-        _logger = logger ?? NullLogger<ValorantReplayReader>.Instance;
+        _chunkDispatcher = new ReplayChunkDispatcher(oodleDecompressor, replayDataChunkHandler);
         _eventSink = eventSink ?? NullReplayEventSink.Instance;
         _descriptorCatalog = descriptorCatalog;
         _parseProfile = parseProfile ?? ParseProfile.Default;
+        _loggerFactory = loggerFactory;
     }
 
     public static ValorantReplayReader CreateDefault(
@@ -48,19 +46,16 @@ public sealed class ValorantReplayReader
     {
         return new ValorantReplayReader(
             new OozSharpOodleDecompressor(),
-            new PlaybackPacketReplayDataChunkHandler(
-                loggerFactory.CreateLogger<PlaybackPacketReplayDataChunkHandler>(),
-                loggerFactory),
-            loggerFactory.CreateLogger<ValorantReplayReader>(),
-            loggerFactory.CreateLogger<ReplayChunkDispatcher>(),
+            new PlaybackPacketReplayDataChunkHandler(),
             eventSink,
             descriptorCatalog,
-            parseProfile);
+            parseProfile,
+            loggerFactory);
     }
 
     public ReplayReaderContext Read(FBinaryArchive archive)
     {
-        var context = new ReplayReaderContext(archive, _eventSink, _descriptorCatalog, _parseProfile);
+        var context = new ReplayReaderContext(archive, _eventSink, _descriptorCatalog, _parseProfile, _loggerFactory);
         var info = new ReplayInfo();
         var metadata = new ReplayInfoSerializationMetadata();
         var replayInfoResult = new ReplayInfoReader(archive).Read(info, metadata);

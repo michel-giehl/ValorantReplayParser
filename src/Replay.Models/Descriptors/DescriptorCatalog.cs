@@ -19,18 +19,6 @@ public sealed class DescriptorCatalog
         _classNetCacheDescriptors.Add(descriptor);
     }
 
-    public void AddExportGroup<TDescriptor>()
-        where TDescriptor : ExportGroupDescriptor, new()
-    {
-        Add(new TDescriptor());
-    }
-
-    public void AddClassNetCache<TDescriptor>()
-        where TDescriptor : ClassNetCacheDescriptor, new()
-    {
-        Add(new TDescriptor());
-    }
-
     public void Clear()
     {
         _exportGroupDescriptors.Clear();

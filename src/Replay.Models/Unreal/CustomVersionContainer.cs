@@ -8,12 +8,9 @@ public sealed class CustomVersionContainer
 
     public int? GetVersion(Guid key)
     {
-        foreach (var version in Versions)
+        foreach (var version in Versions.Where(version => version.Key == key))
         {
-            if (version.Key == key)
-            {
-                return version.Version;
-            }
+            return version.Version;
         }
 
         return null;
@@ -23,17 +20,16 @@ public sealed class CustomVersionContainer
     {
         for (var i = 0; i < Versions.Count; i++)
         {
-            if (Versions[i].Key == key)
+            if (Versions[i].Key != key)
             {
-                Versions[i] = new CustomVersionEntry(key, version, friendlyName);
-                return;
+                continue;
             }
+            Versions[i] = new CustomVersionEntry(key, version, friendlyName);
+            return;
         }
 
         Versions.Add(new CustomVersionEntry(key, version, friendlyName));
     }
-
-    public void Clear() => Versions.Clear();
 
     public CustomVersionContainer Clone()
     {

@@ -8,17 +8,13 @@ namespace Replay.Unreal.Chunks;
 
 public sealed class NoOpReplayDataChunkHandler : IReplayDataChunkHandler
 {
-    private readonly ILogger<NoOpReplayDataChunkHandler> _logger;
-
-    public NoOpReplayDataChunkHandler(ILogger<NoOpReplayDataChunkHandler>? logger = null)
-    {
-        _logger = logger ?? NullLogger<NoOpReplayDataChunkHandler>.Instance;
-    }
-
     public void Handle(ReplayReaderContext context, ReplayDataChunkInfo dataChunk, FBinaryArchive replayDataArchive)
     {
+        var logger = context.LoggerFactory?.CreateLogger<NoOpReplayDataChunkHandler>()
+            ?? NullLogger<NoOpReplayDataChunkHandler>.Instance;
+
 #pragma warning disable CA1873
-        _logger.LogDebug(
+        logger.LogDebug(
             "Skipping replay-data chunk {ChunkIndex} with {ByteCount} decompressed bytes.",
             dataChunk.ChunkIndex,
             replayDataArchive.Length);

@@ -87,6 +87,7 @@ public class ContentBlockFramerTests
             netGuidCache,
             new WorldState(),
             new NoOpReplayEventSink(),
+            new FieldPayloadParser(),
             registry,
             decoder);
 

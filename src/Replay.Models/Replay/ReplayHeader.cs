@@ -4,8 +4,6 @@ namespace Replay.Models.Replay;
 
 public class ReplayHeader
 {
-    private uint FileMagic { get; set; }
-
     public uint NetworkVersion { get; set; }
 
     public uint NetworkChecksum { get; set; }

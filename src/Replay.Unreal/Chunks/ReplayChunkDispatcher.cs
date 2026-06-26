@@ -13,31 +13,31 @@ public sealed class ReplayChunkDispatcher
 {
     private readonly ReplayDataChunkPayloadReader _replayDataChunkPayloadReader;
     private readonly IReplayDataChunkHandler _replayDataChunkHandler;
-    private readonly ILogger<ReplayChunkDispatcher> _logger;
 
     public ReplayChunkDispatcher(
         IOodleDecompressor? oodleDecompressor = null,
-        IReplayDataChunkHandler? replayDataChunkHandler = null,
-        ILogger<ReplayChunkDispatcher>? logger = null)
+        IReplayDataChunkHandler? replayDataChunkHandler = null)
     {
         _replayDataChunkPayloadReader = new ReplayDataChunkPayloadReader(oodleDecompressor);
         _replayDataChunkHandler = replayDataChunkHandler ?? new PlaybackPacketReplayDataChunkHandler();
-        _logger = logger ?? NullLogger<ReplayChunkDispatcher>.Instance;
     }
 
     public void DispatchAll(ReplayReaderContext context)
     {
+        var logger = context.LoggerFactory?.CreateLogger<ReplayChunkDispatcher>()
+            ?? NullLogger<ReplayChunkDispatcher>.Instance;
+
         while (!context.Archive.AtEnd)
         {
-            DispatchNext(context);
+            DispatchNext(context, logger);
         }
     }
 
-    private void DispatchNext(ReplayReaderContext context)
+    private void DispatchNext(ReplayReaderContext context, ILogger<ReplayChunkDispatcher> logger)
     {
         try
         {
-            DispatchNextCore(context);
+            DispatchNextCore(context, logger);
         }
         catch (ArchiveReadException exception)
         {
@@ -51,7 +51,7 @@ public sealed class ReplayChunkDispatcher
         }
     }
 
-    private void DispatchNextCore(ReplayReaderContext context)
+    private void DispatchNextCore(ReplayReaderContext context, ILogger<ReplayChunkDispatcher> logger)
     {
         var typeOffset = context.Archive.Position;
         var chunkType = (ReplayChunkType)context.Archive.ReadUInt32();
@@ -71,7 +71,7 @@ public sealed class ReplayChunkDispatcher
 
 // Logs are cheap and only get called a few hundred times
 #pragma warning disable CA1873
-        _logger.LogDebug("Dispatching replay chunk {ChunkIndex} of type {ChunkType}.", chunkIndex, chunkType);
+        logger.LogDebug("Dispatching replay chunk {ChunkIndex} of type {ChunkType}.", chunkIndex, chunkType);
 
         switch (chunkType)
         {
@@ -79,17 +79,17 @@ public sealed class ReplayChunkDispatcher
                 DispatchHeader(context, chunkIndex, chunkArchive);
                 break;
             case ReplayChunkType.Checkpoint:
-                _logger.LogDebug("Skipping checkpoint chunk {ChunkIndex}.", chunkIndex);
+                logger.LogDebug("Skipping checkpoint chunk {ChunkIndex}.", chunkIndex);
                 break;
             case ReplayChunkType.Event:
-                _logger.LogDebug("Skipping event chunk {ChunkIndex}.", chunkIndex);
+                logger.LogDebug("Skipping event chunk {ChunkIndex}.", chunkIndex);
                 break;
             case ReplayChunkType.ReplayData:
                 DispatchReplayData(context, chunkIndex, chunkArchive, chunk.DataOffset);
                 break;
             case ReplayChunkType.Unknown:
             default:
-                _logger.LogDebug("Skipping unknown replay chunk {ChunkIndex} of type {ChunkType}.", chunkIndex,
+                logger.LogDebug("Skipping unknown replay chunk {ChunkIndex} of type {ChunkType}.", chunkIndex,
                     chunkType);
                 break;
         }

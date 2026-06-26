@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Models.Replay;
 using Replay.Unreal.Readers;
@@ -10,16 +8,13 @@ public class StreamingLevelFixesReader
 {
     private readonly ReplayReaderContext _context;
     private readonly FBinaryArchive _archive;
-    private readonly ILogger<StreamingLevelFixesReader> _logger;
 
     public StreamingLevelFixesReader(
         ReplayReaderContext context,
-        FBinaryArchive archive,
-        ILogger<StreamingLevelFixesReader>? logger = null)
+        FBinaryArchive archive)
     {
         _context = context;
         _archive = archive;
-        _logger = logger ?? NullLogger<StreamingLevelFixesReader>.Instance;
     }
 
     public void Read()

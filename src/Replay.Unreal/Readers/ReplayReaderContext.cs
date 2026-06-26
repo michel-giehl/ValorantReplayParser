@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
@@ -19,13 +20,15 @@ public class ReplayReaderContext
         FBinaryArchive archive,
         IReplayEventSink? eventSink = null,
         DescriptorCatalog? descriptorCatalog = null,
-        ParseProfile? parseProfile = null)
+        ParseProfile? parseProfile = null,
+        ILoggerFactory? loggerFactory = null)
     {
         Archive = archive;
         BunchPayloadStats = new BunchPayloadStats();
         WorldState = new WorldState();
         EventSink = eventSink ?? NullReplayEventSink.Instance;
         ParseProfile = parseProfile ?? ParseProfile.Default;
+        LoggerFactory = loggerFactory;
         ExportBindingRegistry = new ExportBindingRegistry(descriptorCatalog, ParseProfile);
         BunchPayloadPipeline = new BunchPayloadPipeline(this);
     }
@@ -49,4 +52,5 @@ public class ReplayReaderContext
     public BunchPayloadPipeline BunchPayloadPipeline { get; }
     public ExportBindingRegistry ExportBindingRegistry { get; }
     public ParseProfile ParseProfile { get; set; }
+    public ILoggerFactory? LoggerFactory { get; }
 }
