@@ -65,7 +65,7 @@ public class DescriptorCatalogTests
     private sealed class TestExportGroupDescriptor : ExportGroupDescriptor<TestExportGroupDescriptor>
     {
         public override string Path => "/Game/Test.Test_C";
-        public override ExportCategory Categories => ExportCategory.Combat;
+        public override ExportCategory Categories => ExportCategory.Ability;
         public override ExportGroupKind Kind => ExportGroupKind.Actor;
 
         public float BaseValue { get; set; }
@@ -86,7 +86,7 @@ public class DescriptorCatalogTests
 
         protected override void Configure()
         {
-            AddFunction("SomeFunction", "/Game/Test.Test_C:SomeFunction", ExportCategory.Combat);
+            AddFunction("SomeFunction", "/Game/Test.Test_C:SomeFunction", ExportCategory.Ability);
         }
     }
 }

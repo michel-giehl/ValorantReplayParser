@@ -12,11 +12,19 @@ public sealed class DescriptorCatalog
     public void Add(ExportGroupDescriptor descriptor)
     {
         _exportGroupDescriptors.Add(descriptor);
+    }    public void Add(IEnumerable<ExportGroupDescriptor> descriptors)
+    {
+        _exportGroupDescriptors.AddRange(descriptors);
     }
 
     public void Add(ClassNetCacheDescriptor descriptor)
     {
         _classNetCacheDescriptors.Add(descriptor);
+    }
+    
+    public void Add(IEnumerable<ClassNetCacheDescriptor> descriptor)
+    {
+        _classNetCacheDescriptors.AddRange(descriptor);
     }
 
     public void Clear()

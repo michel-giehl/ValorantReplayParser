@@ -27,6 +27,24 @@ public class ValorantSeededTransformTests
         Assert.That(payload.AtEnd, Is.True);
     }
 
+    [TestCase(PayloadBits)]
+    [TestCase(288)]
+    public void Apply_Release13_00_InitializesTablesAndConsumesPayload(int bitCount)
+    {
+        var payload = new BitArchiveReader(Convert.FromHexString(PayloadHex), bitCount);
+        var registry = PayloadTransformRegistry.CreateDefault();
+        var transform = registry.GetRequired("++Ares-Core+release-13.00");
+        var output = new byte[transform.GetOutputByteCount(bitCount)];
+
+        transform.Apply(
+            payload,
+            ((uint)bitCount) ^ ActorNetGuid,
+            output);
+
+        Assert.That(Convert.ToHexString(output), Is.Not.EqualTo(PayloadHex));
+        Assert.That(payload.AtEnd, Is.True);
+    }
+
     [Test]
     public void Registry_ResolvesExactReplayVersion()
     {

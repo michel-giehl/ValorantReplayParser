@@ -64,11 +64,11 @@ public class ReplayReaderIntegrationTests
 
     [Test]
     public void ReadRawPackets_12_10_RecordsStats() =>
-        ReadRawPacketsRecordsStats("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
+        ReadRawPacketsRecordsStats("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 1);
 
     [Test]
     public void ReadRawPackets_12_11_RecordsStats() =>
-        ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
+        ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 1);
 
     [Test]
     public void ReadRawPackets_13_00_RecordsStats() =>

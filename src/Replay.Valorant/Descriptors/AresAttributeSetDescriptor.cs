@@ -6,7 +6,7 @@ namespace Replay.Valorant.Descriptors;
 internal sealed class AresAttributeSetDescriptor : ExportGroupDescriptor<AresAttributeSetDescriptor>
 {
     public override string Path => "/Script/ShooterGame.AresAttributeSet";
-    public override ExportCategory Categories => ExportCategory.Combat | ExportCategory.Ability;
+    public override ExportCategory Categories => ExportCategory.Ability;
     public override ExportGroupKind Kind => ExportGroupKind.AttributeSet;
 
     public float Health { get; set; }
@@ -17,10 +17,10 @@ internal sealed class AresAttributeSetDescriptor : ExportGroupDescriptor<AresAtt
 
     protected override void Configure()
     {
-        AddProperty(x => x.Health, ExportCategory.Combat).Float();
-        AddProperty(x => x.MaxHealth, ExportCategory.Combat).Float();
-        AddProperty(x => x.Shield, ExportCategory.Combat).Float();
-        AddProperty(x => x.MaxShield, ExportCategory.Combat).Float();
-        AddProperty(x => x.Damage, ExportCategory.Combat).Float();
+        AddProperty(x => x.Health, ExportCategory.Ability).Float();
+        AddProperty(x => x.MaxHealth, ExportCategory.Ability).Float();
+        AddProperty(x => x.Shield, ExportCategory.Ability).Float();
+        AddProperty(x => x.MaxShield, ExportCategory.Ability).Float();
+        AddProperty(x => x.Damage, ExportCategory.Ability).Float();
     }
 }
