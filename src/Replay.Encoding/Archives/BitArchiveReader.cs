@@ -1,15 +1,36 @@
 using System.Buffers;
+using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Replay.Encoding.Archives;
 
 public sealed class BitArchiveReader : FBitArchive
 {
+    private const int MaxBufferedBits = 56;
+
     private readonly IMemoryOwner<byte>? _owner;
-    private readonly ReadOnlyMemory<byte> _buffer;
+
+    private readonly byte[] _source;
+    private readonly int _sourceOffset;
+    private readonly int _sourceEnd;
+
+    private readonly ReadOnlyMemory<byte> _memory;
+
     private readonly long _startBit;
+    private readonly long _bitLength;
+
+    private long _bitPosition;
+
+    // Absolute index into _source, not relative to _sourceOffset.
+    private int _byteIndex;
+
+    // LSB-first bit buffer.
+    private ulong _bitBuffer;
+    private int _bitsInBuffer;
 
     public BitArchiveReader(ReadOnlyMemory<byte> input)
-        : this(input, 0, input.Length * 8)
+        : this(input, 0, input.Length * 8L)
     {
     }
 
@@ -38,108 +59,242 @@ public sealed class BitArchiveReader : FBitArchive
     {
     }
 
-    private BitArchiveReader(IMemoryOwner<byte>? owner, ReadOnlyMemory<byte> input, long startBit, long bitLength)
+    private BitArchiveReader(
+        IMemoryOwner<byte>? owner,
+        ReadOnlyMemory<byte> input,
+        long startBit,
+        long bitLength)
     {
-        if (startBit < 0 || bitLength < 0 || startBit + bitLength > input.Length * 8L)
+        int sourceLength;
+        var maxBits = input.Length * 8L;
+
+        if (startBit < 0 || bitLength < 0 || startBit > maxBits || bitLength > maxBits - startBit)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(BitArchiveReader), 0,
-                input.Length * 8L, bitLength);
+            throw new ArchiveReadException(
+                ArchiveErrorCode.InvalidBitCount,
+                nameof(BitArchiveReader),
+                0,
+                maxBits,
+                bitLength);
         }
 
         _owner = owner;
-        _buffer = input;
         _startBit = startBit;
-        BitLength = bitLength;
+        _bitLength = bitLength;
+
+        if (MemoryMarshal.TryGetArray(input, out ArraySegment<byte> segment) && segment.Array is not null)
+        {
+            _source = segment.Array;
+            _sourceOffset = segment.Offset;
+            sourceLength = input.Length;
+            _memory = input;
+        }
+        else
+        {
+            _source = input.ToArray();
+            _sourceOffset = 0;
+            sourceLength = _source.Length;
+            _memory = _source;
+        }
+
+        _sourceEnd = _sourceOffset + sourceLength;
+
+        ResetStateToPosition(0);
     }
 
-    public override long BitPosition { get; protected set; }
+    public override long BitPosition
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _bitPosition;
 
-    public override long BitLength { get; }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected set => ResetStateToPosition(value);
+    }
 
+    public override long BitLength
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _bitLength;
+    }
+
+    private long RemainingBits
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _bitLength - _bitPosition;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override bool ReadBit()
     {
-        if (!TryReadBit(out var value))
+        if (_bitPosition >= _bitLength)
         {
             throw EndOfArchive(nameof(ReadBit), Position, Length, 1);
         }
 
-        return value;
+        return ReadBitUnchecked();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override bool TryReadBit(out bool value)
     {
-        if (BitsRemaining < 1)
+        if (_bitPosition >= _bitLength)
         {
             value = false;
             return false;
         }
 
-        var absoluteBit = _startBit + BitPosition;
-        var byteIndex = (int)(absoluteBit >> 3);
-        var bitIndex = (int)(absoluteBit & 7);
-        value = (_buffer.Span[byteIndex] & (1 << bitIndex)) != 0;
-        BitPosition++;
+        value = ReadBitUnchecked();
         return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool ReadBitUnchecked()
+    {
+        if (_bitsInBuffer == 0)
+        {
+            FillBuffer(1);
+        }
+
+        var value = (_bitBuffer & 1UL) != 0;
+
+        _bitBuffer >>= 1;
+        _bitsInBuffer--;
+        _bitPosition++;
+
+        return value;
     }
 
     public override ulong ReadBitsToUInt64(int bitCount)
     {
-        if (TryReadBitsToUInt64(bitCount, out var value)) return value;
-        if (bitCount is < 0 or > 64)
+        if ((uint)bitCount > 64)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadBitsToUInt64), Position, Length,
+            throw new ArchiveReadException(
+                ArchiveErrorCode.InvalidBitCount,
+                nameof(ReadBitsToUInt64),
+                Position,
+                Length,
                 bitCount);
         }
 
-        throw EndOfArchive(nameof(ReadBitsToUInt64), Position, Length, bitCount);
+        if (RemainingBits < bitCount)
+        {
+            throw EndOfArchive(nameof(ReadBitsToUInt64), Position, Length, bitCount);
+        }
+
+        return ReadBitsToUInt64Unchecked(bitCount);
     }
 
     public override bool TryReadBitsToUInt64(int bitCount, out ulong value)
     {
-        if (bitCount is < 0 or > 64 || BitsRemaining < bitCount)
+        if ((uint)bitCount > 64 || RemainingBits < bitCount)
         {
             value = 0;
             return false;
         }
 
-        value = 0;
-        for (var i = 0; i < bitCount; i++)
+        value = ReadBitsToUInt64Unchecked(bitCount);
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ulong ReadBitsToUInt64Unchecked(int bitCount)
+    {
+        if (bitCount == 0)
         {
-            if (ReadBit())
+            return 0;
+        }
+
+        // Ultra-fast byte-aligned path: no buffering, no masking loop.
+        if (_bitsInBuffer == 0 && (bitCount & 7) == 0)
+        {
+            var byteCount = bitCount >> 3;
+
+            if (_byteIndex + byteCount <= _sourceEnd)
             {
-                value |= 1UL << i;
+                ref var src = ref MemoryMarshal.GetArrayDataReference(_source);
+
+                ulong value = byteCount == 8
+                    ? ReadUInt64LittleEndian(ref Unsafe.Add(ref src, _byteIndex))
+                    : ReadUpToSevenLittleEndian(ref Unsafe.Add(ref src, _byteIndex), byteCount);
+
+                _byteIndex += byteCount;
+                _bitPosition += bitCount;
+
+                return value;
             }
         }
 
-        return true;
+        if (bitCount <= MaxBufferedBits)
+        {
+            FillBuffer(bitCount);
+
+            var value = _bitBuffer & MaskLow(bitCount);
+            ConsumeBufferedBits(bitCount);
+
+            return value;
+        }
+
+        if (_bitsInBuffer >= bitCount)
+        {
+            var value = _bitBuffer & MaskLow(bitCount);
+            ConsumeBufferedBits(bitCount);
+
+            return value;
+        }
+
+        FillBuffer(MaxBufferedBits);
+
+        var result = _bitBuffer & MaskLow(MaxBufferedBits);
+        ConsumeBufferedBits(MaxBufferedBits);
+
+        var rest = bitCount - MaxBufferedBits;
+
+        FillBuffer(rest);
+
+        result |= (_bitBuffer & MaskLow(rest)) << MaxBufferedBits;
+        ConsumeBufferedBits(rest);
+
+        return result;
     }
 
     public override ReadOnlyMemory<byte> ReadBits(int bitCount)
     {
-        if (!TryReadBits(bitCount, out var value))
+        if (bitCount < 0)
         {
-            if (bitCount < 0)
-            {
-                throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadBits), Position, Length,
-                    bitCount);
-            }
+            throw new ArchiveReadException(
+                ArchiveErrorCode.InvalidBitCount,
+                nameof(ReadBits),
+                Position,
+                Length,
+                bitCount);
+        }
 
+        if (RemainingBits < bitCount)
+        {
             throw EndOfArchive(nameof(ReadBits), Position, Length, bitCount);
         }
 
-        return value;
+        var byteCount = ByteCountForBits(bitCount);
+        var output = new byte[byteCount];
+
+        CopyBitsTo(output, bitCount);
+
+        return output;
     }
 
     public override bool TryReadBits(int bitCount, out ReadOnlyMemory<byte> value)
     {
-        if (bitCount < 0 || BitsRemaining < bitCount)
+        if (bitCount < 0 || RemainingBits < bitCount)
         {
             value = default;
             return false;
         }
 
-        var output = new byte[(bitCount + 7) / 8];
+        var byteCount = ByteCountForBits(bitCount);
+        var output = new byte[byteCount];
+
         CopyBitsTo(output, bitCount);
+
         value = output;
         return true;
     }
@@ -148,18 +303,27 @@ public sealed class BitArchiveReader : FBitArchive
     {
         if (bitCount < 0)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(CopyBitsTo), Position, Length,
+            throw new ArchiveReadException(
+                ArchiveErrorCode.InvalidBitCount,
+                nameof(CopyBitsTo),
+                Position,
+                Length,
                 bitCount);
         }
 
-        var byteCount = (bitCount + 7) / 8;
+        var byteCount = ByteCountForBits(bitCount);
+
         if (destination.Length < byteCount)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.BufferTooSmall, nameof(CopyBitsTo), Position, Length,
+            throw new ArchiveReadException(
+                ArchiveErrorCode.BufferTooSmall,
+                nameof(CopyBitsTo),
+                Position,
+                Length,
                 byteCount);
         }
 
-        if (BitsRemaining < bitCount)
+        if (RemainingBits < bitCount)
         {
             throw EndOfArchive(nameof(CopyBitsTo), Position, Length, bitCount);
         }
@@ -169,73 +333,149 @@ public sealed class BitArchiveReader : FBitArchive
             return;
         }
 
-        var absoluteBit = _startBit + BitPosition;
+        var output = destination[..byteCount];
+
+        if (bitCount <= 64)
+        {
+            var value = ReadBitsToUInt64Unchecked(bitCount);
+
+            WriteUInt64TruncatedLittleEndian(output, value, byteCount);
+
+            var tailBits = bitCount & 7;
+            if (tailBits != 0)
+            {
+                output[byteCount - 1] &= (byte)((1 << tailBits) - 1);
+            }
+
+            return;
+        }
+
+        CopyBitsLarge(output, bitCount);
+    }
+
+    private void CopyBitsLarge(Span<byte> destination, int bitCount)
+    {
+        var absoluteBit = _startBit + _bitPosition;
         var sourceByteIndex = (int)(absoluteBit >> 3);
         var sourceBitOffset = (int)(absoluteBit & 7);
-        var source = _buffer.Span;
-        var output = destination[..byteCount];
+
+        var byteCount = destination.Length;
         var tailBits = bitCount & 7;
+        var sourceBase = _sourceOffset + sourceByteIndex;
 
         if (sourceBitOffset == 0)
         {
             var fullBytes = bitCount >> 3;
-            source.Slice(sourceByteIndex, fullBytes).CopyTo(output);
+
+            if (fullBytes != 0)
+            {
+                _source.AsSpan(sourceBase, fullBytes).CopyTo(destination);
+            }
 
             if (tailBits != 0)
             {
-                output[fullBytes] = (byte)(source[sourceByteIndex + fullBytes] & ((1 << tailBits) - 1));
+                destination[fullBytes] =
+                    (byte)(_source[sourceBase + fullBytes] & ((1 << tailBits) - 1));
             }
 
-            BitPosition += bitCount;
+            ResetStateToPosition(_bitPosition + bitCount);
             return;
         }
 
-        for (var i = 0; i < byteCount; i++)
+        ref var src = ref MemoryMarshal.GetArrayDataReference(_source);
+        ref var dst = ref MemoryMarshal.GetReference(destination);
+
+        var shift = sourceBitOffset;
+        var inverseShift = 8 - shift;
+
+        var availableSourceBytes = _sourceEnd - sourceBase;
+        var fastBytes = byteCount & ~7;
+
+        var maxFastBytes = availableSourceBytes > 1
+            ? (availableSourceBytes - 1) & ~7
+            : 0;
+
+        if (fastBytes > maxFastBytes)
         {
-            var value = source[sourceByteIndex + i] >> sourceBitOffset;
-            var nextByteIndex = sourceByteIndex + i + 1;
-            if (nextByteIndex < source.Length)
+            fastBytes = maxFastBytes;
+        }
+
+        var i = 0;
+
+        // 8 output bytes per iteration.
+        // Needs 9 source bytes because the source bit offset is non-zero.
+        for (; i < fastBytes; i += 8)
+        {
+            var low = ReadUInt64LittleEndian(ref Unsafe.Add(ref src, sourceBase + i));
+            var high = (ulong)Unsafe.Add(ref src, sourceBase + i + 8);
+
+            var value = (low >> shift) | (high << (64 - shift));
+
+            WriteUInt64LittleEndian(ref Unsafe.Add(ref dst, i), value);
+        }
+
+        // Tail path. Bounds-safe for archives ending mid-byte.
+        for (; i < byteCount; i++)
+        {
+            var value = Unsafe.Add(ref src, sourceBase + i) >> shift;
+            var nextIndex = sourceBase + i + 1;
+
+            if (nextIndex < _sourceEnd)
             {
-                value |= source[nextByteIndex] << (8 - sourceBitOffset);
+                value |= Unsafe.Add(ref src, nextIndex) << inverseShift;
             }
 
-            output[i] = (byte)value;
+            Unsafe.Add(ref dst, i) = (byte)value;
         }
 
         if (tailBits != 0)
         {
-            output[^1] &= (byte)((1 << tailBits) - 1);
+            destination[byteCount - 1] &= (byte)((1 << tailBits) - 1);
         }
 
-        BitPosition += bitCount;
+        ResetStateToPosition(_bitPosition + bitCount);
     }
 
     public override FBitArchive ReadSubArchive(int bitCount)
     {
         if (bitCount < 0)
         {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(ReadSubArchive), Position, Length,
+            throw new ArchiveReadException(
+                ArchiveErrorCode.InvalidBitCount,
+                nameof(ReadSubArchive),
+                Position,
+                Length,
                 bitCount);
         }
 
-        if (BitsRemaining < bitCount)
+        if (RemainingBits < bitCount)
         {
             throw EndOfArchive(nameof(ReadSubArchive), Position, Length, bitCount);
         }
 
-        var child = new BitArchiveReader(_buffer, _startBit + BitPosition, bitCount);
-        BitPosition += bitCount;
+        var child = new BitArchiveReader(_memory, _startBit + _bitPosition, bitCount);
+
+        ResetStateToPosition(_bitPosition + bitCount);
+
         return child;
     }
 
     public override void SeekBits(long position)
     {
-        if (position < 0 || position > BitLength)
+        if (position < 0 || position > _bitLength)
         {
             throw InvalidSeek(nameof(SeekBits), Position, Length, position);
         }
 
-        BitPosition = position;
+        var delta = position - _bitPosition;
+
+        if ((ulong)delta <= (uint)_bitsInBuffer)
+        {
+            ConsumeBufferedBits((int)delta);
+            return;
+        }
+
+        ResetStateToPosition(position);
     }
 
     public override void SkipBits(long count)
@@ -245,16 +485,250 @@ public sealed class BitArchiveReader : FBitArchive
             throw InvalidCount(nameof(SkipBits), Position, Length, count);
         }
 
-        SeekBits(BitPosition + count);
+        if (count > _bitLength - _bitPosition)
+        {
+            throw InvalidSeek(nameof(SkipBits), Position, Length, _bitPosition + count);
+        }
+
+        if ((ulong)count <= (uint)_bitsInBuffer)
+        {
+            ConsumeBufferedBits((int)count);
+            return;
+        }
+
+        ResetStateToPosition(_bitPosition + count);
     }
 
-    protected internal override void RestorePosition(long position) => BitPosition = position;
+    protected internal override void RestorePosition(long position)
+    {
+        ResetStateToPosition(position);
+    }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
             _owner?.Dispose();
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FillBuffer(int wantedBits)
+    {
+        if (_bitsInBuffer >= wantedBits)
+        {
+            return;
+        }
+
+        ref var src = ref MemoryMarshal.GetArrayDataReference(_source);
+
+        // Dirty fast path: pull 64 bits at once when the buffer is empty.
+        // This makes ReadBit loops massively cheaper because one refill feeds 64 calls.
+        if (_bitsInBuffer == 0 && _byteIndex + 8 <= _sourceEnd)
+        {
+            _bitBuffer = ReadUInt64LittleEndian(ref Unsafe.Add(ref src, _byteIndex));
+            _byteIndex += 8;
+            _bitsInBuffer = 64;
+            return;
+        }
+
+        var neededBytes = (wantedBits - _bitsInBuffer + 7) >> 3;
+
+        ulong chunk = neededBytes == 8
+            ? ReadUInt64LittleEndian(ref Unsafe.Add(ref src, _byteIndex))
+            : ReadUpToSevenLittleEndian(ref Unsafe.Add(ref src, _byteIndex), neededBytes);
+
+        _bitBuffer |= chunk << _bitsInBuffer;
+        _byteIndex += neededBytes;
+        _bitsInBuffer += neededBytes << 3;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ConsumeBufferedBits(int bitCount)
+    {
+        if (bitCount == 0)
+        {
+            return;
+        }
+
+        if (bitCount == 64)
+        {
+            _bitBuffer = 0;
+            _bitsInBuffer = 0;
+            _bitPosition += 64;
+            return;
+        }
+
+        _bitBuffer >>= bitCount;
+        _bitsInBuffer -= bitCount;
+        _bitPosition += bitCount;
+    }
+
+    private void ResetStateToPosition(long bitPosition)
+    {
+        _bitPosition = bitPosition;
+        _bitBuffer = 0;
+        _bitsInBuffer = 0;
+
+        var absoluteBit = _startBit + bitPosition;
+
+        _byteIndex = _sourceOffset + (int)(absoluteBit >> 3);
+
+        var bitOffset = (int)(absoluteBit & 7);
+        if (bitOffset == 0 || _byteIndex >= _sourceEnd)
+        {
+            return;
+        }
+
+        _bitBuffer = (ulong)(_source[_byteIndex] >> bitOffset);
+        _bitsInBuffer = 8 - bitOffset;
+        _byteIndex++;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ByteCountForBits(int bitCount)
+    {
+        return (bitCount >> 3) + ((bitCount & 7) == 0 ? 0 : 1);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong MaskLow(int bitCount)
+    {
+        return bitCount == 64
+            ? ulong.MaxValue
+            : (1UL << bitCount) - 1UL;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong ReadUInt64LittleEndian(ref byte source)
+    {
+        var value = Unsafe.ReadUnaligned<ulong>(ref source);
+
+        return BitConverter.IsLittleEndian
+            ? value
+            : BinaryPrimitives.ReverseEndianness(value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteUInt64LittleEndian(ref byte destination, ulong value)
+    {
+        if (!BitConverter.IsLittleEndian)
+        {
+            value = BinaryPrimitives.ReverseEndianness(value);
+        }
+
+        Unsafe.WriteUnaligned(ref destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteUInt32LittleEndian(ref byte destination, uint value)
+    {
+        if (!BitConverter.IsLittleEndian)
+        {
+            value = BinaryPrimitives.ReverseEndianness(value);
+        }
+
+        Unsafe.WriteUnaligned(ref destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteUInt16LittleEndian(ref byte destination, ushort value)
+    {
+        if (!BitConverter.IsLittleEndian)
+        {
+            value = BinaryPrimitives.ReverseEndianness(value);
+        }
+
+        Unsafe.WriteUnaligned(ref destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong ReadUpToSevenLittleEndian(ref byte source, int byteCount)
+    {
+        return byteCount switch
+        {
+            1 => source,
+
+            2 => source
+               | ((ulong)Unsafe.Add(ref source, 1) << 8),
+
+            3 => source
+               | ((ulong)Unsafe.Add(ref source, 1) << 8)
+               | ((ulong)Unsafe.Add(ref source, 2) << 16),
+
+            4 => source
+               | ((ulong)Unsafe.Add(ref source, 1) << 8)
+               | ((ulong)Unsafe.Add(ref source, 2) << 16)
+               | ((ulong)Unsafe.Add(ref source, 3) << 24),
+
+            5 => source
+               | ((ulong)Unsafe.Add(ref source, 1) << 8)
+               | ((ulong)Unsafe.Add(ref source, 2) << 16)
+               | ((ulong)Unsafe.Add(ref source, 3) << 24)
+               | ((ulong)Unsafe.Add(ref source, 4) << 32),
+
+            6 => source
+               | ((ulong)Unsafe.Add(ref source, 1) << 8)
+               | ((ulong)Unsafe.Add(ref source, 2) << 16)
+               | ((ulong)Unsafe.Add(ref source, 3) << 24)
+               | ((ulong)Unsafe.Add(ref source, 4) << 32)
+               | ((ulong)Unsafe.Add(ref source, 5) << 40),
+
+            7 => source
+               | ((ulong)Unsafe.Add(ref source, 1) << 8)
+               | ((ulong)Unsafe.Add(ref source, 2) << 16)
+               | ((ulong)Unsafe.Add(ref source, 3) << 24)
+               | ((ulong)Unsafe.Add(ref source, 4) << 32)
+               | ((ulong)Unsafe.Add(ref source, 5) << 40)
+               | ((ulong)Unsafe.Add(ref source, 6) << 48),
+
+            _ => 0
+        };
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteUInt64TruncatedLittleEndian(Span<byte> destination, ulong value, int byteCount)
+    {
+        ref var dst = ref MemoryMarshal.GetReference(destination);
+
+        switch (byteCount)
+        {
+            case 1:
+                dst = (byte)value;
+                return;
+
+            case 2:
+                WriteUInt16LittleEndian(ref dst, (ushort)value);
+                return;
+
+            case 3:
+                WriteUInt16LittleEndian(ref dst, (ushort)value);
+                Unsafe.Add(ref dst, 2) = (byte)(value >> 16);
+                return;
+
+            case 4:
+                WriteUInt32LittleEndian(ref dst, (uint)value);
+                return;
+
+            case 5:
+                WriteUInt32LittleEndian(ref dst, (uint)value);
+                Unsafe.Add(ref dst, 4) = (byte)(value >> 32);
+                return;
+
+            case 6:
+                WriteUInt32LittleEndian(ref dst, (uint)value);
+                WriteUInt16LittleEndian(ref Unsafe.Add(ref dst, 4), (ushort)(value >> 32));
+                return;
+
+            case 7:
+                WriteUInt32LittleEndian(ref dst, (uint)value);
+                WriteUInt16LittleEndian(ref Unsafe.Add(ref dst, 4), (ushort)(value >> 32));
+                Unsafe.Add(ref dst, 6) = (byte)(value >> 48);
+                return;
+
+            case 8:
+                WriteUInt64LittleEndian(ref dst, value);
+                return;
         }
     }
 }
