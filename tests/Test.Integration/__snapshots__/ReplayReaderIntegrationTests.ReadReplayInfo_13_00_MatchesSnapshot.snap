@@ -1,0 +1,58 @@
+﻿{
+  "ReplayFileName": "12974d2b-848f-490d-80ba-5f03a033c2d5.13_00.vrf",
+  "Info": {
+    "LengthInMs": 39080,
+    "NetworkVersion": 480767974,
+    "Changelist": 4990475,
+    "FriendlyName": "12974d2b-848f-490d-80ba-5f03a033c2d5",
+    "Timestamp": 639184309664390000,
+    "TotalDataSizeInBytes": 652899,
+    "IsLive": false,
+    "IsValid": true,
+    "Compressed": true,
+    "Encrypted": false,
+    "EncryptionKeyLength": 0,
+    "EncryptionKey": "",
+    "HeaderChunkIndex": 0
+  },
+  "SerializationMetadata": {
+    "FileVersion": 7,
+    "FileFriendlyName": "12974d2b-848f-490d-80ba-5f03a033c2d5                                                                                                                                                                                                                            ",
+    "FileCustomVersions": [
+      {
+        "Key": "95a4f03e-7e0b-49e4-ba43-d35694ff87d9",
+        "Version": 7,
+        "FriendlyName": ""
+      }
+    ]
+  },
+  "Scan": {
+    "HeaderChunkPayloadOffset": 594,
+    "ChunkCount": 20,
+    "DataChunkCount": 7,
+    "HeaderChunk": {
+      "ChunkType": "Header",
+      "SizeInBytes": 24607,
+      "TypeOffset": 586,
+      "DataOffset": 594
+    },
+    "FirstDataChunk": {
+      "ChunkIndex": 1,
+      "Time1": 0,
+      "Time2": 33,
+      "SizeInBytes": 17093,
+      "MemorySizeInBytes": 40315,
+      "ReplayDataOffset": 25225,
+      "StreamOffset": 0
+    },
+    "LastDataChunk": {
+      "ChunkIndex": 19,
+      "Time1": 37110,
+      "Time2": 39080,
+      "SizeInBytes": 11736,
+      "MemorySizeInBytes": 42195,
+      "ReplayDataOffset": 420172,
+      "StreamOffset": 610704
+    }
+  }
+}

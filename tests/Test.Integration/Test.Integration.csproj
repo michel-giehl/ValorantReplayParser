@@ -25,6 +25,9 @@
       <None Update="Replays\5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
+      <None Update="Replays\12974d2b-848f-490d-80ba-5f03a033c2d5.13_00.vrf">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
       <None Update="Replays\9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
@@ -40,6 +43,9 @@
       <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayHeader_12_11_MatchesSnapshot.snap">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayHeader_13_00_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
       <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayInfo_12_08_MatchesSnapshot.snap">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
@@ -47,6 +53,9 @@
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
       <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayInfo_12_11_MatchesSnapshot.snap">
+        <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      </None>
+      <None Update="__snapshots__\ReplayReaderIntegrationTests.ReadReplayInfo_13_00_MatchesSnapshot.snap">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
     </ItemGroup>

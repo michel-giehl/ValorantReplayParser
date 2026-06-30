@@ -15,6 +15,7 @@ namespace Test.Integration;
 public class ReplayReaderIntegrationTests
 {
     private const string Replay12_08 = "c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf";
+    private const string Replay13_00 = "12974d2b-848f-490d-80ba-5f03a033c2d5.13_00.vrf";
     private const string Branch12_08 = "++Ares-Core+release-12.08";
 
     [Test]
@@ -30,12 +31,20 @@ public class ReplayReaderIntegrationTests
         ReadReplayInfoMatchesSnapshot("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
     [Test]
+    public void ReadReplayInfo_13_00_MatchesSnapshot() =>
+        ReadReplayInfoMatchesSnapshot(Replay13_00);
+
+    [Test]
     public void ReadReplayHeader_12_10_MatchesSnapshot() =>
         ReadReplayHeaderMatchesSnapshot("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf");
 
     [Test]
     public void ReadReplayHeader_12_11_MatchesSnapshot() =>
         ReadReplayHeaderMatchesSnapshot("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
+
+    [Test]
+    public void ReadReplayHeader_13_00_MatchesSnapshot() =>
+        ReadReplayHeaderMatchesSnapshot(Replay13_00);
 
     [Test]
     public void DecompressReplayData_12_08_MaterializesExpectedSize() =>
@@ -50,12 +59,20 @@ public class ReplayReaderIntegrationTests
         DecompressReplayDataMaterializesExpectedSize("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
     [Test]
+    public void DecompressReplayData_13_00_MaterializesExpectedSize() =>
+        DecompressReplayDataMaterializesExpectedSize(Replay13_00);
+
+    [Test]
     public void ReadRawPackets_12_10_RecordsStats() =>
         ReadRawPacketsRecordsStats("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
 
     [Test]
     public void ReadRawPackets_12_11_RecordsStats() =>
         ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
+
+    [Test]
+    public void ReadRawPackets_13_00_RecordsStats() =>
+        ReadRawPacketsRecordsStats(Replay13_00, expectedPartialErrors: 2, expectedMalformedPayloads: 2);
 
     [Test]
     public void ReadRawPackets_12_11_EmitsTimedParserEvents()

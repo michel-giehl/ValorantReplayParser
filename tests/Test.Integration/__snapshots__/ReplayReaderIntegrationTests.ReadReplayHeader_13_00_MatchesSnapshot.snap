@@ -1,0 +1,39 @@
+﻿{
+  "ReplayFileName": "12974d2b-848f-490d-80ba-5f03a033c2d5.13_00.vrf",
+  "HeaderPayloadLength": 24607,
+  "HeaderArchivePosition": 24607,
+  "AtEnd": true,
+  "Header": {
+    "NetworkVersion": 19,
+    "NetworkChecksum": 3435006414,
+    "EngineNetworkProtocolVersion": 32,
+    "GameNetworkProtocolVersion": 0,
+    "Guid": "72757a6b-44ea-4640-a2ac-b1b093b7e682",
+    "MinRecordHz": 0.0,
+    "MaxRecordHz": 1000.0,
+    "FrameLimitInMs": -1.0,
+    "CheckpointLimitInMs": -1.0,
+    "LevelNamesAndTimes": [
+      {
+        "LevelName": "/Game/Maps/Canyon/Canyon",
+        "TimeInMs": 0
+      }
+    ],
+    "Flags": "HasStreamingFixes",
+    "Platform": "LinuxServer",
+    "BuildConfig": 4,
+    "BuildTargetType": "Server"
+  },
+  "ReplayVersion": {
+    "Major": 5,
+    "Minor": 3,
+    "Patch": 2,
+    "Changelist": 2152474123,
+    "Branch": "++Ares-Core+release-13.00"
+  },
+  "UEVersion": {
+    "UE4Version": 522,
+    "UE5Version": 1009,
+    "PackageVersionLicense": 80
+  }
+}

@@ -130,7 +130,7 @@ public sealed class ValorantSeededTransform13_00 : IPayloadTransform
     private static readonly byte[] SubstituteTable32V13_00 = Convert.FromHexString(
         "2167b396313fbad3d5062b16f1b651a79c7b419584251536a4703546b05fa6c3" +
         "bb8638f62ea2a994831b6239f3d228149e9af2c9decc26a1d8d0748d69127189" +
-        "f758cd4db7114809b968c77cf42042f56b754756da81d6a07d7c50ea066db" +
+        "f758cd4db7114809b968c77cf42042f56b54756da81d6a07d7c50ea066db" +
         "f899ad1004ff8fb1ef986c29e201183d371e654b4a6e24d9bd90fe135693" +
         "34aa8b0d79e74992f98eca43cbc6da022d8c0fb2c08a4785aee0d477c40b" +
         "5c617e335745e62ffd6f915b9fcf3c4fe33aede480087372ea63fbfcb8" +
