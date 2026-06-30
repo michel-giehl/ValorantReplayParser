@@ -179,7 +179,7 @@ internal sealed class ContentBlockFramer
             payloadBits: 0,
             parsedBits: 0,
             wasDecoded: false,
-            fields: Array.Empty<DecodedReplayField>());
+            fields: []);
         stats.DeletedContentBlockCount++;
         stats.ContentBlockCount++;
     }
@@ -209,7 +209,7 @@ internal sealed class ContentBlockFramer
                 payloadBits: payloadBits,
                 parsedBits: 0,
                 wasDecoded: false,
-                fields: Array.Empty<DecodedReplayField>());
+                fields: []);
             return;
         }
 
@@ -228,7 +228,7 @@ internal sealed class ContentBlockFramer
                 payloadBits: payloadBits,
                 parsedBits: 0,
                 wasDecoded: false,
-                fields: Array.Empty<DecodedReplayField>());
+                fields: []);
             return;
         }
 
@@ -283,7 +283,7 @@ internal sealed class ContentBlockFramer
                 payloadBits: payloadBits,
                 parsedBits: 0,
                 wasDecoded: false,
-                fields: Array.Empty<DecodedReplayField>());
+                fields: []);
             return;
         }
 
@@ -302,7 +302,7 @@ internal sealed class ContentBlockFramer
                 payloadBits,
                 parsedBits: 0,
                 wasDecoded: false,
-                fields: Array.Empty<DecodedReplayField>());
+                fields: []);
             return;
         }
 
@@ -324,7 +324,7 @@ internal sealed class ContentBlockFramer
             payloadBits,
             parsedBits,
             wasDecoded: true,
-            fields: Array.Empty<DecodedReplayField>());
+            fields: []);
 
         foreach (var invocation in invocations)
         {

@@ -26,7 +26,7 @@ public class FieldPayloadParser
                 "Export group '{ExportGroupPath}' cannot be parsed with class-net-cache grammar as content payload.",
                 context.ExportGroupPath ?? boundGroup.SourceDescriptor.Path);
             payload.SkipRemaining();
-            return Array.Empty<DecodedReplayField>();
+            return [];
         }
 
         if (readPropertyChecksum)
@@ -58,13 +58,13 @@ public class FieldPayloadParser
                 boundCache.Path,
                 boundCache.Grammar);
             payload.SkipRemaining();
-            return Array.Empty<DecodedRpcInvocation>();
+            return [];
         }
 
         if (boundCache.FunctionsByHandle.Length == 0)
         {
             payload.SkipRemaining();
-            return Array.Empty<DecodedRpcInvocation>();
+            return [];
         }
 
         var invocations = new List<DecodedRpcInvocation>();
@@ -122,7 +122,7 @@ public class FieldPayloadParser
             else
             {
                 rpcPayload.SkipRemaining();
-                fields = Array.Empty<DecodedReplayField>();
+                fields = [];
                 wasDecoded = false;
             }
 

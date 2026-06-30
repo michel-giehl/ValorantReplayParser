@@ -284,7 +284,7 @@ public class FieldPayloadParserTests
         public IReadOnlyList<DecodedReplayField> Decode(ref FieldDecodeContext context, FBitArchive archive)
         {
             archive.SkipRemaining();
-            return Array.Empty<DecodedReplayField>();
+            return [];
         }
     }
 
