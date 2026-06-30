@@ -56,9 +56,7 @@ public sealed class ValorantReplayReader
     public ReplayReaderContext Read(FBinaryArchive archive)
     {
         var context = new ReplayReaderContext(archive, _eventSink, _descriptorCatalog, _parseProfile, _loggerFactory);
-        var info = new ReplayInfo();
-        var metadata = new ReplayInfoSerializationMetadata();
-        var replayInfoResult = new ReplayInfoReader(archive).Read(info, metadata);
+        var replayInfoResult = new ReplayInfoReader(archive).Read();
 
         context.ReplayInfo = replayInfoResult.Info;
         context.ReplayInfoSerializationMetadata = replayInfoResult.SerializationMetadata;

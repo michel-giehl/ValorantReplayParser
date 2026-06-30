@@ -37,7 +37,6 @@ public class NetGuidCacheTests
         {
             PathName = existingGroup.PathName,
             PathNameIndex = existingGroup.PathNameIndex,
-            NetFieldExportsLength = 4,
             NetFieldExports = new NetFieldExport?[4],
         });
 
@@ -104,7 +103,6 @@ public class NetGuidCacheTests
     {
         PathName = "/Game/Test.Test_C",
         PathNameIndex = 7,
-        NetFieldExportsLength = 2,
         NetFieldExports = new NetFieldExport?[2],
     };
 }

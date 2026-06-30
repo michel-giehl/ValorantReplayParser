@@ -6,7 +6,7 @@ public sealed class NetFieldExportGroup
 
     public required uint PathNameIndex { get; init; }
 
-    public required uint NetFieldExportsLength { get; init; }
+    public uint NetFieldExportsLength => checked((uint)NetFieldExports.Length);
 
     public required NetFieldExport?[] NetFieldExports { get; init; }
 }

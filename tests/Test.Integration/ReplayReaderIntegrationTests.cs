@@ -18,7 +18,7 @@ public class ReplayReaderIntegrationTests
     private const string Branch12_08 = "++Ares-Core+release-12.08";
 
     [Test]
-    public void ReadReplayInfo_12_08_ReportsUnsupportedPayloadTransform() =>
+    public void ReadReplay_12_08_ReportsUnsupportedPayloadTransform() =>
         ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
 
     [Test]
@@ -28,10 +28,6 @@ public class ReplayReaderIntegrationTests
     [Test]
     public void ReadReplayInfo_12_11_MatchesSnapshot() =>
         ReadReplayInfoMatchesSnapshot("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
-
-    [Test]
-    public void ReadReplayHeader_12_08_ReportsUnsupportedPayloadTransform() =>
-        ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
 
     [Test]
     public void ReadReplayHeader_12_10_MatchesSnapshot() =>
@@ -54,10 +50,6 @@ public class ReplayReaderIntegrationTests
         DecompressReplayDataMaterializesExpectedSize("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
 
     [Test]
-    public void ReadRawPackets_12_08_ReportsUnsupportedPayloadTransform() =>
-        ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
-
-    [Test]
     public void ReadRawPackets_12_10_RecordsStats() =>
         ReadRawPacketsRecordsStats("9f8b32c5-c243-41ec-bbbb-832582edf652.12_10.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
 
@@ -66,11 +58,7 @@ public class ReplayReaderIntegrationTests
         ReadRawPacketsRecordsStats("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf", expectedPartialErrors: 2, expectedMalformedPayloads: 0);
 
     [Test]
-    public void ReadBaseReplayController_12_08_ReportsUnsupportedPayloadTransform() =>
-        ReadReplayReportsUnsupportedPayloadTransform(Replay12_08, Branch12_08);
-
-    [Test]
-    public void ReadRawPackets_12_11_BuildsWorldStateAndEmitsTimedActorEvents()
+    public void ReadRawPackets_12_11_EmitsTimedParserEvents()
     {
         var replayBytes = ReadReplayBytes("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
         var eventSink = new CapturingReplayEventSink();
@@ -79,20 +67,20 @@ public class ReplayReaderIntegrationTests
             eventSink: eventSink,
             descriptorCatalog: ValorantDescriptors.CreateCatalog()).Read(new FBinaryArchive(replayBytes));
 
-        var openedEvents = eventSink.Events.OfType<ActorOpened>().ToArray();
         var spawnedEvents = eventSink.Events.OfType<ActorSpawned>().ToArray();
+        var closedEvents = eventSink.Events.OfType<ActorClosed>().ToArray();
+        var exportGroupEvents = eventSink.Events.OfType<ExportGroupReceived>().ToArray();
         Assert.Multiple(() =>
         {
-            Assert.That(context.WorldState.Channels, Is.Not.Empty);
-            Assert.That(context.WorldState.ActorsByNetGuid, Is.Not.Empty);
-            Assert.That(context.WorldState.ObjectsByNetGuid, Is.Not.Empty);
-            Assert.That(context.WorldState.ActorChannelHistory, Is.Not.Empty);
-            Assert.That(context.BunchPayloadStats.ActorCreatedCount, Is.GreaterThan(0));
-            Assert.That(context.BunchPayloadStats.SubobjectCreatedCount, Is.GreaterThan(0));
-            Assert.That(openedEvents, Is.Not.Empty);
+            Assert.That(context.ChannelStates, Is.Not.Empty);
+            Assert.That(context.ActorChannelOpens, Is.Not.Empty);
+            Assert.That(context.BunchPayloadStats.ActorChannelOpenCount, Is.GreaterThan(0));
+            Assert.That(context.BunchPayloadStats.ContentBlockCount, Is.GreaterThan(0));
             Assert.That(spawnedEvents, Is.Not.Empty);
-            Assert.That(openedEvents.All(replayEvent => replayEvent.TimeSeconds >= 0f), Is.True);
-            Assert.That(openedEvents.All(replayEvent =>
+            Assert.That(closedEvents, Is.Not.Empty);
+            Assert.That(exportGroupEvents, Is.Not.Empty);
+            Assert.That(spawnedEvents.All(replayEvent => replayEvent.TimeSeconds >= 0f), Is.True);
+            Assert.That(spawnedEvents.All(replayEvent =>
                 replayEvent.TimeSeconds <= context.ReplayInfo.LengthInMs / 1000f + 1f), Is.True);
         });
     }
@@ -100,7 +88,7 @@ public class ReplayReaderIntegrationTests
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
         var replayBytes = ReadReplayBytes(replayFileName);
-        var context = ReadReplay(replayBytes);
+        var context = ReadReplayMetadata(replayBytes);
 
         Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, context));
     }
@@ -177,6 +165,16 @@ public class ReplayReaderIntegrationTests
         return ValorantReplayReader.CreateDefault(ValorantDescriptors.CreateCatalog()).Read(archive);
     }
 
+
+    private static ReplayReaderContext ReadReplayMetadata(byte[] replayBytes)
+    {
+        var archive = new FBinaryArchive(replayBytes);
+        return new ValorantReplayReader(
+            new OozSharpOodleDecompressor(),
+            new NoOpReplayDataChunkHandler(),
+            descriptorCatalog: ValorantDescriptors.CreateCatalog()).Read(archive);
+    }
+
     private static byte[] ReadReplayBytes(string replayFileName)
     {
         var path = Path.Combine(TestContext.CurrentContext.TestDirectory, "Replays", replayFileName);
@@ -185,7 +183,7 @@ public class ReplayReaderIntegrationTests
 
     private static byte[] ReadHeaderPayload(byte[] replayBytes)
     {
-        var context = ReadReplay(replayBytes);
+        var context = ReadReplayMetadata(replayBytes);
 
         if (context.ReplayInfo.HeaderChunkIndex == ReplayInfo.NoChunkIndex)
         {

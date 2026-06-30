@@ -1,42 +1,40 @@
+using System.Globalization;
+using Microsoft.Extensions.Logging;
+using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Models.Net;
 using Replay.Models.Unreal;
-using Replay.Unreal.World;
-using Serilog;
 
 namespace CliReader;
 
 internal sealed class ActorEventLogger : IReplayEventSink
 {
-    private const int MaxDetailedEvents = 400;
+    private const int MaxDetailedActorEvents = 400;
+    private const int MaxDecodedValueEvents = 400;
 
-    private readonly ILogger _logger;
+    private readonly ILogger<ActorEventLogger> _logger;
     private readonly Dictionary<uint, ActorIdentity> _actors = [];
     private readonly HashSet<uint> _loggedActorNetGuids = [];
-    private int _detailedEventCount;
+    private int _detailedActorEventCount;
+    private int _decodedValueEventCount;
 
-    public ActorEventLogger(ILogger logger)
+    public ActorEventLogger(ILogger<ActorEventLogger> logger)
     {
-        _logger = logger.ForContext("SourceContext", "ActorEvents");
+        _logger = logger;
     }
 
-    public int OpenedCount { get; private set; }
     public int SpawnedCount { get; private set; }
     public int ClosedCount { get; private set; }
-    public int DestroyedCount { get; private set; }
+    public int DestroyedCloseCount { get; private set; }
+    public int ExportGroupCount { get; private set; }
+    public int SkippedExportGroupCount { get; private set; }
+    public int RpcCount { get; private set; }
+    public int DecodedFieldCount { get; private set; }
 
     public void Emit(ReplayEvent replayEvent)
     {
         switch (replayEvent)
         {
-            case ActorOpened opened:
-                OpenedCount++;
-                _actors[opened.ActorNetGuid] = new ActorIdentity(
-                    opened.ActorPath,
-                    opened.ArchetypePath,
-                    SpawnTimeSeconds: null);
-                break;
-
             case ActorSpawned spawned:
                 SpawnedCount++;
                 TrackSpawn(spawned);
@@ -45,48 +43,51 @@ internal sealed class ActorEventLogger : IReplayEventSink
 
             case ActorClosed closed:
                 ClosedCount++;
-                if (closed.Reason != ChannelCloseReason.Destroyed)
+                if (closed.Reason == ChannelCloseReason.Destroyed)
                 {
-                    LogClose(closed);
+                    DestroyedCloseCount++;
                 }
 
+                LogClose(closed);
                 break;
 
-            case ActorDestroyed destroyed:
-                DestroyedCount++;
-                LogDestroyed(destroyed);
+            case ExportGroupReceived exportGroup:
+                ExportGroupCount++;
+                if (!exportGroup.WasDecoded)
+                {
+                    SkippedExportGroupCount++;
+                }
+
+                DecodedFieldCount += exportGroup.Fields.Count;
+                LogExportGroup(exportGroup);
+                break;
+
+            case RpcReceived rpc:
+                RpcCount++;
+                DecodedFieldCount += rpc.Fields.Count;
+                LogRpc(rpc);
                 break;
         }
     }
 
-    public void LogSummary(WorldState worldState)
+    public void LogSummary()
     {
-        var actors = worldState.ActorsByNetGuid.Values;
-        var activeActors = actors.Count(actor => actor.LifecycleStatus == ActorLifecycleStatus.Open);
-        var dormantActors = actors.Count(actor => actor.LifecycleStatus == ActorLifecycleStatus.Dormant);
-        var destroyedActors = actors.Count(actor => actor.LifecycleStatus == ActorLifecycleStatus.Destroyed);
-        var activeSubobjects = worldState.ObjectsByNetGuid.Values.Count(subobject => subobject.IsActive);
-
-        _logger.Information(
-            "World state: {ActorCount} actors ({ActiveActorCount} active, {DormantActorCount} dormant, {DestroyedActorCount} destroyed), {SubobjectCount} subobjects ({ActiveSubobjectCount} active), {ChannelCount} channels",
-            worldState.ActorsByNetGuid.Count,
-            activeActors,
-            dormantActors,
-            destroyedActors,
-            worldState.ObjectsByNetGuid.Count,
-            activeSubobjects,
-            worldState.Channels.Count);
-
-        _logger.Information(
-            "Actor events: {OpenedCount} opened, {SpawnedCount} spawned, {ClosedCount} closed, {DestroyedCount} destroyed",
-            OpenedCount,
+        _logger.LogInformation(
+            "Actor events: {SpawnedCount} spawned/opened, {ClosedCount} closed ({DestroyedCloseCount} destroyed)",
             SpawnedCount,
             ClosedCount,
-            DestroyedCount);
+            DestroyedCloseCount);
 
-        var commonArchetypes = actors
+        _logger.LogInformation(
+            "Decoded events: {ExportGroupCount} export groups ({SkippedExportGroupCount} skipped), {RpcCount} RPCs, {DecodedFieldCount} fields",
+            ExportGroupCount,
+            SkippedExportGroupCount,
+            RpcCount,
+            DecodedFieldCount);
+
+        var commonArchetypes = _actors.Values
             .Where(actor => !string.IsNullOrWhiteSpace(actor.ArchetypePath))
-            .Where(actor => IsInterestingPath(actor.ArchetypePath!))
+            .Where(actor => ActorPathInterestFilter.IsInteresting(actor.ArchetypePath!))
             .GroupBy(actor => actor.ArchetypePath!, StringComparer.Ordinal)
             .Select(group => new { Path = group.Key, Count = group.Count() })
             .OrderByDescending(group => group.Count)
@@ -96,7 +97,7 @@ internal sealed class ActorEventLogger : IReplayEventSink
 
         if (commonArchetypes.Length > 0)
         {
-            _logger.Information(
+            _logger.LogInformation(
                 "Most common analytics-relevant actor archetypes:{NewLine}{ActorArchetypes}",
                 Environment.NewLine,
                 string.Join(
@@ -104,39 +105,45 @@ internal sealed class ActorEventLogger : IReplayEventSink
                     commonArchetypes.Select(group => $"  {group.Count,5}  {group.Path}")));
         }
 
-        if (_detailedEventCount >= MaxDetailedEvents)
+        if (_detailedActorEventCount >= MaxDetailedActorEvents)
         {
-            _logger.Information(
+            _logger.LogInformation(
                 "Detailed actor-event output was limited to {MaxDetailedEvents} lines.",
-                MaxDetailedEvents);
+                MaxDetailedActorEvents);
+        }
+
+        if (_decodedValueEventCount >= MaxDecodedValueEvents)
+        {
+            _logger.LogInformation(
+                "Decoded value output was limited to {MaxDecodedValueEvents} lines.",
+                MaxDecodedValueEvents);
         }
     }
 
     private void TrackSpawn(ActorSpawned spawned)
     {
-        _actors.TryGetValue(spawned.ActorNetGuid, out var identity);
         _actors[spawned.ActorNetGuid] = new ActorIdentity(
-            identity?.ActorPath,
-            spawned.ArchetypePath ?? identity?.ArchetypePath,
+            spawned.ActorPath,
+            spawned.ArchetypePath,
             spawned.TimeSeconds);
     }
 
     private void LogSpawn(ActorSpawned spawned)
     {
         var path = DisplayPath(spawned.ActorNetGuid);
-        if (!IsInterestingPath(path))
+        if (!ActorPathInterestFilter.IsInteresting(path))
         {
             return;
         }
 
-        if (!TryReserveDetailedEvent())
+        if (!TryReserveDetailedActorEvent())
         {
             return;
         }
 
         _loggedActorNetGuids.Add(spawned.ActorNetGuid);
-        _logger.Information(
-            "[{TimeSeconds,8:F3}s] Spawn actor {ActorNetGuid} on channel {ChannelIndex}: {ActorPath} at {Location}, velocity {Velocity}",
+        _logger.LogInformation(
+            "[{TimeSeconds,8:F3}s] Spawn/open actor {ActorNetGuid} on channel {ChannelIndex}: {ActorPath} at {Location}, velocity {Velocity}",
             spawned.TimeSeconds,
             spawned.ActorNetGuid,
             spawned.ChannelIndex,
@@ -152,54 +159,77 @@ internal sealed class ActorEventLogger : IReplayEventSink
             return;
         }
 
-        if (!TryReserveDetailedEvent())
+        if (!TryReserveDetailedActorEvent())
         {
             return;
         }
 
-        _logger.Information(
-            "[{TimeSeconds,8:F3}s] Close actor {ActorNetGuid} on channel {ChannelIndex}: {ActorPath}, reason {CloseReason}",
+        _actors.TryGetValue(closed.ActorNetGuid, out var identity);
+        var lifetime = identity?.SpawnTimeSeconds is { } spawnTime
+            ? FormattableString.Invariant($"{closed.TimeSeconds - spawnTime:F3}s")
+            : "unknown";
+
+        _logger.LogInformation(
+            "[{TimeSeconds,8:F3}s] Close actor {ActorNetGuid} on channel {ChannelIndex}: {ActorPath}, reason {CloseReason}, lifetime {Lifetime}",
             closed.TimeSeconds,
             closed.ActorNetGuid,
             closed.ChannelIndex,
             DisplayPath(closed.ActorNetGuid),
-            closed.Reason);
-    }
-
-    private void LogDestroyed(ActorDestroyed destroyed)
-    {
-        if (!_loggedActorNetGuids.Contains(destroyed.ActorNetGuid))
-        {
-            return;
-        }
-
-        if (!TryReserveDetailedEvent())
-        {
-            return;
-        }
-
-        _actors.TryGetValue(destroyed.ActorNetGuid, out var identity);
-        var lifetime = identity?.SpawnTimeSeconds is { } spawnTime
-            ? FormattableString.Invariant($"{destroyed.TimeSeconds - spawnTime:F3}s")
-            : "unknown";
-
-        _logger.Information(
-            "[{TimeSeconds,8:F3}s] Destroy actor {ActorNetGuid} on channel {ChannelIndex}: {ActorPath}, lifetime {Lifetime}",
-            destroyed.TimeSeconds,
-            destroyed.ActorNetGuid,
-            destroyed.ChannelIndex,
-            DisplayPath(destroyed.ActorNetGuid),
+            closed.Reason,
             lifetime);
     }
 
-    private bool TryReserveDetailedEvent()
+    private void LogExportGroup(ExportGroupReceived exportGroup)
     {
-        if (_detailedEventCount >= MaxDetailedEvents)
+        if (exportGroup.Fields.Count == 0 || !TryReserveDecodedValueEvent())
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "[{TimeSeconds,8:F3}s] Export {ExportGroupPath} actor {ActorNetGuid} object {ObjectNetGuid}: {Fields}",
+            exportGroup.TimeSeconds,
+            exportGroup.ExportGroupPath ?? "<unresolved>",
+            exportGroup.ActorNetGuid,
+            exportGroup.ObjectNetGuid,
+            FormatFields(exportGroup.Fields));
+    }
+
+    private void LogRpc(RpcReceived rpc)
+    {
+        if (!TryReserveDecodedValueEvent())
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "[{TimeSeconds,8:F3}s] RPC {FunctionName} actor {ActorNetGuid} object {ObjectNetGuid}: {Fields}",
+            rpc.TimeSeconds,
+            rpc.FunctionName,
+            rpc.ActorNetGuid,
+            rpc.ObjectNetGuid,
+            rpc.Fields.Count == 0 ? "<no decoded fields>" : FormatFields(rpc.Fields));
+    }
+
+    private bool TryReserveDetailedActorEvent()
+    {
+        if (_detailedActorEventCount >= MaxDetailedActorEvents)
         {
             return false;
         }
 
-        _detailedEventCount++;
+        _detailedActorEventCount++;
+        return true;
+    }
+
+    private bool TryReserveDecodedValueEvent()
+    {
+        if (_decodedValueEventCount >= MaxDecodedValueEvents)
+        {
+            return false;
+        }
+
+        _decodedValueEventCount++;
         return true;
     }
 
@@ -213,27 +243,39 @@ internal sealed class ActorEventLogger : IReplayEventSink
         return identity.ArchetypePath ?? identity.ActorPath ?? "<unresolved>";
     }
 
-    private static string FormatVector(FVector? vector) =>
-        vector is { } value
-            ? FormattableString.Invariant($"({value.X:F1}, {value.Y:F1}, {value.Z:F1})")
-            : "<unknown>";
+    private static string FormatFields(IReadOnlyList<DecodedReplayField> fields)
+    {
+        const int maxFields = 8;
+        var values = fields
+            .Take(maxFields)
+            .Select(field => $"{field.Name ?? field.ExportName ?? $"handle:{field.Handle}"}={FormatValue(field.Value)}");
+        var formatted = string.Join(", ", values);
+        return fields.Count > maxFields
+            ? formatted + FormattableString.Invariant($", ... +{fields.Count - maxFields}")
+            : formatted;
+    }
 
-    private static bool IsInterestingPath(string path) =>
-        path.Contains("Player", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Controller", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Character", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("_PC", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Pawn", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Ability", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Gun", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Weapon", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Equippable", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Bomb", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Projectile", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Smoke", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Flash", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Trap", StringComparison.OrdinalIgnoreCase) ||
-        path.Contains("Wall", StringComparison.OrdinalIgnoreCase);
+    private static string FormatValue(DecodedFieldValue value) => value.Kind switch
+    {
+        DecodedFieldValueKind.Bool => value.BoolValue ? "true" : "false",
+        DecodedFieldValueKind.Byte => value.ByteValue.ToString("G", CultureInfo.InvariantCulture),
+        DecodedFieldValueKind.Int32 => value.Int32Value.ToString("G", CultureInfo.InvariantCulture),
+        DecodedFieldValueKind.UInt32 => value.UInt32Value.ToString("G", CultureInfo.InvariantCulture),
+        DecodedFieldValueKind.Float => value.FloatValue.ToString("G", CultureInfo.InvariantCulture),
+        DecodedFieldValueKind.NetGuid => FormattableString.Invariant($"net:{value.NetGuidValue}"),
+        DecodedFieldValueKind.Vector => FormatVector(value.VectorValue),
+        DecodedFieldValueKind.Rotator => FormatRotator(value.RotatorValue),
+        _ => "<none>",
+    };
+
+    private static string FormatVector(FVector? vector) =>
+        vector is { } value ? FormatVector(value) : "<unknown>";
+
+    private static string FormatVector(FVector vector) =>
+        FormattableString.Invariant($"({vector.X:F1}, {vector.Y:F1}, {vector.Z:F1})");
+
+    private static string FormatRotator(FRotator rotator) =>
+        FormattableString.Invariant($"({rotator.Pitch:F1}, {rotator.Yaw:F1}, {rotator.Roll:F1})");
 
     private sealed record ActorIdentity(
         string? ActorPath,

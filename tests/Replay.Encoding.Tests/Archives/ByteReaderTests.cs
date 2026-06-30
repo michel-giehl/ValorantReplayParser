@@ -60,7 +60,7 @@ public class ByteReaderTests
         reader.Seek(1);
         Assert.That(reader.ReadByte(), Is.EqualTo(0x20));
 
-        reader.Seek(1, SeekOrigin.End);
+        reader.Seek(-1, SeekOrigin.End);
         Assert.That(reader.ReadByte(), Is.EqualTo(0x40));
     }
 }

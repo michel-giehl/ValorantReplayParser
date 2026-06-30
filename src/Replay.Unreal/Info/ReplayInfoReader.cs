@@ -18,13 +18,11 @@ public sealed class ReplayInfoReader
         _archive = archive;
     }
 
-    public ReplayInfoReadResult Read(
-        ReplayInfo info,
-        ReplayInfoSerializationMetadata metadata)
+    public ReplayInfoReadResult Read()
     {
         try
         {
-            return ReadCore(info, metadata);
+            return ReadCore();
         }
         catch (ArchiveReadException exception)
         {
@@ -38,14 +36,15 @@ public sealed class ReplayInfoReader
         }
     }
 
-    private ReplayInfoReadResult ReadCore(
-        ReplayInfo info,
-        ReplayInfoSerializationMetadata metadata)
+    private ReplayInfoReadResult ReadCore()
     {
         if (_archive.Length == 0)
         {
             throw new InvalidReplayInfoException("Replay info archive is empty.");
         }
+
+        var info = new ReplayInfo();
+        var metadata = new ReplayInfoSerializationMetadata();
 
         var magicNumber = _archive.ReadUInt32();
         if (magicNumber != FileMagic)
@@ -53,7 +52,7 @@ public sealed class ReplayInfoReader
             throw new InvalidReplayInfoException(
                 $"Replay info magic mismatch: expected {FileMagic}, got {magicNumber}.");
         }
-        
+
         var legacyFileVersion = _archive.ReadUInt32();
 
         ReadVersionMetadata(metadata, legacyFileVersion);
@@ -91,16 +90,6 @@ public sealed class ReplayInfoReader
         info.Timestamp = _archive.ReadInt64();
         info.Compressed = _archive.ReadUInt32AsBool();
         info.Encrypted = _archive.ReadUInt32AsBool();
-
-        var keyPosition = _archive.Position;
-        var keySize = _archive.ReadInt32();
-        if (keySize is < 0 or > MaxEncryptionKeySizeBytes)
-        {
-            throw new InvalidReplayInfoException(
-                $"Serialized encryption key size {keySize} is outside the valid range 0..{MaxEncryptionKeySizeBytes}.");
-        }
-
-        _archive.Seek(keyPosition);
         info.EncryptionKey = _archive.ReadByteArray(MaxEncryptionKeySizeBytes);
 
         if (info is { IsLive: false, Encrypted: true, EncryptionKey.Length: 0 })

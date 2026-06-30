@@ -11,7 +11,6 @@ using Replay.Unreal.Channels;
 using Replay.Unreal.Packets;
 using Replay.Unreal.Parsing;
 using Replay.Unreal.Readers;
-using Replay.Unreal.World;
 
 namespace Replay.Unreal.Tests.Bunches;
 
@@ -217,21 +216,17 @@ public class BunchPayloadPipelineTests
             Assert.That(state.SpawnVelocity!.Value.Bits, Is.EqualTo(64));
         });
 
-        var actor = context.WorldState.ActorsByNetGuid[TestNetGuid];
         var spawned = eventSink.Events.OfType<ActorSpawned>().Single();
         Assert.Multiple(() =>
         {
-            Assert.That(actor.LifecycleStatus, Is.EqualTo(ActorLifecycleStatus.Open));
-            Assert.That(actor.ChannelIndex, Is.EqualTo(5));
-            Assert.That(actor.SpawnPacketId, Is.EqualTo(2));
-            Assert.That(actor.Location, Is.EqualTo(state.SpawnLocation));
-            Assert.That(actor.Rotation, Is.EqualTo(state.SpawnRotation));
-            Assert.That(actor.Scale, Is.EqualTo(state.SpawnScale));
-            Assert.That(actor.Velocity, Is.EqualTo(state.SpawnVelocity));
-            Assert.That(context.BunchPayloadStats.ActorCreatedCount, Is.EqualTo(1));
-            Assert.That(eventSink.Events.OfType<ActorOpened>().Count(), Is.EqualTo(1));
             Assert.That(spawned.ActorNetGuid, Is.EqualTo(TestNetGuid));
+            Assert.That(spawned.ChannelIndex, Is.EqualTo(5));
+            Assert.That(spawned.ArchetypeNetGuid, Is.EqualTo(TestArchetypeGuid));
+            Assert.That(spawned.LevelNetGuid, Is.EqualTo(TestLevelGuid));
             Assert.That(spawned.Location, Is.EqualTo(state.SpawnLocation));
+            Assert.That(spawned.Rotation, Is.EqualTo(state.SpawnRotation));
+            Assert.That(spawned.Scale, Is.EqualTo(state.SpawnScale));
+            Assert.That(spawned.Velocity, Is.EqualTo(state.SpawnVelocity));
         });
     }
 
@@ -427,24 +422,21 @@ public class BunchPayloadPipelineTests
         });
         reader.ReadPacket(close, 2, context.BunchPayloadPipeline.HandleBunchPayload);
 
-        var actor = context.WorldState.ActorsByNetGuid[TestNetGuid];
-        var channel = context.WorldState.Channels[5];
+        var channel = context.ChannelStates[5];
+        var closed = eventSink.Events.OfType<ActorClosed>().Single();
         Assert.Multiple(() =>
         {
             Assert.That(channel.IsOpen, Is.False);
             Assert.That(channel.IsDormant, Is.True);
             Assert.That(channel.CloseReason, Is.EqualTo(ChannelCloseReason.Dormancy));
-            Assert.That(actor.LifecycleStatus, Is.EqualTo(ActorLifecycleStatus.Dormant));
-            Assert.That(actor.DestroyPacketId, Is.Null);
             Assert.That(context.BunchPayloadStats.ActorChannelCloseCount, Is.EqualTo(1));
-            Assert.That(context.BunchPayloadStats.ActorDormantCount, Is.EqualTo(1));
-            Assert.That(eventSink.Events.OfType<ActorClosed>().Single().Reason, Is.EqualTo(ChannelCloseReason.Dormancy));
-            Assert.That(eventSink.Events.OfType<ActorDestroyed>(), Is.Empty);
+            Assert.That(closed.ActorNetGuid, Is.EqualTo(TestNetGuid));
+            Assert.That(closed.Reason, Is.EqualTo(ChannelCloseReason.Dormancy));
         });
     }
 
     [Test]
-    public void CloseActorChannel_Destroyed_EndsActorAndSubobjectLifetimes()
+    public void CloseActorChannel_Destroyed_EmitsActorClosed()
     {
         var eventSink = new CapturingReplayEventSink();
         var context = CreateContext(eventSink);
@@ -458,43 +450,21 @@ public class BunchPayloadPipelineTests
         });
         reader.ReadPacket(open, 1, context.BunchPayloadPipeline.HandleBunchPayload);
 
-        var createSubobject = BuildPacket(w =>
-        {
-            WriteBunchHeaderBits(w, chIndex: 5);
-            w.BeginPayload();
-            w.WriteBit(false);
-            w.WriteBit(false);
-            WriteInternalLoadObject(w, netGuid: 50);
-            w.WriteBit(false);
-            w.WriteBit(false);
-            WriteInternalLoadObject(w, netGuid: TestArchetypeGuid);
-            w.WriteBit(true);
-            w.WriteIntPacked(0);
-        });
-        reader.ReadPacket(createSubobject, 2, context.BunchPayloadPipeline.HandleBunchPayload);
-
         var close = BuildPacket(w =>
         {
             WriteBunchHeaderBits(w, chIndex: 5, bControl: true, bClose: true);
         });
         reader.ReadPacket(close, 3, context.BunchPayloadPipeline.HandleBunchPayload);
 
-        var actor = context.WorldState.ActorsByNetGuid[TestNetGuid];
-        var subobject = context.WorldState.ObjectsByNetGuid[50];
-        var destroyedSubobject = eventSink.Events.OfType<SubobjectDestroyed>().Single();
+        var channel = context.ChannelStates[5];
+        var closed = eventSink.Events.OfType<ActorClosed>().Single();
         Assert.Multiple(() =>
         {
-            Assert.That(actor.LifecycleStatus, Is.EqualTo(ActorLifecycleStatus.Destroyed));
-            Assert.That(actor.DestroyPacketId, Is.EqualTo(3));
-            Assert.That(actor.SubobjectNetGuids, Does.Contain((uint)50));
-            Assert.That(subobject.IsActive, Is.False);
-            Assert.That(subobject.DestroyPacketId, Is.EqualTo(3));
-            Assert.That(context.BunchPayloadStats.ActorDestroyedCount, Is.EqualTo(1));
-            Assert.That(context.BunchPayloadStats.SubobjectCreatedCount, Is.EqualTo(1));
-            Assert.That(context.BunchPayloadStats.SubobjectDestroyedCount, Is.EqualTo(1));
-            Assert.That(eventSink.Events.OfType<ActorDestroyed>().Single().ActorNetGuid, Is.EqualTo(TestNetGuid));
-            Assert.That(destroyedSubobject.ObjectNetGuid, Is.EqualTo(50));
-            Assert.That(destroyedSubobject.DestroyedWithActor, Is.True);
+            Assert.That(channel.IsOpen, Is.False);
+            Assert.That(channel.CloseReason, Is.EqualTo(ChannelCloseReason.Destroyed));
+            Assert.That(context.BunchPayloadStats.ActorChannelCloseCount, Is.EqualTo(1));
+            Assert.That(closed.ActorNetGuid, Is.EqualTo(TestNetGuid));
+            Assert.That(closed.Reason, Is.EqualTo(ChannelCloseReason.Destroyed));
         });
     }
 
@@ -534,7 +504,9 @@ public class BunchPayloadPipelineTests
         var catalog = new DescriptorCatalog();
         catalog.Add(new TestContentDescriptor());
         context.ExportBindingRegistry.SetCatalog(catalog);
-        context.ExportBindingRegistry.OnExportGroupChanged(CreateNetFieldExportGroup(TestPath, (0u, "FieldA")));
+        var exportGroup = CreateNetFieldExportGroup(TestPath, (0u, "FieldA"));
+        context.NetGuidCache.AddExportGroup(exportGroup);
+        context.ExportBindingRegistry.OnExportGroupChanged(exportGroup);
         context.NetGuidCache.SetNetGuidPath(TestArchetypeGuid, TestPath);
         AddOpenChannel(context, 6);
         var reader = new RawPacketReader();
@@ -566,7 +538,9 @@ public class BunchPayloadPipelineTests
         var catalog = new DescriptorCatalog();
         catalog.Add(new TestContentDescriptor());
         context.ExportBindingRegistry.SetCatalog(catalog);
-        context.ExportBindingRegistry.OnExportGroupChanged(CreateNetFieldExportGroup(TestPath, (0u, "FieldA")));
+        var exportGroup = CreateNetFieldExportGroup(TestPath, (0u, "FieldA"));
+        context.NetGuidCache.AddExportGroup(exportGroup);
+        context.ExportBindingRegistry.OnExportGroupChanged(exportGroup);
         context.NetGuidCache.SetNetGuidPath(TestArchetypeGuid, "Default__Test_C", new NetworkGuid(301));
         context.NetGuidCache.SetNetGuidPath(301, TestPath);
         var reader = new RawPacketReader();
@@ -623,17 +597,15 @@ public class BunchPayloadPipelineTests
             Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
         });
 
-        var objectState = context.WorldState.ObjectsByNetGuid[50];
+        var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>
         {
-            Assert.That(objectState.ActorNetGuid.Value, Is.EqualTo(TestNetGuid));
-            Assert.That(objectState.ChannelIndex, Is.EqualTo(7));
-            Assert.That(objectState.IsStablyNamed, Is.True);
-            Assert.That(objectState.IsActive, Is.True);
-            Assert.That(objectState.CreatedPacketId, Is.EqualTo(0));
-            Assert.That(context.WorldState.Channels[7].SubobjectNetGuids, Does.Contain((uint)50));
-            Assert.That(context.BunchPayloadStats.SubobjectCreatedCount, Is.EqualTo(1));
-            Assert.That(eventSink.Events.OfType<SubobjectCreated>().Single().ObjectNetGuid, Is.EqualTo(50));
+            Assert.That(exportGroup.ActorNetGuid, Is.EqualTo(TestNetGuid));
+            Assert.That(exportGroup.ObjectNetGuid, Is.EqualTo(50));
+            Assert.That(exportGroup.ChannelIndex, Is.EqualTo(7));
+            Assert.That(exportGroup.IsActor, Is.False);
+            Assert.That(exportGroup.IsDeleted, Is.False);
+            Assert.That(exportGroup.WasDecoded, Is.False);
         });
     }
 
@@ -666,14 +638,13 @@ public class BunchPayloadPipelineTests
             Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(0));
         });
 
-        var tombstone = context.WorldState.ObjectsByNetGuid[60];
+        var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>
         {
-            Assert.That(tombstone.IsActive, Is.False);
-            Assert.That(tombstone.DestroyPacketId, Is.EqualTo(0));
-            Assert.That(tombstone.DeleteFlags, Is.EqualTo(0x03));
-            Assert.That(stats.SubobjectDestroyedCount, Is.EqualTo(1));
-            Assert.That(eventSink.Events.OfType<SubobjectDestroyed>().Single().DeleteFlags, Is.EqualTo(0x03));
+            Assert.That(exportGroup.ObjectNetGuid, Is.EqualTo(60));
+            Assert.That(exportGroup.IsDeleted, Is.True);
+            Assert.That(exportGroup.DeleteFlags, Is.EqualTo(0x03));
+            Assert.That(exportGroup.WasDecoded, Is.False);
         });
     }
 
@@ -732,7 +703,7 @@ public class BunchPayloadPipelineTests
     }
 
     [Test]
-    public void ContentBlock_SubobjectPayloadOverrun_DoesNotCreateObjectState()
+    public void ContentBlock_SubobjectPayloadOverrun_EmitsNoEvent()
     {
         var eventSink = new CapturingReplayEventSink();
         var context = CreateContext(eventSink);
@@ -755,7 +726,6 @@ public class BunchPayloadPipelineTests
         {
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(1));
             Assert.That(context.BunchPayloadStats.MalformedContentBlockCount, Is.EqualTo(1));
-            Assert.That(context.WorldState.ObjectsByNetGuid, Is.Empty);
             Assert.That(eventSink.Events, Is.Empty);
         });
     }
@@ -951,7 +921,6 @@ public class BunchPayloadPipelineTests
         {
             PathName = path,
             PathNameIndex = 42,
-            NetFieldExportsLength = length,
             NetFieldExports = netFields,
         };
     }
@@ -1400,10 +1369,8 @@ public class BunchPayloadPipelineTests
     {
         public static readonly CountingFieldDecoder Instance = new();
 
-        public void Decode(ref FieldDecodeContext context, FBitArchive archive)
-        {
-            _ = archive.ReadInt32();
-        }
+        public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive) =>
+            DecodedFieldValue.FromInt32(archive.ReadInt32());
     }
 
     private sealed class CapturingReplayEventSink : IReplayEventSink

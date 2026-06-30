@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -8,9 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />
-      <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
-      <ProjectReference Include="..\Replay.Unreal\Replay.Unreal.csproj" />
+        <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
+        <ProjectReference Include="..\Replay.Unreal\Replay.Unreal.csproj" />
     </ItemGroup>
 
 </Project>

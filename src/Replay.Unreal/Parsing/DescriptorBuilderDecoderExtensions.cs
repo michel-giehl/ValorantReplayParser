@@ -22,6 +22,21 @@ public static class DescriptorBuilderDecoderExtensions
     public static FieldDescriptorBuilder ObjectNetGuid(this FieldDescriptorBuilder builder) =>
         builder.Decode(PrimitiveDecoders.ObjectNetGuid);
 
+    public static FieldDescriptorBuilder FVector(this FieldDescriptorBuilder builder) =>
+        builder.Decode(PrimitiveDecoders.Vector);
+
+    public static FieldDescriptorBuilder FVectorNetQuantize(this FieldDescriptorBuilder builder) =>
+        builder.Decode(PrimitiveDecoders.VectorNetQuantize);
+
+    public static FieldDescriptorBuilder FVectorNetQuantize10(this FieldDescriptorBuilder builder) =>
+        builder.Decode(PrimitiveDecoders.VectorNetQuantize10);
+
+    public static FieldDescriptorBuilder FVectorNetQuantize100(this FieldDescriptorBuilder builder) =>
+        builder.Decode(PrimitiveDecoders.VectorNetQuantize100);
+
+    public static FieldDescriptorBuilder FVectorNetQuantizeNormal(this FieldDescriptorBuilder builder) =>
+        builder.Decode(PrimitiveDecoders.VectorNetQuantizeNormal);
+
     public static FieldDescriptorBuilder Ignore(this FieldDescriptorBuilder builder) =>
         builder.Decode(PrimitiveDecoders.Skip);
 }

@@ -9,4 +9,3 @@ public class ReplayVersion
     public required string Branch { get; set; }
 }
 
-public sealed class UninitializedReplayVersion : ReplayVersion;

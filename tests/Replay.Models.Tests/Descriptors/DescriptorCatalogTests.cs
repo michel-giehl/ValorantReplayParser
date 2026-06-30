@@ -1,6 +1,6 @@
 using Replay.Models.Descriptors;
 
-namespace Replay.Encoding.Tests.Descriptors;
+namespace Replay.Models.Tests.Descriptors;
 
 public class DescriptorCatalogTests
 {

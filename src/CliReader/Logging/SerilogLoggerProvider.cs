@@ -21,6 +21,7 @@ internal sealed class SerilogLoggerProvider : ILoggerProvider
 
     private sealed class SerilogMicrosoftLogger : ILogger
     {
+        private const string OriginalFormatPropertyName = "{OriginalFormat}";
         private readonly Serilog.ILogger _logger;
 
         public SerilogMicrosoftLogger(Serilog.ILogger logger)
@@ -44,13 +45,52 @@ internal sealed class SerilogLoggerProvider : ILoggerProvider
                 return;
             }
 
+            var serilogLevel = ToSerilogLevel(logLevel);
+            if (state is IEnumerable<KeyValuePair<string, object?>> properties)
+            {
+                WriteStructured(serilogLevel, exception, properties, formatter(state, exception));
+                return;
+            }
+
             var message = formatter(state, exception);
             if (string.IsNullOrEmpty(message) && exception is null)
             {
                 return;
             }
 
-            _logger.Write(ToSerilogLevel(logLevel), exception, "{Message}", message);
+            _logger.Write(serilogLevel, exception, "{Message}", message);
+        }
+
+        private void WriteStructured(
+            LogEventLevel logLevel,
+            Exception? exception,
+            IEnumerable<KeyValuePair<string, object?>> properties,
+            string fallbackMessage)
+        {
+            var logger = _logger;
+            var messageTemplate = fallbackMessage;
+
+            foreach (var property in properties)
+            {
+                if (property.Key == OriginalFormatPropertyName)
+                {
+                    if (property.Value is string originalFormat)
+                    {
+                        messageTemplate = originalFormat;
+                    }
+
+                    continue;
+                }
+
+                logger = logger.ForContext(property.Key, property.Value, destructureObjects: false);
+            }
+
+            if (string.IsNullOrEmpty(messageTemplate) && exception is null)
+            {
+                return;
+            }
+
+            logger.Write(logLevel, exception, messageTemplate);
         }
 
         private static LogEventLevel ToSerilogLevel(LogLevel logLevel) => logLevel switch

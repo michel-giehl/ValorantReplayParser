@@ -14,16 +14,11 @@ public sealed class BunchPayloadStats
     public int ActorChannelOpenCount { get; set; }
     public int ActorChannelCloseCount { get; set; }
     public int ActorSerializeNewActorCount { get; set; }
-    public int ActorCreatedCount { get; set; }
-    public int ActorDestroyedCount { get; set; }
-    public int ActorDormantCount { get; set; }
     public int DynamicOpenPayloadBunchCount { get; set; }
     public long DynamicOpenPayloadBitsSkipped { get; set; }
     public int ContentBlockCount { get; set; }
     public int ActorContentBlockCount { get; set; }
     public int SubobjectContentBlockCount { get; set; }
-    public int SubobjectCreatedCount { get; set; }
-    public int SubobjectDestroyedCount { get; set; }
     public int DeletedContentBlockCount { get; set; }
     public int RepLayoutContentBlockCount { get; set; }
     public long ContentPayloadBitsSkipped { get; set; }

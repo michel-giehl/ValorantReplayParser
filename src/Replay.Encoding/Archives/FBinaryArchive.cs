@@ -17,46 +17,6 @@ public class FBinaryArchive : ByteArchiveReader
     {
     }
 
-    public string ReadFString() => ReadFStringCore(null);
-
-    public string ReadFString(int maxSerializedBytes) => ReadFStringCore(maxSerializedBytes);
-
-    private string ReadFStringCore(int? maxSerializedBytes)
-    {
-        var length = ReadInt32();
-        if (length == 0)
-        {
-            return string.Empty;
-        }
-
-        var encoding = System.Text.Encoding.UTF8;
-        int byteCount;
-        if (length < 0)
-        {
-            if (length == int.MinValue)
-            {
-                throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
-                    length);
-            }
-
-            encoding = System.Text.Encoding.Unicode;
-            byteCount = checked(-length * 2);
-        }
-        else
-        {
-            byteCount = length;
-        }
-
-        if (maxSerializedBytes is not null && byteCount > maxSerializedBytes.Value)
-        {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
-                byteCount, $"Serialized FString byte count {byteCount} exceeds maximum {maxSerializedBytes.Value}.");
-        }
-
-        var bytes = ReadBytes(byteCount);
-        return encoding.GetString(bytes.Span).TrimEnd('\0');
-    }
-
     public Guid ReadGuid()
     {
         var a = ReadUInt32();
@@ -80,19 +40,7 @@ public class FBinaryArchive : ByteArchiveReader
 
     public bool ReadBoolean() => ReadByte() != 0;
 
-    public string ReadFName()
-    {
-        var isHardcoded = ReadBoolean();
-        if (isHardcoded)
-        {
-            var nameIndex = ReadIntPacked();
-            return nameIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        }
-
-        var name = ReadFString();
-        _ = ReadInt32();
-        return name;
-    }
+    public string ReadFName() => ReadFNameCore(ReadBoolean);
 
     public byte[] ReadByteArray(int maxCount)
     {
@@ -126,8 +74,6 @@ public class FBinaryArchive : ByteArchiveReader
     public TEnum ReadByteAsEnum<TEnum>() where TEnum : struct, Enum =>
         (TEnum)Enum.ToObject(typeof(TEnum), ReadByte());
 
-    public T[] ReadArray<T>(Func<T> readValue) => ReadArray(readValue, int.MaxValue);
-
     public T[] ReadArray<T>(Func<T> readValue, int maxCount)
     {
         var count = ReadInt32();
@@ -141,9 +87,6 @@ public class FBinaryArchive : ByteArchiveReader
 
         return values;
     }
-
-    public (T First, U Second)[] ReadTupleArray<T, U>(Func<T> readFirst, Func<U> readSecond) =>
-        ReadTupleArray(readFirst, readSecond, int.MaxValue);
 
     public (T First, U Second)[] ReadTupleArray<T, U>(Func<T> readFirst, Func<U> readSecond, int maxCount)
     {
@@ -166,12 +109,5 @@ public class FBinaryArchive : ByteArchiveReader
             throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, operation, Position, Length,
                 count, $"Serialized array count {count} is outside the valid range 0..{maxCount}.");
         }
-    }
-}
-
-public class UninitializedBinaryArchive : FBinaryArchive
-{
-    public UninitializedBinaryArchive() : base([])
-    {
     }
 }

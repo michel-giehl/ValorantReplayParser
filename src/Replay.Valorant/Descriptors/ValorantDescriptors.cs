@@ -11,6 +11,7 @@ public static class ValorantDescriptors
         catalog.Add(new AresAbilitySystemComponentDescriptor());
         catalog.Add(new AresAttributeSetDescriptor());
         catalog.Add(new RemoteCharacterUpdateDescriptor());
+        catalog.Add(new BaseReplayPlayerState());
         catalog.Add(new BaseReplayControllerDescriptor());
         catalog.Add(new TripWireAbilityDescriptor());
         catalog.Add(new SmokeAbilityDescriptor());

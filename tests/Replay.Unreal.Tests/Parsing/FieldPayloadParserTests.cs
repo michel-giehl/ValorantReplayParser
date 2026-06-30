@@ -1,14 +1,14 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Events;
 using Replay.Unreal.Parsing;
-using Replay.Unreal.World;
 
 namespace Replay.Unreal.Tests.Parsing;
 
 public class FieldPayloadParserTests
 {
     [Test]
-    public void ParseContentPayload_EmptyPayload_DoesNothing()
+    public void ParseContentPayload_EmptyPayload_ReturnsNoFields()
     {
         var boundGroup = CreateSimpleBoundGroup("/Game/Test.Test_C", fields:
         [
@@ -17,15 +17,15 @@ public class FieldPayloadParserTests
 
         var payloadData = BuildFieldPayload();
         var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
-        var context = new FieldDecodeContext
+        var context = CreateContext("/Game/Test.Test_C");
+
+        var fields = new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
+
+        Assert.Multiple(() =>
         {
-            WorldState = new WorldState(),
-            ExportGroupPath = "/Game/Test.Test_C",
-        };
-
-        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
-
-        Assert.That(payload.AtEnd, Is.True);
+            Assert.That(fields, Is.Empty);
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
 
     [Test]
@@ -37,22 +37,21 @@ public class FieldPayloadParserTests
         ]);
 
         var payloadData = BuildFieldPayload(
-            (handle: 999u, bitCount: 16, data: new byte[] { 0xFF, 0xFF }));
+            (handle: 999u, bitCount: 16, data: [0xFF, 0xFF]));
         var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
+        var context = CreateContext("/Game/Test.Test_C");
 
-        var context = new FieldDecodeContext
+        var fields = new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
+
+        Assert.Multiple(() =>
         {
-            WorldState = new WorldState(),
-            ExportGroupPath = "/Game/Test.Test_C",
-        };
-
-        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
-
-        Assert.That(payload.AtEnd, Is.True);
+            Assert.That(fields, Is.Empty);
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
 
     [Test]
-    public void ParseContentPayload_EnabledInt32_DecodesCorrectly()
+    public void ParseContentPayload_EnabledInt32_ReturnsDecodedField()
     {
         var boundGroup = CreateSimpleBoundGroup("/Game/Test.Test_C", fields:
         [
@@ -62,16 +61,19 @@ public class FieldPayloadParserTests
         var intValue = BitConverter.GetBytes(42);
         var payloadData = BuildFieldPayload((handle: 0u, bitCount: 32, data: intValue));
         var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
+        var context = CreateContext("/Game/Test.Test_C");
 
-        var context = new FieldDecodeContext
+        var fields = new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
+
+        Assert.Multiple(() =>
         {
-            WorldState = new WorldState(),
-            ExportGroupPath = "/Game/Test.Test_C",
-        };
-
-        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
-
-        Assert.That(payload.AtEnd, Is.True);
+            Assert.That(fields, Has.Count.EqualTo(1));
+            Assert.That(fields[0].Handle, Is.EqualTo(0));
+            Assert.That(fields[0].Name, Is.EqualTo("IntField"));
+            Assert.That(fields[0].Value.Kind, Is.EqualTo(DecodedFieldValueKind.Int32));
+            Assert.That(fields[0].Value.Int32Value, Is.EqualTo(42));
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
 
     [Test]
@@ -88,16 +90,17 @@ public class FieldPayloadParserTests
             (handle: 0u, bitCount: 64, data: new byte[8]),
             (handle: 1u, bitCount: 32, data: intValue));
         var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
+        var context = CreateContext("/Game/Test.Test_C");
 
-        var context = new FieldDecodeContext
+        var fields = new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
+
+        Assert.Multiple(() =>
         {
-            WorldState = new WorldState(),
-            ExportGroupPath = "/Game/Test.Test_C",
-        };
-
-        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
-
-        Assert.That(payload.AtEnd, Is.True);
+            Assert.That(fields, Has.Count.EqualTo(1));
+            Assert.That(fields[0].Name, Is.EqualTo("IntField"));
+            Assert.That(fields[0].Value.Int32Value, Is.EqualTo(99));
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
 
     [Test]
@@ -115,20 +118,22 @@ public class FieldPayloadParserTests
             (handle: 0u, bitCount: 32, data: intBytes),
             (handle: 1u, bitCount: 32, data: floatBytes));
         var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
+        var context = CreateContext("/Game/Test.Test_C");
 
-        var context = new FieldDecodeContext
+        var fields = new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
+
+        Assert.Multiple(() =>
         {
-            WorldState = new WorldState(),
-            ExportGroupPath = "/Game/Test.Test_C",
-        };
-
-        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
-
-        Assert.That(payload.AtEnd, Is.True);
+            Assert.That(fields, Has.Count.EqualTo(2));
+            Assert.That(fields[0].Value.Int32Value, Is.EqualTo(42));
+            Assert.That(fields[1].Value.Kind, Is.EqualTo(DecodedFieldValueKind.Float));
+            Assert.That(fields[1].Value.FloatValue, Is.EqualTo(3.14f));
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
 
     [Test]
-    public void ParseContentPayload_ObjectNetGuid_DecodesCorrectly()
+    public void ParseContentPayload_ObjectNetGuid_ReturnsDecodedGuidField()
     {
         var boundGroup = CreateSimpleBoundGroup("/Game/Test.Test_C", fields:
         [
@@ -138,16 +143,17 @@ public class FieldPayloadParserTests
         var guidBytes = EncodeIntPacked(42);
         var payloadData = BuildFieldPayload((handle: 0u, bitCount: guidBytes.Length * 8, data: guidBytes));
         var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
+        var context = CreateContext("/Game/Test.Test_C");
 
-        var context = new FieldDecodeContext
+        var fields = new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
+
+        Assert.Multiple(() =>
         {
-            WorldState = new WorldState(),
-            ExportGroupPath = "/Game/Test.Test_C",
-        };
-
-        new FieldPayloadParser().ParseContentPayload(payload, boundGroup, ref context);
-
-        Assert.That(payload.AtEnd, Is.True);
+            Assert.That(fields, Has.Count.EqualTo(1));
+            Assert.That(fields[0].Value.Kind, Is.EqualTo(DecodedFieldValueKind.NetGuid));
+            Assert.That(fields[0].Value.NetGuidValue, Is.EqualTo(42));
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
 
     [Test]
@@ -173,16 +179,23 @@ public class FieldPayloadParserTests
 
         var bytes = BuildClassNetCachePayload(bitCount: 8, data: [0xFF]);
         var payload = new BitArchiveReader(bytes, bytes.Length * 8);
-        var context = new FieldDecodeContext
+        var context = CreateContext("/Game/Test.Test_C_ClassNetCache");
+
+        var invocations = new FieldPayloadParser().ParseClassNetCachePayload(payload, boundCache, ref context);
+
+        Assert.Multiple(() =>
         {
-            WorldState = new WorldState(),
-            ExportGroupPath = "/Game/Test.Test_C_ClassNetCache",
-        };
-
-        new FieldPayloadParser().ParseClassNetCachePayload(payload, boundCache, ref context);
-
-        Assert.That(payload.AtEnd, Is.True);
+            Assert.That(invocations, Has.Count.EqualTo(1));
+            Assert.That(invocations[0].Handle, Is.EqualTo(0));
+            Assert.That(invocations[0].Name, Is.EqualTo("SomeFunction"));
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
+
+    private static FieldDecodeContext CreateContext(string path) => new()
+    {
+        ExportGroupPath = path,
+    };
 
     private static BoundExportGroup CreateSimpleBoundGroup(
         string path,
@@ -195,8 +208,10 @@ public class FieldPayloadParserTests
             bindings[handle] = new FieldBinding
             {
                 Enabled = enabled,
+                Categories = ExportCategory.Debug,
                 Decoder = decoder,
                 Name = name,
+                ExportName = name,
             };
         }
 
@@ -266,9 +281,10 @@ public class FieldPayloadParserTests
 
     private sealed class SkipRpcDecoder : IRpcDecoder
     {
-        public void Decode(ref FieldDecodeContext context, FBitArchive archive)
+        public IReadOnlyList<DecodedReplayField> Decode(ref FieldDecodeContext context, FBitArchive archive)
         {
             archive.SkipRemaining();
+            return Array.Empty<DecodedReplayField>();
         }
     }
 

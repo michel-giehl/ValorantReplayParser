@@ -4,18 +4,23 @@ namespace Replay.Encoding.Net;
 
 public sealed class NetGuidCache
 {
-    public Dictionary<string, NetFieldExportGroup> ExportGroupsByPath { get; } = [];
+    private readonly Dictionary<string, NetFieldExportGroup> _exportGroupsByPath = new(StringComparer.Ordinal);
+    private readonly Dictionary<uint, NetFieldExportGroup> _exportGroupsByPathIndex = [];
+    private readonly Dictionary<uint, string> _pathByNetGuid = [];
+    private readonly Dictionary<uint, NetworkGuid> _outerNetGuidByNetGuid = [];
 
-    public Dictionary<uint, NetFieldExportGroup> ExportGroupsByPathIndex { get; } = [];
+    public IReadOnlyDictionary<string, NetFieldExportGroup> ExportGroupsByPath => _exportGroupsByPath;
 
-    public Dictionary<uint, string> PathByNetGuid { get; } = [];
+    public IReadOnlyDictionary<uint, NetFieldExportGroup> ExportGroupsByPathIndex => _exportGroupsByPathIndex;
 
-    public Dictionary<uint, NetworkGuid> OuterNetGuidByNetGuid { get; } = [];
+    public IReadOnlyDictionary<uint, string> PathByNetGuid => _pathByNetGuid;
+
+    public IReadOnlyDictionary<uint, NetworkGuid> OuterNetGuidByNetGuid => _outerNetGuidByNetGuid;
 
     public NetFieldExportGroup AddExportGroup(NetFieldExportGroup group)
     {
-        ExportGroupsByPath.TryGetValue(group.PathName, out var existingByPath);
-        ExportGroupsByPathIndex.TryGetValue(group.PathNameIndex, out var existingByIndex);
+        _exportGroupsByPath.TryGetValue(group.PathName, out var existingByPath);
+        _exportGroupsByPathIndex.TryGetValue(group.PathNameIndex, out var existingByIndex);
 
         if (existingByPath is not null &&
             existingByIndex is not null &&
@@ -28,8 +33,8 @@ public sealed class NetGuidCache
         var existingGroup = existingByPath ?? existingByIndex;
         if (existingGroup is null)
         {
-            ExportGroupsByPath[group.PathName] = group;
-            ExportGroupsByPathIndex[group.PathNameIndex] = group;
+            _exportGroupsByPath[group.PathName] = group;
+            _exportGroupsByPathIndex[group.PathNameIndex] = group;
             return group;
         }
 
@@ -38,7 +43,6 @@ public sealed class NetGuidCache
         {
             PathName = group.PathName,
             PathNameIndex = group.PathNameIndex,
-            NetFieldExportsLength = mergedLength,
             NetFieldExports = new NetFieldExport?[checked((int)mergedLength)],
         };
 
@@ -46,35 +50,35 @@ public sealed class NetGuidCache
         CopyExports(group.NetFieldExports, mergedGroup.NetFieldExports);
 
         ReplaceGroupReferences(existingGroup, mergedGroup);
-        ExportGroupsByPath[group.PathName] = mergedGroup;
-        ExportGroupsByPathIndex[group.PathNameIndex] = mergedGroup;
+        _exportGroupsByPath[group.PathName] = mergedGroup;
+        _exportGroupsByPathIndex[group.PathNameIndex] = mergedGroup;
         return mergedGroup;
     }
 
     public NetFieldExportGroup GetExportGroup(uint pathNameIndex) =>
-        ExportGroupsByPathIndex[pathNameIndex];
+        _exportGroupsByPathIndex[pathNameIndex];
 
     public bool TryGetExportGroup(
         uint pathNameIndex,
         [NotNullWhen(true)] out NetFieldExportGroup? group) =>
-        ExportGroupsByPathIndex.TryGetValue(pathNameIndex, out group);
+        _exportGroupsByPathIndex.TryGetValue(pathNameIndex, out group);
 
     public void SetNetGuidPath(uint netGuid, string pathName, NetworkGuid outerNetGuid = default)
-    {
-        PathByNetGuid[netGuid] = pathName;
+     {
+        _pathByNetGuid[netGuid] = pathName;
         if (outerNetGuid.IsValid)
         {
-            OuterNetGuidByNetGuid[netGuid] = outerNetGuid;
+            _outerNetGuidByNetGuid[netGuid] = outerNetGuid;
         }
         else
         {
-            OuterNetGuidByNetGuid.Remove(netGuid);
+            _outerNetGuidByNetGuid.Remove(netGuid);
         }
     }
 
     public bool TryGetPath(uint netGuid, out string pathName)
     {
-        if (PathByNetGuid.TryGetValue(netGuid, out var value))
+        if (_pathByNetGuid.TryGetValue(netGuid, out var value))
         {
             pathName = value;
             return true;
@@ -85,7 +89,7 @@ public sealed class NetGuidCache
     }
 
     public bool TryGetOuterNetGuid(uint netGuid, out NetworkGuid outerNetGuid) =>
-        OuterNetGuidByNetGuid.TryGetValue(netGuid, out outerNetGuid);
+        _outerNetGuidByNetGuid.TryGetValue(netGuid, out outerNetGuid);
 
     public bool TryGetOuterPath(uint netGuid, out string outerPath)
     {
@@ -100,10 +104,10 @@ public sealed class NetGuidCache
 
     public void Clear()
     {
-        ExportGroupsByPath.Clear();
-        ExportGroupsByPathIndex.Clear();
-        PathByNetGuid.Clear();
-        OuterNetGuidByNetGuid.Clear();
+        _exportGroupsByPath.Clear();
+        _exportGroupsByPathIndex.Clear();
+        _pathByNetGuid.Clear();
+        _outerNetGuidByNetGuid.Clear();
     }
 
     private static void CopyExports(NetFieldExport?[] source, NetFieldExport?[] destination)
@@ -119,20 +123,20 @@ public sealed class NetGuidCache
 
     private void ReplaceGroupReferences(NetFieldExportGroup existingGroup, NetFieldExportGroup mergedGroup)
     {
-        foreach (var pathName in ExportGroupsByPath
+        foreach (var pathName in _exportGroupsByPath
                      .Where(pair => ReferenceEquals(pair.Value, existingGroup))
                      .Select(pair => pair.Key)
                      .ToArray())
         {
-            ExportGroupsByPath[pathName] = mergedGroup;
+            _exportGroupsByPath[pathName] = mergedGroup;
         }
 
-        foreach (var pathNameIndex in ExportGroupsByPathIndex
+        foreach (var pathNameIndex in _exportGroupsByPathIndex
                      .Where(pair => ReferenceEquals(pair.Value, existingGroup))
                      .Select(pair => pair.Key)
                      .ToArray())
         {
-            ExportGroupsByPathIndex[pathNameIndex] = mergedGroup;
+            _exportGroupsByPathIndex[pathNameIndex] = mergedGroup;
         }
     }
 }

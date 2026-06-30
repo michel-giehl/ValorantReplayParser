@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using Replay.Models.Protocol;
 
 namespace Replay.Encoding.Archives;
 
@@ -34,7 +35,7 @@ public abstract class FArchive : IDisposable
         {
             SeekOrigin.Begin => offset,
             SeekOrigin.Current => Position + offset,
-            SeekOrigin.End => Length - offset,
+            SeekOrigin.End => Length + offset,
             _ => offset
         };
 
@@ -107,6 +108,58 @@ public abstract class FArchive : IDisposable
             Length,
             0,
             "Packed integer did not terminate within five bytes.");
+    }
+
+    public string ReadFString() => ReadFString(Constants.MaxFStringSerializedBytes);
+
+    public string ReadFString(int maxSerializedBytes)
+    {
+        var length = ReadInt32();
+        if (length == 0)
+        {
+            return string.Empty;
+        }
+
+        var encoding = System.Text.Encoding.UTF8;
+        int byteCount;
+        if (length < 0)
+        {
+            if (length == int.MinValue)
+            {
+                throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
+                    length);
+            }
+
+            encoding = System.Text.Encoding.Unicode;
+            byteCount = checked(-length * 2);
+        }
+        else
+        {
+            byteCount = length;
+        }
+
+        if (byteCount > maxSerializedBytes)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
+                byteCount, $"Serialized FString byte count {byteCount} is outside the valid range 1..{maxSerializedBytes}.");
+        }
+
+        var bytes = ReadBytes(byteCount);
+        return encoding.GetString(bytes.Span).TrimEnd('\0');
+    }
+
+    protected string ReadFNameCore(Func<bool> readIsHardcoded)
+    {
+        var isHardcoded = readIsHardcoded();
+        if (isHardcoded)
+        {
+            var nameIndex = ReadIntPacked();
+            return nameIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        var name = ReadFString();
+        _ = ReadInt32();
+        return name;
     }
 
     protected static ArchiveReadException InvalidCount(string operation, long position, long length, long count) =>

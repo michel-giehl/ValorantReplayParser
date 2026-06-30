@@ -54,18 +54,10 @@ public class ExportGroupDescriptor
 public abstract class ExportGroupDescriptor<TDescriptor> : ExportGroupDescriptor
     where TDescriptor : ExportGroupDescriptor<TDescriptor>
 {
-    private readonly List<FieldDescriptorBuilder> _fieldBuilders = [];
-    private IReadOnlyList<FieldDescriptor>? _fields;
-    private bool _isConfiguring;
+    private readonly DescriptorConfiguration<FieldDescriptorBuilder, FieldDescriptor> _fields = new();
 
-    public sealed override IReadOnlyList<FieldDescriptor> Fields
-    {
-        get
-        {
-            EnsureConfigured();
-            return _fields!;
-        }
-    }
+    public sealed override IReadOnlyList<FieldDescriptor> Fields =>
+        _fields.GetOrConfigure(GetType().Name, "fields", Configure, static builder => builder.Build());
 
     protected abstract void Configure();
 
@@ -108,46 +100,9 @@ public abstract class ExportGroupDescriptor<TDescriptor> : ExportGroupDescriptor
         uint? handle,
         ExportCategory categories)
     {
-        if (!_isConfiguring)
-        {
-            throw new InvalidOperationException(
-                $"Descriptor fields for '{GetType().Name}' can only be added from Configure().");
-        }
-
         var builder = new FieldDescriptorBuilder(exportName, propertyName, handle, categories);
-        _fieldBuilders.Add(builder);
+        _fields.Add(builder, GetType().Name, "Descriptor fields");
         return builder;
-    }
-
-    private void EnsureConfigured()
-    {
-        if (_fields is not null)
-        {
-            return;
-        }
-
-        if (_isConfiguring)
-        {
-            throw new InvalidOperationException($"Descriptor '{GetType().Name}' recursively requested its fields.");
-        }
-
-        _fieldBuilders.Clear();
-        _isConfiguring = true;
-        try
-        {
-            Configure();
-            var fields = new FieldDescriptor[_fieldBuilders.Count];
-            for (var i = 0; i < fields.Length; i++)
-            {
-                fields[i] = _fieldBuilders[i].Build();
-            }
-
-            _fields = fields;
-        }
-        finally
-        {
-            _isConfiguring = false;
-        }
     }
 
     private static string GetPropertyName<TValue>(Expression<Func<TDescriptor, TValue>> property)

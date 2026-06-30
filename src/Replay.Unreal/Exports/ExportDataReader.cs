@@ -3,15 +3,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Errors;
+using Replay.Unreal.PackageMap;
 
 namespace Replay.Unreal.Exports;
 
 public class ExportDataReader
 {
-    private const int MaxNetGuidRecursionDepth = 16;
-
     private readonly FBinaryArchive _archive;
     private readonly NetGuidCache _netGuidCache;
+    private readonly NetGuidObjectReader _objectReader;
     private readonly ILogger<ExportDataReader> _logger;
     private readonly Action<NetFieldExportGroup>? _exportGroupChanged;
 
@@ -23,6 +23,7 @@ public class ExportDataReader
     {
         _archive = archive;
         _netGuidCache = netGuidCache;
+        _objectReader = new NetGuidObjectReader(netGuidCache);
         _logger = logger ?? NullLogger<ExportDataReader>.Instance;
         _exportGroupChanged = exportGroupChanged;
     }
@@ -120,7 +121,6 @@ public class ExportDataReader
         {
             PathName = pathName,
             PathNameIndex = pathNameIndex,
-            NetFieldExportsLength = numExports,
             NetFieldExports = new NetFieldExport?[checked((int)numExports)],
         };
     }
@@ -154,7 +154,7 @@ public class ExportDataReader
             _logger.LogDebug("Reading {GuidCount} exported net GUID payloads.", numGuids);
 #pragma warning restore CA1873
         }
-        
+
         for (var i = 0; i < numGuids; i++)
         {
             var size = _archive.ReadInt32();
@@ -164,48 +164,8 @@ public class ExportDataReader
             }
 
             var payloadArchive = new FBinaryArchive(_archive.ReadBytes(size));
-            InternalLoadObject(payloadArchive, isExportingNetGuidBunch: true, recursionDepth: 0);
+            _objectReader.InternalLoadObject(payloadArchive, isExportingNetGuidBunch: true, recursionDepth: 0);
             payloadArchive.EnsureFullyConsumed("ReadExportGuidPayload");
         }
-    }
-
-    private NetworkGuid InternalLoadObject(
-        FBinaryArchive archive,
-        bool isExportingNetGuidBunch,
-        int recursionDepth)
-    {
-        if (recursionDepth >= MaxNetGuidRecursionDepth)
-        {
-            throw new InvalidReplayInfoException(
-                $"Exported net GUID recursion depth exceeded {MaxNetGuidRecursionDepth}.");
-        }
-
-        var netGuid = new NetworkGuid(archive.ReadIntPacked());
-        if (!netGuid.IsValid)
-        {
-            return netGuid;
-        }
-
-        var exportFlags = ExportFlags.None;
-        if (netGuid.IsDefault || isExportingNetGuidBunch)
-        {
-            exportFlags = archive.ReadByteAsEnum<ExportFlags>();
-        }
-
-        if (!exportFlags.HasFlag(ExportFlags.HasPath))
-        {
-            return netGuid;
-        }
-
-        var outerNetGuid = InternalLoadObject(archive, isExportingNetGuidBunch, recursionDepth + 1);
-        var pathName = archive.ReadFString();
-
-        if (exportFlags.HasFlag(ExportFlags.HasNetworkChecksum))
-        {
-            _ = archive.ReadUInt32();
-        }
-
-        _netGuidCache.SetNetGuidPath(netGuid.Value, pathName, outerNetGuid);
-        return netGuid;
     }
 }

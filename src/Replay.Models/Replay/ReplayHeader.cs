@@ -35,4 +35,3 @@ public class ReplayHeader
     public BuildTargetType BuildTargetType { get; set; }
 }
 
-public sealed class UninitializedReplayHeader : ReplayHeader;

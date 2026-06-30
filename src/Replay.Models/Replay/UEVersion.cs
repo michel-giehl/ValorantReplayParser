@@ -7,4 +7,3 @@ public class UEVersion
     public uint PackageVersionLicense { get; set; }
 }
 
-public sealed class UninitializedUEVersion : UEVersion;

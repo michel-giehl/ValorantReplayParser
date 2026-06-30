@@ -130,7 +130,7 @@ public class ReplayInfoReaderTests
     }
 
     private static ReplayInfoReadResult Read(FBinaryArchive archive) =>
-        new ReplayInfoReader(archive).Read(new ReplayInfo(), new ReplayInfoSerializationMetadata());
+        new ReplayInfoReader(archive).Read();
 
     private static byte[] BuildReplayInfo(
         uint magic = FileMagic,

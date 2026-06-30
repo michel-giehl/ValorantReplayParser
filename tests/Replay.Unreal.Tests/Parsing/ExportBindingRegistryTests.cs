@@ -247,7 +247,6 @@ public class ExportBindingRegistryTests
         {
             PathName = "/Game/Test.Test_C",
             PathNameIndex = 7,
-            NetFieldExportsLength = 1,
             NetFieldExports = new NetFieldExport?[1],
         };
 
@@ -335,7 +334,6 @@ public class ExportBindingRegistryTests
         {
             PathName = path,
             PathNameIndex = pathNameIndex,
-            NetFieldExportsLength = (uint)netFields.Length,
             NetFieldExports = netFields,
         };
     }

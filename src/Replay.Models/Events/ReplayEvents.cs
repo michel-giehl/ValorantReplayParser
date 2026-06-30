@@ -1,3 +1,4 @@
+using Replay.Models.Descriptors;
 using Replay.Models.Net;
 using Replay.Models.Unreal;
 
@@ -23,22 +24,17 @@ public sealed class NullReplayEventSink : IReplayEventSink
 
 public abstract record ReplayEvent(float TimeSeconds, int PacketId);
 
-public sealed record ActorOpened(
+public sealed record ActorSpawned(
     float TimeSeconds,
     int PacketId,
     uint ActorNetGuid,
     uint ChannelIndex,
     bool IsDynamic,
     string? ActorPath,
-    string? ArchetypePath)
-    : ReplayEvent(TimeSeconds, PacketId);
-
-public sealed record ActorSpawned(
-    float TimeSeconds,
-    int PacketId,
-    uint ActorNetGuid,
-    uint ChannelIndex,
+    uint ArchetypeNetGuid,
     string? ArchetypePath,
+    string? ReplicationClassPath,
+    uint LevelNetGuid,
     FVector? Location,
     FRotator? Rotation,
     FVector? Scale,
@@ -53,32 +49,49 @@ public sealed record ActorClosed(
     ChannelCloseReason Reason)
     : ReplayEvent(TimeSeconds, PacketId);
 
-public sealed record ActorDestroyed(
+public sealed record ExportGroupReceived(
     float TimeSeconds,
     int PacketId,
     uint ActorNetGuid,
-    uint ChannelIndex)
-    : ReplayEvent(TimeSeconds, PacketId);
-
-public sealed record SubobjectCreated(
-    float TimeSeconds,
-    int PacketId,
     uint ObjectNetGuid,
-    uint ActorNetGuid,
     uint ChannelIndex,
+    bool IsActor,
+    bool IsDeleted,
+    byte DeleteFlags,
+    string? ExportGroupPath,
+    ExportGroupKind Kind,
+    ExportCategory Categories,
     uint ClassNetGuid,
     uint OuterNetGuid,
     string? ObjectPath,
     string? ClassPath,
-    bool IsStablyNamed)
+    string? OuterPath,
+    int PayloadBits,
+    int ParsedBits,
+    bool WasDecoded,
+    IReadOnlyList<DecodedReplayField> Fields)
     : ReplayEvent(TimeSeconds, PacketId);
 
-public sealed record SubobjectDestroyed(
+public sealed record RpcReceived(
     float TimeSeconds,
     int PacketId,
-    uint ObjectNetGuid,
     uint ActorNetGuid,
+    uint ObjectNetGuid,
     uint ChannelIndex,
-    byte DeleteFlags,
-    bool DestroyedWithActor)
+    string ClassPath,
+    string FunctionName,
+    string FunctionExportPath,
+    int FunctionHandle,
+    ExportCategory Categories,
+    int PayloadBits,
+    int ParsedBits,
+    bool WasDecoded,
+    IReadOnlyList<DecodedReplayField> Fields)
     : ReplayEvent(TimeSeconds, PacketId);
+
+public sealed record DecodedReplayField(
+    int Handle,
+    string? Name,
+    string? ExportName,
+    ExportCategory Categories,
+    DecodedFieldValue Value);

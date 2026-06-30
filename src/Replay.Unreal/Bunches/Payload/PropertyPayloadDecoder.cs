@@ -1,7 +1,6 @@
 using System.Buffers;
 using Replay.Encoding.Archives;
 using Replay.Encoding.PayloadEncryption;
-using Replay.Models.Errors;
 
 namespace Replay.Unreal.Bunches.Payload;
 
@@ -43,16 +42,8 @@ internal sealed class PropertyPayloadDecoder : IPropertyPayloadDecoder
             return _cachedTransform;
         }
 
-        try
-        {
-            _cachedTransform = _registry.GetRequired(replayVersion);
-            _cachedReplayVersion = replayVersion;
-            return _cachedTransform;
-        }
-        catch (UnsupportedPayloadTransformVersionException)
-        {
-            throw new InvalidReplayInfoException(
-                $"Unsupported VALORANT property payload transform for replay version '{replayVersion}'.");
-        }
+        _cachedTransform = PayloadTransformSupport.GetRequired(_registry, replayVersion);
+        _cachedReplayVersion = replayVersion;
+        return _cachedTransform;
     }
 }

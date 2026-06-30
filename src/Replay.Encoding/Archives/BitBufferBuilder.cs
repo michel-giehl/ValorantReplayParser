@@ -15,13 +15,24 @@ public sealed class BitBufferBuilder
                 source.Length, bitCount);
         }
 
+        if (source.BitsRemaining < bitCount)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.EndOfArchive, nameof(Append), source.Position,
+                source.Length, bitCount);
+        }
+
         EnsureCapacity(_bitLength + bitCount);
         for (var i = 0; i < bitCount; i++)
         {
+            var targetBit = _bitLength + i;
+            var mask = (byte)(1 << (targetBit & 7));
             if (source.ReadBit())
             {
-                var targetBit = _bitLength + i;
-                _buffer[targetBit >> 3] |= (byte)(1 << (targetBit & 7));
+                _buffer[targetBit >> 3] |= mask;
+            }
+            else
+            {
+                _buffer[targetBit >> 3] &= (byte)~mask;
             }
         }
 

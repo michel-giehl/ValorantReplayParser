@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Unreal;
 using Replay.Unreal.Parsing;
 
 namespace Replay.Valorant.Descriptors;
@@ -75,7 +76,7 @@ internal sealed class BaseReplayPlayerState : ExportGroupDescriptor<BaseReplayPl
     {
         AddProperty(x => x.RemoteRole).ObjectNetGuid();
         AddProperty(x => x.Owner).ObjectNetGuid();
-        AddProperty("bOnlySpectator", x => x.OnlySpectator);
+        AddProperty("bOnlySpectator", x => x.OnlySpectator).Bool();
     }
 }
 
@@ -86,10 +87,12 @@ internal sealed class BaseReplayControllerDescriptor : ExportGroupDescriptor<Bas
     public override ExportGroupKind Kind => ExportGroupKind.PlayerController;
 
     public uint RemoteCharacterUpdatesArray { get; set; }
+    public FVector SpawnLocation { get; set; }
 
     protected override void Configure()
     {
         AddProperty(x => x.RemoteCharacterUpdatesArray);
+        AddProperty(x => x.SpawnLocation).FVector();
     }
 }
 

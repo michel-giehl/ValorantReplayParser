@@ -14,62 +14,20 @@ internal sealed class PartialBunchAccumulator : IPartialBunchAccumulator
         FBitArchive payload,
         BunchPayloadStats stats)
     {
-        if (header.bPartialInitial)
+        if (!ValidateSequence(chIndex, ref header, stats))
         {
-            if (_fragments.TryGetValue(chIndex, out var existing) && !existing.IsComplete)
-            {
-                stats.PartialErrorCount++;
-                header.HasPartialError = true;
-                existing.BufferOwner?.Dispose();
-            }
-
-            _fragments[chIndex] = new AccumulatorState
-            {
-                ChSequence = header.ChSequence,
-                Reliable = header.bReliable,
-                StoredBunchHeader = header,
-            };
-        }
-        else
-        {
-            if (!_fragments.TryGetValue(chIndex, out var state) || state.IsComplete)
-            {
-                stats.PartialErrorCount++;
-                header.HasPartialError = true;
-                return CreateResult(header);
-            }
-
-            bool sequenceMatches;
-            if (state.Reliable)
-            {
-                sequenceMatches = header.ChSequence == state.ChSequence + 1;
-            }
-            else
-            {
-                sequenceMatches = header.ChSequence == state.ChSequence + 1 || header.ChSequence == state.ChSequence;
-            }
-
-            if (!sequenceMatches || state.Reliable != header.bReliable)
-            {
-                stats.PartialErrorCount++;
-                header.HasPartialError = true;
-                header.IsPartialCompleted = header.bPartialFinal;
-                DiscardFragment(chIndex);
-                return CreateResult(header);
-            }
-
-            state.ChSequence = header.ChSequence;
+            return CreateResult(header);
         }
 
         var remainingBits = (int)payload.BitsRemaining;
-        var state2 = _fragments[chIndex];
+        var state = _fragments[chIndex];
 
         if (remainingBits == 0)
         {
             if (!header.bPartialFinal) return CreateResult(header);
-            state2.IsComplete = true;
+            state.IsComplete = true;
             stats.CompletedPartialBunchCount++;
-            _fragments[chIndex] = state2;
+            _fragments[chIndex] = state;
 
             return CreateResult(header);
         }
@@ -82,17 +40,17 @@ internal sealed class PartialBunchAccumulator : IPartialBunchAccumulator
             return CreateResult(header);
         }
 
-        AppendPayloadBits(ref state2, payload, remainingBits);
+        AppendPayloadBits(ref state, payload, remainingBits);
 
         stats.PartialFragmentCount++;
 
         if (header.bPartialFinal)
         {
-            state2.IsComplete = true;
+            state.IsComplete = true;
             stats.CompletedPartialBunchCount++;
         }
 
-        _fragments[chIndex] = state2;
+        _fragments[chIndex] = state;
         return CreateResult(header);
     }
 
@@ -110,6 +68,53 @@ internal sealed class PartialBunchAccumulator : IPartialBunchAccumulator
         buffer = null!;
         bitCount = 0;
         storedHeader = default;
+        return false;
+    }
+
+    private bool ValidateSequence(uint chIndex, ref RawBunchHeader header, BunchPayloadStats stats)
+    {
+        if (header.bPartialInitial)
+        {
+            var hasExisting = _fragments.TryGetValue(chIndex, out var existing);
+            var error = PartialBunchSequenceValidator.ValidateInitial(hasExisting, existing.IsComplete);
+            if (error is not PartialBunchSequenceError.None)
+            {
+                stats.PartialErrorCount++;
+                header.HasPartialError = true;
+                existing.BufferOwner?.Dispose();
+            }
+
+            _fragments[chIndex] = new AccumulatorState
+            {
+                ChSequence = header.ChSequence,
+                Reliable = header.bReliable,
+                StoredBunchHeader = header,
+            };
+            return true;
+        }
+
+        var hasState = _fragments.TryGetValue(chIndex, out var state);
+        var validationError = PartialBunchSequenceValidator.ValidateContinuation(
+            hasState,
+            hasState && state.IsComplete,
+            hasState ? state.ChSequence : 0,
+            hasState && state.Reliable,
+            header);
+        if (validationError is PartialBunchSequenceError.None)
+        {
+            state.ChSequence = header.ChSequence;
+            _fragments[chIndex] = state;
+            return true;
+        }
+
+        stats.PartialErrorCount++;
+        header.HasPartialError = true;
+        if (validationError is PartialBunchSequenceError.MismatchedContinuation)
+        {
+            header.IsPartialCompleted = header.bPartialFinal;
+            DiscardFragment(chIndex);
+        }
+
         return false;
     }
 

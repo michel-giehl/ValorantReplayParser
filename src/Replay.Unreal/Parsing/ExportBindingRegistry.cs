@@ -5,7 +5,6 @@ namespace Replay.Unreal.Parsing;
 
 public sealed class ExportBindingRegistry
 {
-    private const string ClassNetCacheSuffix = "_ClassNetCache";
     private static readonly StringComparer PathComparer = StringComparer.Ordinal;
 
     private readonly Dictionary<string, BoundExportGroup> _boundGroupsByPath = new(PathComparer);
@@ -37,13 +36,12 @@ public sealed class ExportBindingRegistry
 
         foreach (var descriptor in descriptorCatalog.ExportGroupDescriptors)
         {
-            _exportDescriptorsByPath[descriptor.Path] = descriptor;
-            IndexDefaultObjectKind(descriptor);
+            IndexExportDescriptor(descriptor);
         }
 
         foreach (var descriptor in descriptorCatalog.ClassNetCacheDescriptors)
         {
-            _cacheDescriptorsByPath[descriptor.Path] = descriptor;
+            IndexClassNetCacheDescriptor(descriptor);
             IndexInlineRpcFieldDescriptors(descriptor);
         }
     }
@@ -56,25 +54,24 @@ public sealed class ExportBindingRegistry
         var path = replayGroup.PathName;
         _pathIndexToPath[replayGroup.PathNameIndex] = path;
 
-        if (_exportDescriptorsByPath.TryGetValue(path, out var exportDescriptor))
+        if (TryGetExportDescriptor(path, out var exportDescriptor))
         {
             var bound = BindExportGroup(replayGroup, exportDescriptor);
-            _boundGroupsByPath[path] = bound;
+            IndexBoundExportGroup(path, bound);
+            ResolvePendingRpcFunctions(exportDescriptor.Path, bound);
             ResolvePendingRpcFunctions(path, bound);
             return;
         }
 
-        if (_cacheDescriptorsByPath.TryGetValue(path, out var cacheDescriptor))
+        if (TryGetClassNetCacheDescriptor(path, out var cacheDescriptor))
         {
             var bound = BindClassNetCache(replayGroup, cacheDescriptor);
             IndexBoundClassNetCache(path, bound);
         }
     }
 
-    public BoundExportGroup? GetBoundGroup(string path)
-    {
-        return _boundGroupsByPath.GetValueOrDefault(path);
-    }
+    public BoundExportGroup? GetBoundGroup(string path) =>
+        TryGetByLookup(_boundGroupsByPath, path, ReplayPath.LookupKeys, out var boundGroup) ? boundGroup : null;
 
     public BoundExportGroup? GetBoundGroupByIndex(uint pathNameIndex)
     {
@@ -86,19 +83,18 @@ public sealed class ExportBindingRegistry
         return null;
     }
 
-    public BoundClassNetCache? GetBoundCache(string path)
-    {
-        return _boundCachesByPath.GetValueOrDefault(path);
-    }
+    public BoundClassNetCache? GetBoundCache(string path) =>
+        TryGetByLookup(_boundCachesByPath, path, ReplayPath.ClassNetCacheLookupKeys, out var boundCache) ? boundCache : null;
 
     public ExportGroupKind GetExportGroupKind(string path)
     {
-        if (_boundGroupsByPath.TryGetValue(path, out var boundGroup))
+        var boundGroup = GetBoundGroup(path);
+        if (boundGroup is not null)
         {
             return boundGroup.SourceDescriptor.Kind;
         }
 
-        return _exportDescriptorsByPath.TryGetValue(path, out var descriptor)
+        return TryGetExportDescriptor(path, out var descriptor)
             ? descriptor.Kind
             : _exportKindsByDefaultObjectName.GetValueOrDefault(path, ExportGroupKind.Unknown);
     }
@@ -114,7 +110,7 @@ public sealed class ExportBindingRegistry
     }
 
     public bool HasBinding(string path) =>
-        _boundGroupsByPath.ContainsKey(path) || _boundCachesByPath.ContainsKey(path);
+        GetBoundGroup(path) is not null || GetBoundCache(path) is not null;
 
     public void Clear()
     {
@@ -122,6 +118,51 @@ public sealed class ExportBindingRegistry
         _boundCachesByPath.Clear();
         _pathIndexToPath.Clear();
         _pendingRpcFunctionsByExportPath.Clear();
+    }
+
+    private void IndexExportDescriptor(ExportGroupDescriptor descriptor)
+    {
+        foreach (var key in ReplayPath.LookupKeys(descriptor.Path))
+        {
+            _exportDescriptorsByPath[key] = descriptor;
+        }
+
+        if (ReplayPath.GetDefaultObjectName(descriptor.Path) is { } defaultObjectName)
+        {
+            _exportKindsByDefaultObjectName[defaultObjectName] = descriptor.Kind;
+        }
+    }
+
+    private void IndexClassNetCacheDescriptor(ClassNetCacheDescriptor descriptor)
+    {
+        foreach (var key in ReplayPath.LookupKeys(descriptor.Path))
+        {
+            _cacheDescriptorsByPath[key] = descriptor;
+        }
+    }
+
+    private bool TryGetExportDescriptor(string path, out ExportGroupDescriptor descriptor) =>
+        TryGetByLookup(_exportDescriptorsByPath, path, ReplayPath.LookupKeys, out descriptor!);
+
+    private bool TryGetClassNetCacheDescriptor(string path, out ClassNetCacheDescriptor descriptor) =>
+        TryGetByLookup(_cacheDescriptorsByPath, path, ReplayPath.LookupKeys, out descriptor!);
+
+    private static bool TryGetByLookup<TValue>(
+        Dictionary<string, TValue> valuesByPath,
+        string path,
+        Func<string, IEnumerable<string>> lookupKeys,
+        out TValue value)
+    {
+        foreach (var key in lookupKeys(path))
+        {
+            if (valuesByPath.TryGetValue(key, out value!))
+            {
+                return true;
+            }
+        }
+
+        value = default!;
+        return false;
     }
 
     private void IndexInlineRpcFieldDescriptors(ClassNetCacheDescriptor descriptor)
@@ -133,13 +174,14 @@ public sealed class ExportBindingRegistry
                 continue;
             }
 
-            _exportDescriptorsByPath[rpcDescriptor.FunctionExportPath] = new ExportGroupDescriptor
+            var descriptorFromRpc = new ExportGroupDescriptor
             (
                 rpcDescriptor.FunctionExportPath,
                 rpcDescriptor.Categories,
                 ExportGroupKind.ClassNetCache,
                 FieldStreamGrammar.FunctionParameters,
                 fields: rpcDescriptor.Fields);
+            IndexExportDescriptor(descriptorFromRpc);
         }
     }
 
@@ -257,33 +299,20 @@ public sealed class ExportBindingRegistry
         };
     }
 
-    private void IndexBoundClassNetCache(string path, BoundClassNetCache bound)
+    private void IndexBoundExportGroup(string path, BoundExportGroup bound)
     {
-        _boundCachesByPath[path] = bound;
-
-        var aliasLength = path.Length - ClassNetCacheSuffix.Length;
-        if (aliasLength <= 0 || !path.EndsWith(ClassNetCacheSuffix, StringComparison.Ordinal))
+        foreach (var key in ReplayPath.LookupKeys(path))
         {
-            return;
-        }
-
-        var alias = path[..aliasLength];
-        if (!_boundCachesByPath.TryGetValue(alias, out var existing) || existing.Path == path)
-        {
-            _boundCachesByPath[alias] = bound;
+            _boundGroupsByPath[key] = bound;
         }
     }
 
-    private void IndexDefaultObjectKind(ExportGroupDescriptor descriptor)
+    private void IndexBoundClassNetCache(string path, BoundClassNetCache bound)
     {
-        var leafStart = descriptor.Path.LastIndexOfAny(['/', '.', ':']);
-        var leaf = leafStart >= 0 ? descriptor.Path[(leafStart + 1)..] : descriptor.Path;
-        if (leaf.Length == 0)
+        foreach (var key in ReplayPath.ClassNetCacheLookupKeys(path))
         {
-            return;
+            _boundCachesByPath[key] = bound;
         }
-
-        _exportKindsByDefaultObjectName["Default__" + leaf] = descriptor.Kind;
     }
 
     private void AddPendingRpcFunction(string functionExportPath, BoundRpcFunction function)
@@ -316,7 +345,7 @@ public sealed class ExportBindingRegistry
         {
             CollectFields(descriptor.BaseDescriptor, fields);
         }
-        else if (descriptor.BasePath is not null && _exportDescriptorsByPath.TryGetValue(descriptor.BasePath, out var baseDescriptor))
+        else if (descriptor.BasePath is not null && TryGetExportDescriptor(descriptor.BasePath, out var baseDescriptor))
         {
             CollectFields(baseDescriptor, fields);
         }

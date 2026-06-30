@@ -62,23 +62,20 @@ public abstract class FBitArchive : FArchive
 
     public override ReadOnlyMemory<byte> ReadBytes(int count)
     {
-        if (count < 0)
+        if (count is < 0 or > int.MaxValue / 8)
         {
             throw InvalidCount(nameof(ReadBytes), Position, Length, count);
         }
 
-        return ReadBits(checked(count * 8));
+        return ReadBits(count * 8);
     }
 
     public override bool TryReadBytes(int count, out ReadOnlyMemory<byte> value)
     {
-        if (count < 0)
-        {
-            value = default;
-            return false;
-        }
+        if (count is >= 0 and <= int.MaxValue / 8) return TryReadBits(count * 8, out value);
+        value = default;
+        return false;
 
-        return TryReadBits(checked(count * 8), out value);
     }
 
     public uint ReadSerializedInt(int maxValue)
@@ -110,53 +107,5 @@ public abstract class FBitArchive : FArchive
 
     public override void Skip(long count) => SkipBits(count);
 
-    public string ReadFString()
-    {
-        var length = ReadInt32();
-        if (length == 0)
-        {
-            return string.Empty;
-        }
-
-        if (length == int.MinValue)
-        {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
-                length);
-        }
-
-        var isUnicode = length < 0;
-        int byteCount;
-        if (isUnicode)
-        {
-            checked { byteCount = -length * 2; }
-        }
-        else
-        {
-            byteCount = length;
-        }
-
-        if (byteCount <= 0 || byteCount > 1024 * 1024)
-        {
-            throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
-                byteCount, $"FString byte count {byteCount} exceeds maximum allowed.");
-        }
-
-        var encoding = isUnicode ? System.Text.Encoding.Unicode : System.Text.Encoding.UTF8;
-        var bytes = ReadBytes(byteCount);
-        return encoding.GetString(bytes.Span).TrimEnd('\0');
-    }
-
-    public string ReadFName()
-    {
-        var isHardcoded = ReadBit();
-        if (isHardcoded)
-        {
-            var nameIndex = ReadIntPacked();
-            return nameIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        }
-
-        var inString = ReadFString();
-        _ = ReadInt32();
-        return inString;
-    }
+    public string ReadFName() => ReadFNameCore(ReadBit);
 }

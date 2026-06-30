@@ -1,5 +1,4 @@
 using Replay.Encoding.Archives;
-using Replay.Encoding.PayloadEncryption;
 using Replay.Models.Net;
 using Replay.Unreal.Bunches.Payload.Stages;
 using Replay.Unreal.PackageMap;
@@ -36,7 +35,7 @@ public sealed class BunchPayloadPipeline
     {
         var packageMapReader = new PackageMapReader(context.NetGuidCache);
         var partialBunchAccumulator = new PartialBunchAccumulator();
-        var propertyPayloadDecoder = new PropertyPayloadDecoder(PayloadTransformRegistry.CreateDefault());
+        var propertyPayloadDecoder = new PropertyPayloadDecoder(PayloadTransformSupport.DefaultRegistry);
 
         var contentBlockFramer = new ContentBlockFramer(
             packageMapReader,

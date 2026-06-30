@@ -7,7 +7,6 @@ using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Channels;
 using Replay.Unreal.PackageMap;
 using Replay.Unreal.Parsing;
-using Replay.Unreal.World;
 
 namespace Replay.Unreal.Tests.Bunches;
 
@@ -21,18 +20,22 @@ public class ContentBlockFramerTests
     {
         var netGuidCache = new NetGuidCache();
         var decoder = new CountingPropertyPayloadDecoder();
-        var framer = CreateFramer(netGuidCache, new ExportBindingRegistry(), decoder);
+        var eventSink = new CapturingReplayEventSink();
+        var framer = CreateFramer(netGuidCache, new ExportBindingRegistry(), decoder, eventSink);
         var payload = BuildContentBlockPayload(hasRepLayout: true, contentBitCount: 8);
         var stats = new BunchPayloadStats();
         var channel = new ActorChannelState { ActorNetGuid = new NetworkGuid(100) };
 
         framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0, replayVersionBranch: ReplayVersion);
 
+        var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>
         {
             Assert.That(decoder.DecodeCount, Is.EqualTo(0));
             Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
             Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(exportGroup.WasDecoded, Is.False);
+            Assert.That(exportGroup.ExportGroupPath, Is.Null);
         });
     }
 
@@ -41,19 +44,23 @@ public class ContentBlockFramerTests
     {
         var netGuidCache = new NetGuidCache();
         var decoder = new CountingPropertyPayloadDecoder();
-        var registry = CreateRegistry(ParseProfile.Minimal);
-        var framer = CreateFramer(netGuidCache, registry, decoder);
+        var registry = CreateRegistry(ParseProfile.Minimal, netGuidCache);
+        var eventSink = new CapturingReplayEventSink();
+        var framer = CreateFramer(netGuidCache, registry, decoder, eventSink);
         var payload = BuildContentBlockPayload(hasRepLayout: true, contentBitCount: 8);
         var stats = new BunchPayloadStats();
         var channel = CreateKnownActorChannel();
 
         framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0, replayVersionBranch: ReplayVersion);
 
+        var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>
         {
             Assert.That(decoder.DecodeCount, Is.EqualTo(0));
             Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
             Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(exportGroup.WasDecoded, Is.False);
+            Assert.That(exportGroup.ExportGroupPath, Is.EqualTo(TestPath));
         });
     }
 
@@ -62,31 +69,36 @@ public class ContentBlockFramerTests
     {
         var netGuidCache = new NetGuidCache();
         var decoder = new CountingPropertyPayloadDecoder();
-        var registry = CreateRegistry(ParseProfile.Default);
-        var framer = CreateFramer(netGuidCache, registry, decoder);
+        var registry = CreateRegistry(ParseProfile.Default, netGuidCache);
+        var eventSink = new CapturingReplayEventSink();
+        var framer = CreateFramer(netGuidCache, registry, decoder, eventSink);
         var payload = BuildContentBlockPayload(hasRepLayout: true, contentBitCount: 8);
         var stats = new BunchPayloadStats();
         var channel = CreateKnownActorChannel();
 
         framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0, replayVersionBranch: ReplayVersion);
 
+        var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>
         {
             Assert.That(decoder.DecodeCount, Is.EqualTo(1));
             Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
             Assert.That(stats.ContentPayloadBitsParsed, Is.EqualTo(9));
+            Assert.That(exportGroup.WasDecoded, Is.True);
+            Assert.That(exportGroup.ExportGroupPath, Is.EqualTo(TestPath));
+            Assert.That(exportGroup.ActorNetGuid, Is.EqualTo(100));
         });
     }
 
     private static ContentBlockFramer CreateFramer(
         NetGuidCache netGuidCache,
         ExportBindingRegistry registry,
-        IPropertyPayloadDecoder decoder) =>
+        IPropertyPayloadDecoder decoder,
+        IReplayEventSink eventSink) =>
         new(
             new PackageMapReader(netGuidCache),
             netGuidCache,
-            new WorldState(),
-            new NoOpReplayEventSink(),
+            eventSink,
             new FieldPayloadParser(),
             registry,
             decoder);
@@ -97,7 +109,7 @@ public class ContentBlockFramerTests
         ReplicationClassPath = TestPath,
     };
 
-    private static ExportBindingRegistry CreateRegistry(ParseProfile parseProfile)
+    private static ExportBindingRegistry CreateRegistry(ParseProfile parseProfile, NetGuidCache netGuidCache)
     {
         var catalog = new DescriptorCatalog();
         catalog.Add(new ExportGroupDescriptor(
@@ -115,11 +127,10 @@ public class ContentBlockFramerTests
             ]));
 
         var registry = new ExportBindingRegistry(catalog, parseProfile);
-        registry.OnExportGroupAdded(new NetFieldExportGroup
+        var exportGroup = new NetFieldExportGroup
         {
             PathName = TestPath,
             PathNameIndex = 1,
-            NetFieldExportsLength = 1,
             NetFieldExports =
             [
                 new NetFieldExport
@@ -129,7 +140,9 @@ public class ContentBlockFramerTests
                     CompatibleChecksum = 0,
                 },
             ],
-        });
+        };
+        netGuidCache.AddExportGroup(exportGroup);
+        registry.OnExportGroupAdded(exportGroup);
 
         return registry;
     }
@@ -199,10 +212,10 @@ public class ContentBlockFramerTests
         }
     }
 
-    private sealed class NoOpReplayEventSink : IReplayEventSink
+    private sealed class CapturingReplayEventSink : IReplayEventSink
     {
-        public void Emit(ReplayEvent replayEvent)
-        {
-        }
+        public List<ReplayEvent> Events { get; } = [];
+
+        public void Emit(ReplayEvent replayEvent) => Events.Add(replayEvent);
     }
 }

@@ -10,6 +10,8 @@ public static class Constants
 
     public const int MaxPacketSizeInBits = 2 * 1024 * 8;
 
+    public const int MaxFStringSerializedBytes = 1024 * 1024;
+
     public const int MaxGuidCount = 2048;
 
     public const int MaxCustomVersionCount = 1024;

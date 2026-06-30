@@ -8,13 +8,11 @@ namespace Replay.Unreal.PackageMap;
 
 public class PackageMapReader
 {
-    private const int MaxNetGuidRecursionDepth = 16;
-
-    private readonly NetGuidCache _netGuidCache;
+    private readonly NetGuidObjectReader _objectReader;
 
     public PackageMapReader(NetGuidCache netGuidCache)
     {
-        _netGuidCache = netGuidCache;
+        _objectReader = new NetGuidObjectReader(netGuidCache);
     }
 
     public void ReceiveNetGUIDBunch(FBitArchive payload, BunchPayloadStats stats)
@@ -43,40 +41,6 @@ public class PackageMapReader
     public NetworkGuid InternalLoadObject(
         FBitArchive archive,
         bool isExportingNetGuidBunch,
-        int recursionDepth)
-    {
-        if (recursionDepth >= MaxNetGuidRecursionDepth)
-        {
-            throw new InvalidReplayInfoException(
-                $"Exported net GUID recursion depth exceeded {MaxNetGuidRecursionDepth}.");
-        }
-
-        var netGuid = new NetworkGuid(archive.ReadIntPacked());
-        if (!netGuid.IsValid)
-        {
-            return netGuid;
-        }
-
-        var exportFlags = ExportFlags.None;
-        if (netGuid.IsDefault || isExportingNetGuidBunch)
-        {
-            exportFlags = (ExportFlags)archive.ReadByte();
-        }
-
-        if (!exportFlags.HasFlag(ExportFlags.HasPath))
-        {
-            return netGuid;
-        }
-
-        var outerNetGuid = InternalLoadObject(archive, isExportingNetGuidBunch, recursionDepth + 1);
-        var pathName = archive.ReadFString();
-
-        if (exportFlags.HasFlag(ExportFlags.HasNetworkChecksum))
-        {
-            _ = archive.ReadUInt32();
-        }
-
-        _netGuidCache.SetNetGuidPath(netGuid.Value, pathName, outerNetGuid);
-        return netGuid;
-    }
+        int recursionDepth) =>
+        _objectReader.InternalLoadObject(archive, isExportingNetGuidBunch, recursionDepth);
 }

@@ -1,22 +1,22 @@
 using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
+using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Channels;
 using Replay.Unreal.PackageMap;
 using Replay.Unreal.Parsing;
 using Replay.Unreal.Readers;
-using Replay.Unreal.World;
 
 namespace Replay.Unreal.Bunches;
 
 internal sealed class ContentBlockFramer
 {
-    private readonly PackageMapReader _packageMapReader;
     private readonly NetGuidCache _netGuidCache;
-    private readonly WorldState _worldState;
     private readonly IReplayEventSink _eventSink;
+    private readonly ContentBlockHeaderReader _headerReader;
+    private readonly ContentBlockPathResolver _pathResolver;
     private readonly FieldPayloadParser _fieldPayloadParser;
     private readonly ExportBindingRegistry _bindingRegistry;
     private readonly IPropertyPayloadDecoder? _propertyPayloadDecoder;
@@ -25,7 +25,6 @@ internal sealed class ContentBlockFramer
     public ContentBlockFramer(
         PackageMapReader packageMapReader,
         NetGuidCache netGuidCache,
-        WorldState worldState,
         IReplayEventSink eventSink,
         FieldPayloadParser fieldPayloadParser,
         ExportBindingRegistry? bindingRegistry = null,
@@ -33,7 +32,6 @@ internal sealed class ContentBlockFramer
         : this(
             packageMapReader,
             netGuidCache,
-            worldState,
             eventSink,
             fieldPayloadParser,
             bindingRegistry,
@@ -49,7 +47,6 @@ internal sealed class ContentBlockFramer
         : this(
             packageMapReader,
             context.NetGuidCache,
-            context.WorldState,
             context.EventSink,
             new FieldPayloadParser(),
             context.ExportBindingRegistry,
@@ -61,16 +58,15 @@ internal sealed class ContentBlockFramer
     private ContentBlockFramer(
         PackageMapReader packageMapReader,
         NetGuidCache netGuidCache,
-        WorldState worldState,
         IReplayEventSink eventSink,
         FieldPayloadParser fieldPayloadParser,
         ExportBindingRegistry? bindingRegistry,
         IPropertyPayloadDecoder? propertyPayloadDecoder,
         ILoggerFactory? loggerFactory)
     {
-        _packageMapReader = packageMapReader;
+        _headerReader = new ContentBlockHeaderReader(packageMapReader);
+        _pathResolver = new ContentBlockPathResolver(netGuidCache);
         _netGuidCache = netGuidCache;
-        _worldState = worldState;
         _eventSink = eventSink;
         _fieldPayloadParser = fieldPayloadParser;
         _bindingRegistry = bindingRegistry ?? new ExportBindingRegistry();
@@ -88,7 +84,7 @@ internal sealed class ContentBlockFramer
     {
         while (!payload.AtEnd)
         {
-            var header = ReadContentBlockHeader(payload, channel);
+            var header = _headerReader.Read(payload, channel);
             RecordHeaderStats(header, stats);
 
             if (header.IsDeleted)
@@ -102,27 +98,15 @@ internal sealed class ContentBlockFramer
                 return;
             }
 
-            if (!header.IsActor)
+            if (header.HasRepLayout)
             {
-                ObserveSubobject(header, channel, timeSeconds, packetId, stats);
+                FrameRepLayoutContentBlock(contentPayload, header, channel, timeSeconds, packetId, replayVersionBranch, stats);
+            }
+            else
+            {
+                FrameClassNetCacheContentBlock(contentPayload, header, channel, timeSeconds, packetId, replayVersionBranch, stats);
             }
 
-            var classPath = ResolveClassPath(header, channel);
-            if (classPath is null)
-            {
-                SkipRemainingContentPayload(contentPayload, stats);
-                stats.ContentBlockCount++;
-                continue;
-            }
-
-            if (!ShouldParseContentPayload(contentPayload, header, classPath, stats))
-            {
-                stats.ContentBlockCount++;
-                continue;
-            }
-
-            using var decodedPayload = DecodeContentPayload(contentPayload, channel, replayVersionBranch);
-            DispatchContentPayload(decodedPayload, header, channel, classPath, timeSeconds, packetId, stats);
             stats.ContentBlockCount++;
         }
     }
@@ -140,91 +124,6 @@ internal sealed class ContentBlockFramer
         }
 
         return _propertyPayloadDecoder.Decode(contentPayload, channel.ActorNetGuid.Value, replayVersionBranch);
-    }
-
-    private ContentBlockHeader ReadContentBlockHeader(FBitArchive payload, ActorChannelState channel)
-    {
-        var hasRepLayout = payload.ReadBit();
-        if (payload.ReadBit())
-        {
-            return new ContentBlockHeader
-            {
-                HasRepLayout = hasRepLayout,
-                IsActor = true,
-                OuterNetGuid = channel.ActorNetGuid,
-            };
-        }
-
-        return ReadSubobjectContentBlockHeader(payload, channel, hasRepLayout);
-    }
-
-    private ContentBlockHeader ReadSubobjectContentBlockHeader(
-        FBitArchive payload,
-        ActorChannelState channel,
-        bool hasRepLayout)
-    {
-        var objectNetGuid = _packageMapReader.InternalLoadObject(
-            payload,
-            isExportingNetGuidBunch: false,
-            recursionDepth: 0);
-        var isStablyNamed = payload.ReadBit();
-        var classNetGuid = default(NetworkGuid);
-        var outerNetGuid = channel.ActorNetGuid;
-
-        if (isStablyNamed)
-        {
-            return new ContentBlockHeader
-            {
-                HasRepLayout = hasRepLayout,
-                ObjectNetGuid = objectNetGuid,
-                ClassNetGuid = classNetGuid,
-                OuterNetGuid = outerNetGuid,
-                IsStablyNamed = isStablyNamed,
-            };
-        }
-        if (payload.ReadBit())
-        {
-            return new ContentBlockHeader
-            {
-                HasRepLayout = hasRepLayout,
-                ObjectNetGuid = objectNetGuid,
-                OuterNetGuid = outerNetGuid,
-                DeleteFlags = payload.ReadByte(),
-                IsDeleted = true,
-            };
-        }
-
-        classNetGuid = _packageMapReader.InternalLoadObject(
-            payload,
-            isExportingNetGuidBunch: false,
-            recursionDepth: 0);
-        if (!classNetGuid.IsValid)
-        {
-            return new ContentBlockHeader
-            {
-                HasRepLayout = hasRepLayout,
-                ObjectNetGuid = objectNetGuid,
-                OuterNetGuid = outerNetGuid,
-                IsDeleted = true,
-            };
-        }
-
-        if (!payload.ReadBit())
-        {
-            outerNetGuid = _packageMapReader.InternalLoadObject(
-                payload,
-                isExportingNetGuidBunch: false,
-                recursionDepth: 0);
-        }
-
-        return new ContentBlockHeader
-        {
-            HasRepLayout = hasRepLayout,
-            ObjectNetGuid = objectNetGuid,
-            ClassNetGuid = classNetGuid,
-            OuterNetGuid = outerNetGuid,
-            IsStablyNamed = isStablyNamed,
-        };
     }
 
     private static void RecordHeaderStats(ContentBlockHeader header, BunchPayloadStats stats)
@@ -269,149 +168,98 @@ internal sealed class ContentBlockFramer
         int packetId,
         BunchPayloadStats stats)
     {
-        DestroySubobject(
-            header.ObjectNetGuid,
-            channel,
-            header.DeleteFlags,
-            destroyedWithActor: false,
+        EmitExportGroupReceived(
             timeSeconds,
             packetId,
-            stats);
+            channel,
+            header,
+            exportGroupPath: ResolveDeletedObjectPath(header),
+            kind: ExportGroupKind.Unknown,
+            categories: ExportCategory.None,
+            payloadBits: 0,
+            parsedBits: 0,
+            wasDecoded: false,
+            fields: Array.Empty<DecodedReplayField>());
         stats.DeletedContentBlockCount++;
         stats.ContentBlockCount++;
     }
 
-    private string? ResolveClassPath(ContentBlockHeader header, ActorChannelState channel)
-    {
-        if (header.IsActor)
-        {
-            return ResolveActorClassPath(channel);
-        }
-
-        if (header.ClassNetGuid.IsValid && _netGuidCache.TryGetPath(header.ClassNetGuid.Value, out var path))
-        {
-            return path;
-        }
-
-        return null;
-    }
-
-    private string? ResolveActorClassPath(ActorChannelState channel)
-    {
-        if (channel.ReplicationClassPath is not null)
-        {
-            return channel.ReplicationClassPath;
-        }
-
-        if (channel.ArchetypeNetGuid.IsValid &&
-            _netGuidCache.TryGetOuterPath(channel.ArchetypeNetGuid.Value, out var outerPath))
-        {
-            return outerPath;
-        }
-
-        if (channel.ArchetypePath is not null && !IsClassDefaultObjectPath(channel.ArchetypePath))
-        {
-            return channel.ArchetypePath;
-        }
-
-        if (channel.ArchetypeNetGuid.IsValid &&
-            _netGuidCache.TryGetPath(channel.ArchetypeNetGuid.Value, out var archetypePath) &&
-            !IsClassDefaultObjectPath(archetypePath))
-        {
-            return archetypePath;
-        }
-
-        if (channel.ActorPath is not null)
-        {
-            return channel.ActorPath;
-        }
-
-        return channel.ActorNetGuid.IsValid && _netGuidCache.TryGetPath(channel.ActorNetGuid.Value, out var actorPath)
-            ? actorPath
-            : null;
-    }
-
-    private bool ShouldParseContentPayload(
-        FBitArchive contentPayload,
-        ContentBlockHeader header,
-        string classPath,
-        BunchPayloadStats stats)
-    {
-        if (header.HasRepLayout)
-        {
-            var boundGroup = _bindingRegistry.GetBoundGroup(classPath);
-            if (boundGroup is not null && boundGroup.Enabled)
-            {
-                return true;
-            }
-
-            SkipRemainingContentPayload(contentPayload, stats);
-            return false;
-        }
-
-        if (contentPayload.AtEnd)
-        {
-            return false;
-        }
-
-        var boundCache = GetBoundClassNetCache(classPath);
-        if (boundCache is not null && boundCache.Enabled)
-        {
-            return true;
-        }
-
-        SkipRemainingContentPayload(contentPayload, stats);
-        return false;
-    }
-
-    private static bool IsClassDefaultObjectPath(string path)
-    {
-        var leafStart = path.LastIndexOfAny(['/', '.', ':']);
-        var leaf = leafStart >= 0 ? path[(leafStart + 1)..] : path;
-        return leaf.StartsWith("Default__", StringComparison.Ordinal);
-    }
-
-    private void DispatchContentPayload(
+    private void FrameRepLayoutContentBlock(
         FBitArchive contentPayload,
         ContentBlockHeader header,
         ActorChannelState channel,
-        string classPath,
         float timeSeconds,
         int packetId,
+        string replayVersionBranch,
         BunchPayloadStats stats)
     {
-        var context = CreateDecodeContext(classPath, channel, timeSeconds, packetId);
-        if (header.HasRepLayout && !ParseRepLayoutContent(contentPayload, classPath, ref context, stats))
+        var payloadBits = checked((int)contentPayload.BitsRemaining);
+        var exportGroupPath = _pathResolver.ResolveExportGroupPath(header, channel);
+        if (exportGroupPath is null)
         {
+            SkipRemainingContentPayload(contentPayload, stats);
+            EmitExportGroupReceived(
+                timeSeconds,
+                packetId,
+                channel,
+                header,
+                exportGroupPath: null,
+                kind: ExportGroupKind.Unknown,
+                categories: ExportCategory.None,
+                payloadBits: payloadBits,
+                parsedBits: 0,
+                wasDecoded: false,
+                fields: Array.Empty<DecodedReplayField>());
             return;
         }
 
-        ParseClassNetCacheContent(contentPayload, classPath, ref context, stats);
-    }
-
-    private bool ParseRepLayoutContent(
-        FBitArchive contentPayload,
-        string classPath,
-        ref FieldDecodeContext context,
-        BunchPayloadStats stats)
-    {
-        var boundGroup = _bindingRegistry.GetBoundGroup(classPath);
+        var boundGroup = _bindingRegistry.GetBoundGroup(exportGroupPath);
         if (boundGroup is null || !boundGroup.Enabled)
         {
             SkipRemainingContentPayload(contentPayload, stats);
-            return false;
+            EmitExportGroupReceived(
+                timeSeconds,
+                packetId,
+                channel,
+                header,
+                exportGroupPath,
+                kind: _bindingRegistry.GetExportGroupKind(exportGroupPath),
+                categories: boundGroup?.Categories ?? ExportCategory.None,
+                payloadBits: payloadBits,
+                parsedBits: 0,
+                wasDecoded: false,
+                fields: Array.Empty<DecodedReplayField>());
+            return;
         }
 
-        var beforeRepLayout = contentPayload.BitsRemaining;
-        _fieldPayloadParser.ParseRepLayoutProperties(contentPayload, boundGroup, ref context);
-        stats.ContentPayloadBitsParsed += beforeRepLayout - contentPayload.BitsRemaining;
-        return true;
+        using var decodedPayload = DecodeContentPayload(contentPayload, channel, replayVersionBranch);
+        var context = CreateDecodeContext(exportGroupPath, channel, header, timeSeconds, packetId);
+        var beforeRepLayout = decodedPayload.BitsRemaining;
+        var fields = _fieldPayloadParser.ParseRepLayoutProperties(decodedPayload, boundGroup, ref context);
+        var parsedBits = checked((int)(beforeRepLayout - decodedPayload.BitsRemaining));
+        stats.ContentPayloadBitsParsed += parsedBits;
+
+        EmitExportGroupReceived(
+            timeSeconds,
+            packetId,
+            channel,
+            header,
+            exportGroupPath,
+            boundGroup.SourceDescriptor.Kind,
+            boundGroup.Categories,
+            payloadBits,
+            parsedBits,
+            wasDecoded: true,
+            fields);
     }
 
-    private void ParseClassNetCacheContent(
+    private void FrameClassNetCacheContentBlock(
         FBitArchive contentPayload,
-        string classPath,
-        ref FieldDecodeContext context,
+        ContentBlockHeader header,
+        ActorChannelState channel,
+        float timeSeconds,
+        int packetId,
+        string replayVersionBranch,
         BunchPayloadStats stats)
     {
         if (contentPayload.AtEnd)
@@ -419,18 +267,84 @@ internal sealed class ContentBlockFramer
             return;
         }
 
-        var boundCache = GetBoundClassNetCache(classPath);
-        if (boundCache is null || !boundCache.Enabled)
+        var payloadBits = checked((int)contentPayload.BitsRemaining);
+        var classPath = _pathResolver.ResolveClassPath(header, channel);
+        if (classPath is null)
         {
             SkipRemainingContentPayload(contentPayload, stats);
+            EmitExportGroupReceived(
+                timeSeconds,
+                packetId,
+                channel,
+                header,
+                exportGroupPath: null,
+                kind: ExportGroupKind.ClassNetCache,
+                categories: ExportCategory.None,
+                payloadBits: payloadBits,
+                parsedBits: 0,
+                wasDecoded: false,
+                fields: Array.Empty<DecodedReplayField>());
             return;
         }
 
-        var beforeClassNetCache = contentPayload.BitsRemaining;
-        _fieldPayloadParser.ParseClassNetCachePayload(contentPayload, boundCache, ref context);
-        stats.ContentPayloadBitsParsed += beforeClassNetCache - contentPayload.BitsRemaining;
-    }
+        var boundCache = _bindingRegistry.GetBoundCache(classPath);
+        if (boundCache is null || !boundCache.Enabled)
+        {
+            SkipRemainingContentPayload(contentPayload, stats);
+            EmitExportGroupReceived(
+                timeSeconds,
+                packetId,
+                channel,
+                header,
+                classPath,
+                ExportGroupKind.ClassNetCache,
+                ExportCategory.None,
+                payloadBits,
+                parsedBits: 0,
+                wasDecoded: false,
+                fields: Array.Empty<DecodedReplayField>());
+            return;
+        }
 
+        using var decodedPayload = DecodeContentPayload(contentPayload, channel, replayVersionBranch);
+        var context = CreateDecodeContext(classPath, channel, header, timeSeconds, packetId);
+        var beforeClassNetCache = decodedPayload.BitsRemaining;
+        var invocations = _fieldPayloadParser.ParseClassNetCachePayload(decodedPayload, boundCache, ref context);
+        var parsedBits = checked((int)(beforeClassNetCache - decodedPayload.BitsRemaining));
+        stats.ContentPayloadBitsParsed += parsedBits;
+
+        EmitExportGroupReceived(
+            timeSeconds,
+            packetId,
+            channel,
+            header,
+            classPath,
+            ExportGroupKind.ClassNetCache,
+            ExportCategory.None,
+            payloadBits,
+            parsedBits,
+            wasDecoded: true,
+            fields: Array.Empty<DecodedReplayField>());
+
+        foreach (var invocation in invocations)
+        {
+            _eventSink.Emit(new RpcReceived(
+                timeSeconds,
+                packetId,
+                channel.ActorNetGuid.Value,
+                GetObjectNetGuid(header, channel).Value,
+                channel.ChannelIndex,
+                classPath,
+                invocation.Name,
+                invocation.FunctionExportPath,
+                invocation.Handle,
+                invocation.Categories,
+                invocation.PayloadBits,
+                invocation.ParsedBits,
+                invocation.WasDecoded,
+                invocation.Fields));
+        }
+    }
     private static void SkipRemainingContentPayload(FBitArchive contentPayload, BunchPayloadStats stats)
     {
         var skippedBits = contentPayload.BitsRemaining;
@@ -439,208 +353,88 @@ internal sealed class ContentBlockFramer
     }
 
     private FieldDecodeContext CreateDecodeContext(
-        string classPath,
+        string exportGroupPath,
         ActorChannelState channel,
+        ContentBlockHeader header,
         float timeSeconds,
         int packetId) => new()
     {
-        WorldState = _worldState,
         NetGuidCache = _netGuidCache,
-        EventSink = _eventSink,
         LoggerFactory = _loggerFactory,
         CurrentPacketId = packetId,
         CurrentTimeSeconds = timeSeconds,
         ChannelIndex = channel.ChannelIndex,
         ActorNetGuid = channel.ActorNetGuid,
-        ExportGroupPath = classPath,
+        ObjectNetGuid = GetObjectNetGuid(header, channel),
+        ExportGroupPath = exportGroupPath,
     };
 
-    private BoundClassNetCache? GetBoundClassNetCache(string classPath)
-    {
-        return _bindingRegistry.GetBoundCache(classPath);
-    }
-
-    private void ObserveSubobject(
+    private void EmitExportGroupReceived(
+        float timeSeconds,
+        int packetId,
+        ActorChannelState channel,
         ContentBlockHeader header,
-        ActorChannelState channel,
-        float timeSeconds,
-        int packetId,
-        BunchPayloadStats stats) =>
-        ObserveSubobject(
-            header.ObjectNetGuid,
-            header.ClassNetGuid,
-            header.OuterNetGuid,
-            header.IsStablyNamed,
-            channel,
-            timeSeconds,
-            packetId,
-            stats);
-
-    private void ObserveSubobject(
-        NetworkGuid objectNetGuid,
-        NetworkGuid classNetGuid,
-        NetworkGuid outerNetGuid,
-        bool isStablyNamed,
-        ActorChannelState channel,
-        float timeSeconds,
-        int packetId,
-        BunchPayloadStats stats)
+        string? exportGroupPath,
+        ExportGroupKind kind,
+        ExportCategory categories,
+        int payloadBits,
+        int parsedBits,
+        bool wasDecoded,
+        IReadOnlyList<DecodedReplayField> fields)
     {
-        if (!objectNetGuid.IsValid)
-        {
-            return;
-        }
+        var objectNetGuid = GetObjectNetGuid(header, channel);
+        var classNetGuid = header.IsActor ? channel.ArchetypeNetGuid : header.ClassNetGuid;
+        var outerNetGuid = header.IsActor ? channel.LevelGuid : header.OuterNetGuid;
 
-        var isNew = !_worldState.ObjectsByNetGuid.TryGetValue(objectNetGuid.Value, out var objectState);
-        var isRecreated = objectState is { IsActive: false };
-
-        if (isNew)
-        {
-            objectState = new ObjectState
-            {
-                NetGuid = objectNetGuid,
-                ActorNetGuid = channel.ActorNetGuid,
-                ChannelIndex = channel.ChannelIndex,
-                IsActive = true,
-                IsStablyNamed = isStablyNamed,
-                ClassNetGuid = classNetGuid,
-                OuterNetGuid = outerNetGuid,
-                FirstObservedTimeSeconds = timeSeconds,
-                FirstObservedPacketId = packetId,
-                CreatedTimeSeconds = timeSeconds,
-                CreatedPacketId = packetId,
-            };
-            _worldState.ObjectsByNetGuid.Add(objectNetGuid.Value, objectState);
-        }
-        else
-        {
-            objectState!.ChannelIndex = channel.ChannelIndex;
-            objectState.IsActive = true;
-            objectState.IsStablyNamed |= isStablyNamed;
-            if (classNetGuid.IsValid)
-            {
-                objectState.ClassNetGuid = classNetGuid;
-            }
-
-            if (outerNetGuid.IsValid)
-            {
-                objectState.OuterNetGuid = outerNetGuid;
-            }
-
-            if (isRecreated)
-            {
-                objectState.CreatedTimeSeconds = timeSeconds;
-                objectState.CreatedPacketId = packetId;
-                objectState.DestroyTimeSeconds = null;
-                objectState.DestroyPacketId = null;
-                objectState.DeleteFlags = 0;
-            }
-        }
-
-        ResolveObjectPaths(objectState);
-        channel.SubobjectNetGuids.Add(objectNetGuid.Value);
-        if (_worldState.ActorsByNetGuid.TryGetValue(channel.ActorNetGuid.Value, out var actor))
-        {
-            actor.SubobjectNetGuids.Add(objectNetGuid.Value);
-        }
-
-        if (!isNew && !isRecreated)
-        {
-            return;
-        }
-
-        stats.SubobjectCreatedCount++;
-        _eventSink.Emit(new SubobjectCreated(
+        _eventSink.Emit(new ExportGroupReceived(
             timeSeconds,
             packetId,
-            objectNetGuid.Value,
             channel.ActorNetGuid.Value,
-            channel.ChannelIndex,
-            objectState.ClassNetGuid.Value,
-            objectState.OuterNetGuid.Value,
-            objectState.ObjectPath,
-            objectState.ClassPath,
-            objectState.IsStablyNamed));
-    }
-
-    private void DestroySubobject(
-        NetworkGuid objectNetGuid,
-        ActorChannelState channel,
-        byte deleteFlags,
-        bool destroyedWithActor,
-        float timeSeconds,
-        int packetId,
-        BunchPayloadStats stats)
-    {
-        if (!objectNetGuid.IsValid)
-        {
-            return;
-        }
-
-        var shouldEmit = true;
-        if (!_worldState.ObjectsByNetGuid.TryGetValue(objectNetGuid.Value, out var objectState))
-        {
-            objectState = new ObjectState
-            {
-                NetGuid = objectNetGuid,
-                ActorNetGuid = channel.ActorNetGuid,
-                ChannelIndex = channel.ChannelIndex,
-                IsActive = false,
-                FirstObservedTimeSeconds = timeSeconds,
-                FirstObservedPacketId = packetId,
-                DestroyTimeSeconds = timeSeconds,
-                DestroyPacketId = packetId,
-                DeleteFlags = deleteFlags,
-            };
-            ResolveObjectPaths(objectState);
-            _worldState.ObjectsByNetGuid.Add(objectNetGuid.Value, objectState);
-        }
-        else
-        {
-            shouldEmit = objectState.IsActive || objectState.DestroyPacketId is null;
-            objectState.IsActive = false;
-            objectState.DestroyTimeSeconds = timeSeconds;
-            objectState.DestroyPacketId = packetId;
-            objectState.DeleteFlags = deleteFlags;
-        }
-
-        channel.SubobjectNetGuids.Add(objectNetGuid.Value);
-        if (_worldState.ActorsByNetGuid.TryGetValue(channel.ActorNetGuid.Value, out var actor))
-        {
-            actor.SubobjectNetGuids.Add(objectNetGuid.Value);
-        }
-
-        if (!shouldEmit)
-        {
-            return;
-        }
-
-        stats.SubobjectDestroyedCount++;
-        _eventSink.Emit(new SubobjectDestroyed(
-            timeSeconds,
-            packetId,
             objectNetGuid.Value,
-            channel.ActorNetGuid.Value,
             channel.ChannelIndex,
-            deleteFlags,
-            destroyedWithActor));
+            header.IsActor,
+            header.IsDeleted,
+            header.DeleteFlags,
+            exportGroupPath,
+            kind,
+            categories,
+            classNetGuid.Value,
+            outerNetGuid.Value,
+            ResolveObjectPath(header, channel, objectNetGuid),
+            ResolveClassPath(header, channel, classNetGuid),
+            ResolvePath(outerNetGuid),
+            payloadBits,
+            parsedBits,
+            wasDecoded,
+            fields));
     }
 
-    private void ResolveObjectPaths(ObjectState objectState)
+    private static NetworkGuid GetObjectNetGuid(ContentBlockHeader header, ActorChannelState channel) =>
+        header.IsActor ? channel.ActorNetGuid : header.ObjectNetGuid;
+
+    private string? ResolveDeletedObjectPath(ContentBlockHeader header) =>
+        ResolvePath(header.ObjectNetGuid);
+
+    private string? ResolveObjectPath(ContentBlockHeader header, ActorChannelState channel, NetworkGuid objectNetGuid)
     {
-        if (_netGuidCache.TryGetPath(objectState.NetGuid.Value, out var objectPath))
+        if (header.IsActor)
         {
-            objectState.ObjectPath = objectPath;
+            return channel.ActorPath ?? ResolvePath(objectNetGuid);
         }
 
-        if (_netGuidCache.TryGetPath(objectState.ClassNetGuid.Value, out var classPath))
-        {
-            objectState.ClassPath = classPath;
-        }
-
-        if (_netGuidCache.TryGetPath(objectState.OuterNetGuid.Value, out var outerPath))
-        {
-            objectState.OuterPath = outerPath;
-        }
+        return ResolvePath(objectNetGuid);
     }
+
+    private string? ResolveClassPath(ContentBlockHeader header, ActorChannelState channel, NetworkGuid classNetGuid)
+    {
+        if (header.IsActor)
+        {
+            return channel.ReplicationClassPath ?? channel.ArchetypePath ?? ResolvePath(classNetGuid);
+        }
+
+        return ResolvePath(classNetGuid);
+    }
+
+    private string? ResolvePath(NetworkGuid netGuid) =>
+        netGuid.IsValid && _netGuidCache.TryGetPath(netGuid.Value, out var path) ? path : null;
 }

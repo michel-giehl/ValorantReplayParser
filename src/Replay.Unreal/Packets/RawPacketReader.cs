@@ -1,6 +1,7 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Net;
 using Replay.Models.Protocol;
+using Replay.Unreal.Bunches;
 
 namespace Replay.Unreal.Packets;
 
@@ -161,13 +162,14 @@ public sealed class RawPacketReader
 
         if (bunch.bPartialInitial)
         {
-            if (_partialBunches.TryGetValue(bunch.ChIndex, out var existing))
+            _partialBunches.TryGetValue(bunch.ChIndex, out var existing);
+            var error = PartialBunchSequenceValidator.ValidateInitial(
+                _partialBunches.ContainsKey(bunch.ChIndex),
+                existing.IsComplete);
+            if (error is not PartialBunchSequenceError.None)
             {
-                if (!existing.IsComplete)
-                {
-                    partialErrorCount++;
-                    bunch.HasPartialError = true;
-                }
+                partialErrorCount++;
+                bunch.HasPartialError = true;
             }
 
             _partialBunches[bunch.ChIndex] = new PartialBunchState
@@ -176,43 +178,32 @@ public sealed class RawPacketReader
                 Reliable = bunch.bReliable,
                 CumulativePayloadBitCount = bunch.PayloadBitCount,
             };
+            return;
         }
-        else
+
+        var hasState = _partialBunches.TryGetValue(bunch.ChIndex, out var state);
+        var validationError = PartialBunchSequenceValidator.ValidateContinuation(
+            hasState,
+            hasState && state.IsComplete,
+            hasState ? state.ChSequence : 0,
+            hasState && state.Reliable,
+            bunch);
+        if (validationError is not PartialBunchSequenceError.None)
         {
-            if (!_partialBunches.TryGetValue(bunch.ChIndex, out var state) || state.IsComplete)
-            {
-                partialErrorCount++;
-                bunch.HasPartialError = true;
-                return;
-            }
-
-            bool sequenceMatches;
-            if (state.Reliable)
-            {
-                sequenceMatches = bunch.ChSequence == state.ChSequence + 1;
-            }
-            else
-            {
-                sequenceMatches = bunch.ChSequence == state.ChSequence + 1 || bunch.ChSequence == state.ChSequence;
-            }
-
-            if (!sequenceMatches || state.Reliable != bunch.bReliable)
-            {
-                partialErrorCount++;
-                bunch.HasPartialError = true;
-                return;
-            }
-
-            state.CumulativePayloadBitCount += bunch.PayloadBitCount;
-            state.ChSequence = bunch.ChSequence;
-
-            if (bunch.bPartialFinal)
-            {
-                state.IsComplete = true;
-                bunch.IsPartialCompleted = true;
-            }
-
-            _partialBunches[bunch.ChIndex] = state;
+            partialErrorCount++;
+            bunch.HasPartialError = true;
+            return;
         }
+
+        state.CumulativePayloadBitCount += bunch.PayloadBitCount;
+        state.ChSequence = bunch.ChSequence;
+
+        if (bunch.bPartialFinal)
+        {
+            state.IsComplete = true;
+            bunch.IsPartialCompleted = true;
+        }
+
+        _partialBunches[bunch.ChIndex] = state;
     }
 }

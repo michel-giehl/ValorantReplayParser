@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
-using Replay.Encoding.PayloadEncryption;
 using Replay.Models.Errors;
 using Replay.Models.Protocol;
 using Replay.Models.Replay;
+using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Exports;
 using Replay.Unreal.Frames;
 using Replay.Unreal.Readers;
@@ -12,7 +12,6 @@ namespace Replay.Unreal.Packets;
 
 public class PlaybackPacketReader
 {
-    private static readonly PayloadTransformRegistry PayloadTransforms = PayloadTransformRegistry.CreateDefault();
 
     private readonly ReplayReaderContext _context;
     private readonly ReplayDataChunkInfo _dataChunk;
@@ -48,29 +47,11 @@ public class PlaybackPacketReader
 
     private void ReadCore()
     {
-        ValidatePayloadTransformSupport(_context.ReplayVersion.Branch);
+        PayloadTransformSupport.ValidateSupported(_context.ReplayVersion.Branch);
 
         while (!_archive.AtEnd)
         {
             ReadDemoFrame();
-        }
-    }
-
-    private static void ValidatePayloadTransformSupport(string replayVersion)
-    {
-        if (string.IsNullOrWhiteSpace(replayVersion))
-        {
-            return;
-        }
-
-        try
-        {
-            _ = PayloadTransforms.GetRequired(replayVersion);
-        }
-        catch (UnsupportedPayloadTransformVersionException)
-        {
-            throw new InvalidReplayInfoException(
-                $"Unsupported VALORANT property payload transform for replay version '{replayVersion}'.");
         }
     }
 

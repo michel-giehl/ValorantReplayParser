@@ -24,5 +24,4 @@ public sealed class ActorChannelState
     public int? ClosePacketId { get; set; }
     public float? CloseTimeSeconds { get; set; }
     public ChannelCloseReason? CloseReason { get; set; }
-    public HashSet<uint> SubobjectNetGuids { get; } = [];
 }
