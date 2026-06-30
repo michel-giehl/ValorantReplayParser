@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using JetBrains.Annotations;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
@@ -927,8 +928,7 @@ public class BunchPayloadPipelineTests
 
     private static List<bool> BuildRepLayoutPropertyBits(uint handle, int bitCount, byte[] data)
     {
-        var bits = new List<bool>();
-        bits.Add(false);
+        var bits = new List<bool> { false };
         WriteIntPackedBits(bits, handle + 1);
         WriteIntPackedBits(bits, (uint)bitCount);
         WriteByteBits(bits, data, bitCount);
@@ -1241,19 +1241,6 @@ public class BunchPayloadPipelineTests
             }
         }
 
-        private static int CeilLogTwo(int value)
-        {
-            var result = 0;
-            var test = value - 1;
-            while (test > 0)
-            {
-                test >>= 1;
-                result++;
-            }
-
-            return result;
-        }
-
         public void WriteInt32(int value)
         {
             Span<byte> buf = stackalloc byte[4];
@@ -1284,7 +1271,7 @@ public class BunchPayloadPipelineTests
             }
         }
 
-        public void WriteUInt64(ulong value)
+        private void WriteUInt64(ulong value)
         {
             Span<byte> buf = stackalloc byte[8];
             BinaryPrimitives.WriteUInt64LittleEndian(buf, value);
@@ -1294,12 +1281,7 @@ public class BunchPayloadPipelineTests
             }
         }
 
-        public void WriteSingle(float value)
-        {
-            WriteUInt32(BitConverter.SingleToUInt32Bits(value));
-        }
-
-        public void WriteDouble(double value)
+        private void WriteDouble(double value)
         {
             WriteUInt64(BitConverter.DoubleToUInt64Bits(value));
         }
@@ -1335,7 +1317,7 @@ public class BunchPayloadPipelineTests
         public override ExportCategory Categories => ExportCategory.Debug;
         public override ExportGroupKind Kind => ExportGroupKind.Actor;
 
-        public int FieldA { get; set; }
+        public int FieldA { get; [UsedImplicitly] set; }
 
         protected override void Configure()
         {

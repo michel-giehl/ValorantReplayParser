@@ -14,7 +14,7 @@ public class PlaybackPacketReaderTests
     [Test]
     public void Read_FrameWithTwoPackets_RecordsPacketStats()
     {
-        var packet0 = BuildRawPacket(0);
+        var packet0 = BuildRawPacket();
         var packet1 = BuildRawPacket(1);
         var context = CreateContext();
         var archive = new FBinaryArchive(BuildFrame([packet0, packet1], exportData: [], externalData: []));
@@ -109,9 +109,6 @@ public class PlaybackPacketReaderTests
     {
         ChunkIndex = 4,
     };
-
-    private static byte[] BuildFrame(params byte[][] packets) =>
-        BuildFrame(packets, exportData: [], externalData: []);
 
     private static byte[] BuildFrame(byte[] packet, byte[] exportData, byte[]? externalData = null) =>
         BuildFrame([packet], exportData, externalData ?? []);

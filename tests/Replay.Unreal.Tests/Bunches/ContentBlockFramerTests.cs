@@ -200,10 +200,6 @@ public class ContentBlockFramerTests
     {
         public int DecodeCount { get; private set; }
 
-        public void EnsureSupported(string replayVersion)
-        {
-        }
-
         public FBitArchive Decode(FBitArchive payload, uint actorNetGuid, string replayVersion)
         {
             DecodeCount++;

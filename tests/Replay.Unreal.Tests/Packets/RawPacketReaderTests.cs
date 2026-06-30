@@ -1,4 +1,3 @@
-using Replay.Encoding.Archives;
 using Replay.Models.Net;
 using Replay.Models.Protocol;
 using Replay.Unreal.Packets;
@@ -11,7 +10,7 @@ public class RawPacketReaderTests
     public void ReadPacket_LastByteZero_ReturnsMalformed()
     {
         var reader = new RawPacketReader();
-        var result = reader.ReadPacket(new byte[] { 0x00, 0x00, 0x00 }, 0, static (ref RawBunchHeader _, FBitArchive _) => { });
+        var result = reader.ReadPacket(new byte[] { 0x00, 0x00, 0x00 }, 0, static (ref _, _) => { });
 
         Assert.Multiple(() =>
         {
@@ -24,7 +23,7 @@ public class RawPacketReaderTests
     public void ReadPacket_EmptyData_ReturnsZeroBunches()
     {
         var reader = new RawPacketReader();
-        var result = reader.ReadPacket(new byte[0], 0, static (ref RawBunchHeader _, FBitArchive _) => { });
+        var result = reader.ReadPacket(new byte[0], 0, static (ref _, _) => { });
         Assert.That(result.BunchCount, Is.EqualTo(0));
     }
 
@@ -46,7 +45,7 @@ public class RawPacketReaderTests
         });
 
         RawBunchHeader? captured = null;
-        reader.ReadPacket(packet, 2, (ref RawBunchHeader header, FBitArchive _) => captured = header);
+        reader.ReadPacket(packet, 2, (ref header, _) => captured = header);
 
         Assert.That(captured, Is.Not.Null);
         var h = captured!.Value;
@@ -89,7 +88,7 @@ public class RawPacketReaderTests
             });
 
         var bunchIndices = new List<uint>();
-        reader.ReadPacket(packet, 3, (ref RawBunchHeader header, FBitArchive _) => bunchIndices.Add(header.ChIndex));
+        reader.ReadPacket(packet, 3, (ref header, _) => bunchIndices.Add(header.ChIndex));
 
         Assert.That(bunchIndices, Is.EqualTo(new uint[] { 0, 1 }));
     }
@@ -113,7 +112,7 @@ public class RawPacketReaderTests
         });
 
         RawBunchHeader? captured = null;
-        reader.ReadPacket(packet, 1, (ref RawBunchHeader header, FBitArchive _) => captured = header);
+        reader.ReadPacket(packet, 1, (ref header, _) => captured = header);
 
         var h = captured!.Value;
         Assert.Multiple(() =>
@@ -154,7 +153,7 @@ public class RawPacketReaderTests
             });
 
         var headers = new List<RawBunchHeader>();
-        var result = reader.ReadPacket(packet, 0, (ref RawBunchHeader header, FBitArchive _) => headers.Add(header));
+        var result = reader.ReadPacket(packet, 0, (ref header, _) => headers.Add(header));
 
         Assert.Multiple(() =>
         {
@@ -184,7 +183,7 @@ public class RawPacketReaderTests
         });
 
         var headers = new List<RawBunchHeader>();
-        var result = reader.ReadPacket(packet, 2, (ref RawBunchHeader header, FBitArchive _) => headers.Add(header));
+        var result = reader.ReadPacket(packet, 2, (ref header, _) => headers.Add(header));
 
         Assert.Multiple(() =>
         {
@@ -219,7 +218,7 @@ public class RawPacketReaderTests
             });
 
         var headers = new List<RawBunchHeader>();
-        var result = reader.ReadPacket(packet, 2, (ref RawBunchHeader header, FBitArchive _) => headers.Add(header));
+        var result = reader.ReadPacket(packet, 2, (ref header, _) => headers.Add(header));
 
         Assert.Multiple(() =>
         {
@@ -243,7 +242,7 @@ public class RawPacketReaderTests
         });
 
         var bunchCount = 0;
-        reader.ReadPacket(packet, 0, (ref RawBunchHeader _, FBitArchive _) => bunchCount++);
+        reader.ReadPacket(packet, 0, (ref _, _) => bunchCount++);
 
         Assert.That(bunchCount, Is.EqualTo(1));
     }
@@ -263,7 +262,7 @@ public class RawPacketReaderTests
         });
 
         RawBunchHeader? captured = null;
-        reader.ReadPacket(packet, 0, (ref RawBunchHeader header, FBitArchive _) => captured = header);
+        reader.ReadPacket(packet, 0, (ref header, _) => captured = header);
 
         Assert.That(captured, Is.Not.Null);
         Assert.That(captured!.Value.PayloadBitOffset, Is.EqualTo(ComputePacketBitSize(packet) - 17));
@@ -283,7 +282,7 @@ public class RawPacketReaderTests
         });
 
         var callbackCount = 0;
-        var result = reader.ReadPacket(packet, 0, (ref RawBunchHeader _, FBitArchive _) => callbackCount++);
+        var result = reader.ReadPacket(packet, 0, (ref _, _) => callbackCount++);
 
         Assert.Multiple(() =>
         {
@@ -329,7 +328,6 @@ public class RawPacketReaderTests
     private sealed class PacketBuilder
     {
         public List<bool> HeaderBits { get; } = [];
-        public int PayloadBitCount { get; private set; }
 
         public void WriteBit(bool value) => HeaderBits.Add(value);
 
@@ -358,7 +356,6 @@ public class RawPacketReaderTests
 
         public void WritePayloadSize(uint value)
         {
-            PayloadBitCount = (int)value;
             WriteSerializedInt(value, Constants.MaxPacketSizeInBits);
         }
 

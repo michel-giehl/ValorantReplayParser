@@ -119,7 +119,7 @@ public class PlaybackPacketReader
                 return;
             }
 
-            var netGuid = _archive.ReadIntPacked();
+            _ = _archive.ReadIntPacked();
             var byteCount = checked((int)((numBits + 7) >> 3));
 
             _archive.Skip(byteCount);
