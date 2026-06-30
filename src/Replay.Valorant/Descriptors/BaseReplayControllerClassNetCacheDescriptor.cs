@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Valorant.Movement;
 
 namespace Replay.Valorant.Descriptors;
 
@@ -9,8 +10,9 @@ internal sealed class BaseReplayControllerClassNetCacheDescriptor : ClassNetCach
     protected override void Configure()
     {
         AddFunction(
-            "ReplaysClientReceiveRemoteCharacterUpdatesSingleArrayNoAutonomous",
-            "/Script/ShooterGame.ReplayPlayerController:ReplaysClientReceiveRemoteCharacterUpdatesSingleArrayNoAutonomous",
-            ExportCategory.Movement);
+                "ReplaysClientReceiveRemoteCharacterUpdatesSingleArrayNoAutonomous",
+                "/Script/ShooterGame.ReplayPlayerController:ReplaysClientReceiveRemoteCharacterUpdatesSingleArrayNoAutonomous",
+                ExportCategory.Movement)
+            .Decode(RemoteCharacterUpdatesRpcDecoder.Instance);
     }
 }

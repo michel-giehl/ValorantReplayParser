@@ -361,6 +361,7 @@ internal sealed class ContentBlockFramer
     {
         NetGuidCache = _netGuidCache,
         LoggerFactory = _loggerFactory,
+        EventSink = _eventSink,
         CurrentPacketId = packetId,
         CurrentTimeSeconds = timeSeconds,
         ChannelIndex = channel.ChannelIndex,

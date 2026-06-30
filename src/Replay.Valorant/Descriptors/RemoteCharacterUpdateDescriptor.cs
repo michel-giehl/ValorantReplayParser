@@ -15,7 +15,7 @@ internal sealed class RemoteCharacterUpdateDescriptor : ExportGroupDescriptor<Re
 
     protected override void Configure()
     {
-        AddProperty(x => x.ShooterCharacterNetGuidValue).ObjectNetGuid();
+        AddProperty(x => x.ShooterCharacterNetGuidValue).UInt32();
         AddProperty(x => x.ShooterCharacterNetGuid).ObjectNetGuid();
         AddProperty(x => x.ComponentDataStream);
     }

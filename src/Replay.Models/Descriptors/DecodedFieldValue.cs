@@ -13,7 +13,8 @@ public readonly record struct DecodedFieldValue
         float floatValue = default,
         uint netGuidValue = default,
         FVector vectorValue = default,
-        FRotator rotatorValue = default)
+        FRotator rotatorValue = default,
+        object? objectValue = null)
     {
         Kind = kind;
         BoolValue = boolValue;
@@ -24,6 +25,7 @@ public readonly record struct DecodedFieldValue
         NetGuidValue = netGuidValue;
         VectorValue = vectorValue;
         RotatorValue = rotatorValue;
+        ObjectValue = objectValue;
     }
 
     public static DecodedFieldValue None { get; } = new(DecodedFieldValueKind.None);
@@ -46,6 +48,8 @@ public readonly record struct DecodedFieldValue
 
     public FRotator RotatorValue { get; }
 
+    public object? ObjectValue { get; }
+
     public bool HasValue => Kind != DecodedFieldValueKind.None;
 
     public static DecodedFieldValue FromBool(bool value) => new(DecodedFieldValueKind.Bool, boolValue: value);
@@ -63,6 +67,8 @@ public readonly record struct DecodedFieldValue
     public static DecodedFieldValue FromVector(FVector value) => new(DecodedFieldValueKind.Vector, vectorValue: value);
 
     public static DecodedFieldValue FromRotator(FRotator value) => new(DecodedFieldValueKind.Rotator, rotatorValue: value);
+
+    public static DecodedFieldValue FromObject(object value) => new(DecodedFieldValueKind.Object, objectValue: value);
 }
 
 public enum DecodedFieldValueKind
@@ -76,4 +82,5 @@ public enum DecodedFieldValueKind
     NetGuid,
     Vector,
     Rotator,
+    Object,
 }

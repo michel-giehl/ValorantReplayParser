@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
+using Replay.Models.Events;
 
 namespace Replay.Unreal.Parsing;
 
@@ -8,6 +9,7 @@ public sealed class FieldDecodeContext
 {
     public NetGuidCache? NetGuidCache { get; init; }
     public ILoggerFactory? LoggerFactory { get; init; }
+    public IReplayEventSink? EventSink { get; init; }
     public int CurrentPacketId { get; init; }
     public float CurrentTimeSeconds { get; init; }
     public uint ChannelIndex { get; init; }
