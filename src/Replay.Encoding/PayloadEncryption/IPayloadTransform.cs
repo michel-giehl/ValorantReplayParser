@@ -9,4 +9,6 @@ public interface IPayloadTransform
     int GetOutputByteCount(int bitCount);
 
     void Apply(FBitArchive input, uint seed, Span<byte> output);
+
+    void Apply(FBitArchive input, int bitCount, uint seed, Span<byte> output);
 }

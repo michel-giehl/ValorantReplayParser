@@ -4,5 +4,5 @@ namespace Replay.Unreal.Bunches.Payload;
 
 internal interface IPropertyPayloadDecoder
 {
-    FBitArchive Decode(FBitArchive payload, uint actorNetGuid, string replayVersion);
+    FBitArchive Decode(FBitArchive payload, int bitCount, uint actorNetGuid, string replayVersion);
 }

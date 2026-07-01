@@ -1,4 +1,3 @@
-using System.Buffers;
 using Replay.Encoding.Archives;
 using Replay.Encoding.PayloadEncryption;
 
@@ -9,30 +8,26 @@ internal sealed class PropertyPayloadDecoder : IPropertyPayloadDecoder
     private readonly PayloadTransformRegistry _registry;
     private string? _cachedReplayVersion;
     private IPayloadTransform? _cachedTransform;
+    private byte[] _decodeBuffer = [];
 
     public PropertyPayloadDecoder(PayloadTransformRegistry registry)
     {
         _registry = registry;
     }
 
-    public FBitArchive Decode(FBitArchive payload, uint actorNetGuid, string replayVersion)
+    public FBitArchive Decode(FBitArchive payload, int bitCount, uint actorNetGuid, string replayVersion)
     {
-        var bitCount = checked((int)payload.BitsRemaining);
         var transform = GetTransform(replayVersion);
         var byteCount = transform.GetOutputByteCount(bitCount);
-        var owner = MemoryPool<byte>.Shared.Rent(byteCount);
+        if (_decodeBuffer.Length < byteCount)
+        {
+            Array.Resize(ref _decodeBuffer, byteCount);
+        }
 
-        try
-        {
-            var seed = checked((uint)bitCount) ^ actorNetGuid;
-            transform.Apply(payload, seed, owner.Memory.Span[..byteCount]);
-            return new BitArchiveReader(owner, bitCount);
-        }
-        catch
-        {
-            owner.Dispose();
-            throw;
-        }
+        var seed = checked((uint)bitCount) ^ actorNetGuid;
+        transform.Apply(payload, bitCount, seed, _decodeBuffer.AsSpan(0, byteCount));
+
+        return new BitArchiveReader(_decodeBuffer.AsMemory(0, byteCount), bitCount);
     }
 
     private IPayloadTransform GetTransform(string replayVersion)

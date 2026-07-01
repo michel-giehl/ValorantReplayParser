@@ -19,8 +19,19 @@ public sealed class ValorantSeededTransform12_11 : IPayloadTransform
         Transform(output[..GetOutputByteCount(bitCount)], bitCount, seed);
     }
 
+    public void Apply(FBitArchive input, int bitCount, uint seed, Span<byte> output)
+    {
+        CopyInputToOutput(input, bitCount, output);
+        Transform(output[..GetOutputByteCount(bitCount)], bitCount, seed);
+    }
+
     private static void Transform(Span<byte> output, int bitCount, uint seed)
     {
+        if (bitCount == 0)
+        {
+            return;
+        }
+
         var state = seed;
         var streamByte = (byte)seed;
         var prngA = InitialPrngA(seed);

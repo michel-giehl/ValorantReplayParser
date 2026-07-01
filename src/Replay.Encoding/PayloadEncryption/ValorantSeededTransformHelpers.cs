@@ -1,4 +1,7 @@
 using System.Buffers.Binary;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Replay.Encoding.Archives;
 
 namespace Replay.Encoding.PayloadEncryption;
@@ -25,7 +28,17 @@ internal static class ValorantSeededTransformHelpers
                 input.Length, input.BitsRemaining);
         }
 
-        var bitCount = (int)input.BitsRemaining;
+        return CopyInputToOutput(input, (int)input.BitsRemaining, output);
+    }
+
+    internal static int CopyInputToOutput(FBitArchive input, int bitCount, Span<byte> output)
+    {
+        if (bitCount < 0)
+        {
+            throw new ArchiveReadException(ArchiveErrorCode.InvalidBitCount, nameof(CopyInputToOutput), input.Position,
+                input.Length, bitCount);
+        }
+
         var byteCount = GetOutputByteCount(bitCount);
         if (output.Length < byteCount)
         {
@@ -93,30 +106,78 @@ internal static class ValorantSeededTransformHelpers
         return (byte)(((value & 0x0F) << 4) | ((value >> 4) & 0x0F));
     }
 
-    internal static ulong RotateLeft(ulong value, int count) =>
-        (value << count) | (value >> (64 - count));
+    private static ulong RotateLeft(ulong value, int count) => BitOperations.RotateLeft(value, count);
 
-    internal static uint RotateLeft(uint value, int count) =>
-        (value << count) | (value >> (32 - count));
+    internal static uint RotateLeft(uint value, int count) => BitOperations.RotateLeft(value, count);
 
-    internal static ulong RotateRight(ulong value, int count) =>
-        (value >> count) | (value << (64 - count));
+    internal static ulong RotateRight(ulong value, int count) => BitOperations.RotateRight(value, count);
 
-    internal static uint RotateRight(uint value, int count) =>
-        (value >> count) | (value << (32 - count));
+    internal static uint RotateRight(uint value, int count) => BitOperations.RotateRight(value, count);
 
     internal static byte RotateRight(byte value, int count) =>
         (byte)((value >> count) | (value << (8 - count)));
 
-    internal static ulong ReadUInt64(ReadOnlySpan<byte> output, int byteOffset) =>
-        BinaryPrimitives.ReadUInt64LittleEndian(output.Slice(byteOffset, sizeof(ulong)));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong ReadUInt64(ReadOnlySpan<byte> output, int byteOffset)
+    {
+        ref var source = ref MemoryMarshal.GetReference(output);
+        return ReadUInt64LittleEndian(ref Unsafe.Add(ref source, byteOffset));
+    }
 
-    internal static uint ReadUInt32(ReadOnlySpan<byte> output, int byteOffset) =>
-        BinaryPrimitives.ReadUInt32LittleEndian(output.Slice(byteOffset, sizeof(uint)));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static uint ReadUInt32(ReadOnlySpan<byte> output, int byteOffset)
+    {
+        ref var source = ref MemoryMarshal.GetReference(output);
+        return ReadUInt32LittleEndian(ref Unsafe.Add(ref source, byteOffset));
+    }
 
-    internal static void WriteUInt64(Span<byte> output, int byteOffset, ulong value) =>
-        BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(byteOffset, sizeof(ulong)), value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void WriteUInt64(Span<byte> output, int byteOffset, ulong value)
+    {
+        ref var destination = ref MemoryMarshal.GetReference(output);
+        WriteUInt64LittleEndian(ref Unsafe.Add(ref destination, byteOffset), value);
+    }
 
-    internal static void WriteUInt32(Span<byte> output, int byteOffset, uint value) =>
-        BinaryPrimitives.WriteUInt32LittleEndian(output.Slice(byteOffset, sizeof(uint)), value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void WriteUInt32(Span<byte> output, int byteOffset, uint value)
+    {
+        ref var destination = ref MemoryMarshal.GetReference(output);
+        WriteUInt32LittleEndian(ref Unsafe.Add(ref destination, byteOffset), value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong ReadUInt64LittleEndian(ref byte source)
+    {
+        var value = Unsafe.ReadUnaligned<ulong>(ref source);
+        return BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint ReadUInt32LittleEndian(ref byte source)
+    {
+        var value = Unsafe.ReadUnaligned<uint>(ref source);
+        return BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteUInt64LittleEndian(ref byte destination, ulong value)
+    {
+        if (!BitConverter.IsLittleEndian)
+        {
+            value = BinaryPrimitives.ReverseEndianness(value);
+        }
+
+        Unsafe.WriteUnaligned(ref destination, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteUInt32LittleEndian(ref byte destination, uint value)
+    {
+        if (!BitConverter.IsLittleEndian)
+        {
+            value = BinaryPrimitives.ReverseEndianness(value);
+        }
+
+        Unsafe.WriteUnaligned(ref destination, value);
+    }
 }

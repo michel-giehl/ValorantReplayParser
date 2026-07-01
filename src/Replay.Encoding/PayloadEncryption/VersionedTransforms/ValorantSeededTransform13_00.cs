@@ -1,4 +1,5 @@
 using Replay.Encoding.Archives;
+using System.Runtime.CompilerServices;
 using static Replay.Encoding.PayloadEncryption.ValorantSeededTransformHelpers;
 
 namespace Replay.Encoding.PayloadEncryption.VersionedTransforms;
@@ -19,8 +20,19 @@ public sealed class ValorantSeededTransform13_00 : IPayloadTransform
         Transform(output[..GetOutputByteCount(bitCount)], bitCount, seed);
     }
 
+    public void Apply(FBitArchive input, int bitCount, uint seed, Span<byte> output)
+    {
+        CopyInputToOutput(input, bitCount, output);
+        Transform(output[..GetOutputByteCount(bitCount)], bitCount, seed);
+    }
+
     private static void Transform(Span<byte> output, int bitCount, uint seed)
     {
+        if (bitCount == 0)
+        {
+            return;
+        }
+
         var state = seed;
         var streamByte = (byte)seed;
         var prngA = InitialPrngA(seed);
@@ -105,26 +117,26 @@ public sealed class ValorantSeededTransform13_00 : IPayloadTransform
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong SubstituteBytes(ulong value, byte[] table)
     {
-        var result = 0UL;
-        for (var i = 0; i < sizeof(ulong); i++)
-        {
-            result |= (ulong)table[(byte)(value >> (i * 8))] << (i * 8);
-        }
-
-        return result;
+        return (ulong)table[(byte)value] |
+               ((ulong)table[(byte)(value >> 8)] << 8) |
+               ((ulong)table[(byte)(value >> 16)] << 16) |
+               ((ulong)table[(byte)(value >> 24)] << 24) |
+               ((ulong)table[(byte)(value >> 32)] << 32) |
+               ((ulong)table[(byte)(value >> 40)] << 40) |
+               ((ulong)table[(byte)(value >> 48)] << 48) |
+               ((ulong)table[(byte)(value >> 56)] << 56);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint SubstituteBytes(uint value, byte[] table)
     {
-        var result = 0u;
-        for (var i = 0; i < sizeof(uint); i++)
-        {
-            result |= (uint)table[(byte)(value >> (i * 8))] << (i * 8);
-        }
-
-        return result;
+        return (uint)table[(byte)value] |
+               ((uint)table[(byte)(value >> 8)] << 8) |
+               ((uint)table[(byte)(value >> 16)] << 16) |
+               ((uint)table[(byte)(value >> 24)] << 24);
     }
 
     private static readonly byte[] SubstituteTable32V13_00 = Convert.FromHexString(

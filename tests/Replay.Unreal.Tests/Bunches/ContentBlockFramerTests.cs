@@ -26,7 +26,8 @@ public class ContentBlockFramerTests
         var stats = new BunchPayloadStats();
         var channel = new ActorChannelState { ActorNetGuid = new NetworkGuid(100) };
 
-        framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0, replayVersionBranch: ReplayVersion);
+        framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0,
+            replayVersionBranch: ReplayVersion);
 
         var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>
@@ -34,6 +35,7 @@ public class ContentBlockFramerTests
             Assert.That(decoder.DecodeCount, Is.EqualTo(0));
             Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
             Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(payload.AtEnd, Is.True);
             Assert.That(exportGroup.WasDecoded, Is.False);
             Assert.That(exportGroup.ExportGroupPath, Is.Null);
         });
@@ -59,6 +61,7 @@ public class ContentBlockFramerTests
             Assert.That(decoder.DecodeCount, Is.EqualTo(0));
             Assert.That(stats.ContentPayloadBitsSkipped, Is.EqualTo(8));
             Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(payload.AtEnd, Is.True);
             Assert.That(exportGroup.WasDecoded, Is.False);
             Assert.That(exportGroup.ExportGroupPath, Is.EqualTo(TestPath));
         });
@@ -82,11 +85,39 @@ public class ContentBlockFramerTests
         Assert.Multiple(() =>
         {
             Assert.That(decoder.DecodeCount, Is.EqualTo(1));
+            Assert.That(decoder.DecodedBitCounts, Is.EqualTo(new[] { 8 }));
             Assert.That(stats.ContentBlockCount, Is.EqualTo(1));
             Assert.That(stats.ContentPayloadBitsParsed, Is.EqualTo(9));
+            Assert.That(payload.AtEnd, Is.True);
             Assert.That(exportGroup.WasDecoded, Is.True);
             Assert.That(exportGroup.ExportGroupPath, Is.EqualTo(TestPath));
             Assert.That(exportGroup.ActorNetGuid, Is.EqualTo(100));
+        });
+    }
+
+    [Test]
+    public void FrameContentBlocks_EnabledRepLayoutBlocks_DecodesEachBoundedPayload()
+    {
+        var netGuidCache = new NetGuidCache();
+        var decoder = new CountingPropertyPayloadDecoder();
+        var registry = CreateRegistry(ParseProfile.Default, netGuidCache);
+        var eventSink = new CapturingReplayEventSink();
+        var framer = CreateFramer(netGuidCache, registry, decoder, eventSink);
+        var payload = BuildContentBlockPayload((HasRepLayout: true, ContentBitCount: 8),
+            (HasRepLayout: true, ContentBitCount: 13));
+        var stats = new BunchPayloadStats();
+        var channel = CreateKnownActorChannel();
+
+        framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0,
+            replayVersionBranch: ReplayVersion);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(decoder.DecodeCount, Is.EqualTo(2));
+            Assert.That(decoder.DecodedBitCounts, Is.EqualTo(new[] { 8, 13 }));
+            Assert.That(stats.ContentBlockCount, Is.EqualTo(2));
+            Assert.That(stats.ContentPayloadBitsParsed, Is.EqualTo(18));
+            Assert.That(payload.AtEnd, Is.True);
         });
     }
 
@@ -149,16 +180,22 @@ public class ContentBlockFramerTests
 
     private static FBitArchive BuildContentBlockPayload(bool hasRepLayout, int contentBitCount)
     {
-        var bits = new List<bool>
-        {
-            hasRepLayout,
-            true,
-        };
+        return BuildContentBlockPayload((hasRepLayout, contentBitCount));
+    }
 
-        WriteIntPacked(bits, (uint)contentBitCount);
-        for (var i = 0; i < contentBitCount; i++)
+    private static FBitArchive BuildContentBlockPayload(params (bool HasRepLayout, int ContentBitCount)[] blocks)
+    {
+        var bits = new List<bool>();
+        foreach (var block in blocks)
         {
-            bits.Add((i & 1) == 0);
+            bits.Add(block.HasRepLayout);
+            bits.Add(true);
+
+            WriteIntPacked(bits, (uint)block.ContentBitCount);
+            for (var i = 0; i < block.ContentBitCount; i++)
+            {
+                bits.Add((i & 1) == 0);
+            }
         }
 
         return new BitArchiveReader(PackBits(bits), bits.Count);
@@ -200,10 +237,13 @@ public class ContentBlockFramerTests
     {
         public int DecodeCount { get; private set; }
 
-        public FBitArchive Decode(FBitArchive payload, uint actorNetGuid, string replayVersion)
+        public List<int> DecodedBitCounts { get; } = [];
+
+        public FBitArchive Decode(FBitArchive payload, int bitCount, uint actorNetGuid, string replayVersion)
         {
             DecodeCount++;
-            payload.SkipRemaining();
+            DecodedBitCounts.Add(bitCount);
+            payload.SkipBits(bitCount);
             return new BitArchiveReader([0x00, 0x00], 9);
         }
     }
