@@ -4,39 +4,74 @@
 
 C# parser for VALORANT replay files (`.vrf`).
 
+## Usage
+Note: This project is early in development and API behaviour is likely to change in the future.
+```csharp
+class TestReplayEventSink : IReplayEventSink
+{
+    public void Emit(ReplayEvent replayEvent)
+    {
+        switch (replayEvent)
+        {
+            case ActorSpawned spawned:
+                Console.WriteLine("Actor spawned");
+                break;
+
+            case ActorClosed closed:
+                Console.WriteLine("Actor destroyed");
+                break;
+
+            case ExportGroupReceived exportGroup:
+                Console.WriteLine("Export group received");
+                break;
+
+            case RpcReceived rpc:
+                Console.WriteLine("RPC received");
+                break;
+
+            case RemoteCharacterMovementReceived movement:
+                Console.WriteLine("Player movement received");
+                break;
+        }
+    }
+}
+
+using var file = File.OpenRead("path/to/replay.vrf");
+using var archive = new FBinaryArchive(file);
+
+ValorantReplayReader reader = ValorantReplayReader.CreateDefault(
+        loggerFactory,
+        new TestReplayEventSink(),
+        ValorantDescriptors.CreateCatalog(),
+        ParseProfile.Default); // Default behaviour: Parse everything
+
+reader.Read(archive);
+```
+
+## Progress
+
+| Area              | Status |
+|-------------------|--------|
+| Player Movement   | ✔      |
+| Agents            | ✔      |
+| Abilities         | 🚧     |
+| Gunplay           | ❌      |
+| Game State        | ❌      |
+| World State       | ❌      |
+| Stable public API | ❌      |
+
 ## Projects
 
 - `Replay.Models`: shared models, parse results, constants, context contracts, and parser errors.
-- `Replay.Encoding`: byte/bit archives, `FBinaryArchive`, payload transforms, and future compression/net-field decoding primitives.
+- `Replay.Encoding`: byte/bit archives, `FBinaryArchive`, payload transforms and oodle decompression
 - `Replay.Unreal`: replay-info, chunk scanning, replay header parsing, and the parsing pipeline used for VALORANT replays.
-- `Replay.Valorant`: VALORANT-specific models and interpretation such as export groups, RPCs, and ClassNetCaches.
+- `Replay.Valorant`: VALORANT models (export groups, RPCs, and ClassNetCaches).
 - `CliReader`: minimal CLI/demo reader.
 - `*.Tests`: NUnit test projects.
 
 ## Requirements
 
 - .NET 10 SDK
-
-## Project Progress
-
-| Area | Status |
-| --- |------|
-| Binary and bit archives | ✔    |
-| Replay info parsing | ✔    |
-| Replay chunk scanning | ✔    |
-| Replay header parsing | ✔    |
-| Payload transform | ✔    |
-| Oodle decompression | ✔    |
-| Minimal CLI reader | ✔    |
-| Replay data stream parsing | ✔    |
-| Packet parsing | ✔    |
-| Bunch processing |  ❌    |
-| Net field parsing | ❌    |
-| VALORANT export groups | ❌    |
-| VALORANT RPCs | ❌    |
-| ClassNetCaches | ❌    |
-| Match/game-state models | ❌    |
-| Stable public API | ❌    |
 
 ## Build And Test
 
