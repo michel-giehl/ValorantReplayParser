@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
+using Replay.Models.Net;
 
 namespace Replay.Unreal.Parsing;
 

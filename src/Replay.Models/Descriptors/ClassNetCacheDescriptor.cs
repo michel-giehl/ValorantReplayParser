@@ -23,7 +23,7 @@ public class ClassNetCacheDescriptor
 
     public virtual string Path => _path ?? string.Empty;
 
-    public virtual FieldStreamGrammar Grammar => _grammar;
+    public FieldStreamGrammar Grammar => _grammar;
 
     public virtual IReadOnlyList<RpcDescriptor> FunctionFields => _functionFields ?? [];
 }

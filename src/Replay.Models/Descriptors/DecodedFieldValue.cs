@@ -6,12 +6,12 @@ public readonly record struct DecodedFieldValue
 {
     private DecodedFieldValue(
         DecodedFieldValueKind kind,
-        bool boolValue = default,
-        byte byteValue = default,
-        int int32Value = default,
-        uint uint32Value = default,
-        float floatValue = default,
-        uint netGuidValue = default,
+        bool boolValue = false,
+        byte byteValue = 0,
+        int int32Value = 0,
+        uint uint32Value = 0,
+        float floatValue = 0,
+        uint netGuidValue = 0,
         FVector vectorValue = default,
         FRotator rotatorValue = default,
         object? objectValue = null)

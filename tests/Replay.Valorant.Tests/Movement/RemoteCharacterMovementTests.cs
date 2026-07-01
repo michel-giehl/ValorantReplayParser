@@ -1,7 +1,7 @@
 using Replay.Encoding.Archives;
-using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
+using Replay.Models.Net;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors;
 using Replay.Valorant.Movement;

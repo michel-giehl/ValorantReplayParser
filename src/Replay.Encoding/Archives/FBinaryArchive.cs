@@ -34,8 +34,6 @@ public class FBinaryArchive : ByteArchiveReader
 
     public FTransform ReadFTransform() => new(ReadFQuat(), ReadFVector(), ReadFVector());
 
-    public FTransform ReadFTransfrom() => ReadFTransform();
-
     public bool ReadUInt32AsBool() => ReadUInt32() != 0;
 
     public bool ReadBoolean() => ReadByte() != 0;

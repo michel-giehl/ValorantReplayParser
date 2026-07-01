@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
-using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
+using Replay.Models.Net;
 using Replay.Unreal.Parsing;
 
 namespace Replay.Unreal.Tests.Parsing;

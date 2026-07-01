@@ -22,38 +22,28 @@ public sealed class RpcDescriptorBuilder
         Categories = categories;
     }
 
-    internal ExportCategory Categories { get; private set; }
+    private ExportCategory Categories { get; set; }
 
-    internal IRpcDecoderDescriptor? Decoder { get; private set; }
+    private IRpcDecoderDescriptor? Decoder { get; set; }
 
-    public RpcDescriptorBuilder WithCategories(ExportCategory categories)
-    {
-        Categories = categories;
-        return this;
-    }
-
-    public RpcDescriptorBuilder Decode(IRpcDecoderDescriptor decoder)
+    public void Decode(IRpcDecoderDescriptor decoder)
     {
         Decoder = decoder;
-        return this;
     }
 
-    public RpcDescriptorBuilder AddField(
-        string exportName,
+    public void AddField(string exportName,
         string propertyName,
         ExportCategory categories = ExportCategory.None)
     {
         _fieldBuilders.Add(new FieldDescriptorBuilder(exportName, propertyName, handle: null, categories));
-        return this;
     }
 
-    public RpcDescriptorBuilder AddFieldHandle(
+    public void AddFieldHandle(
         uint handle,
         string propertyName,
         ExportCategory categories = ExportCategory.None)
     {
         _fieldBuilders.Add(new FieldDescriptorBuilder(exportName: null, propertyName, handle, categories));
-        return this;
     }
 
     internal RpcDescriptor Build()
@@ -75,6 +65,4 @@ public sealed class RpcDescriptorBuilder
     }
 }
 
-public interface IRpcDecoderDescriptor
-{
-}
+public interface IRpcDecoderDescriptor;

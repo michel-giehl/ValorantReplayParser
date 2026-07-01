@@ -5,8 +5,6 @@ public sealed class BitBufferBuilder
     private byte[] _buffer = [];
     private int _bitLength;
 
-    public int BitLength => _bitLength;
-
     public void Append(FBitArchive source, int bitCount)
     {
         if (bitCount < 0)

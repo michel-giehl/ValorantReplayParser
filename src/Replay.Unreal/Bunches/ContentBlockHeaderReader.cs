@@ -1,5 +1,5 @@
 using Replay.Encoding.Archives;
-using Replay.Encoding.Net;
+using Replay.Models.Net;
 using Replay.Unreal.Channels;
 using Replay.Unreal.PackageMap;
 

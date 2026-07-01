@@ -8,14 +8,14 @@ public class ByteArchiveReader : FArchive
     private readonly ReadOnlyMemory<byte> _buffer;
     private long _position;
 
-    public ByteArchiveReader(Stream input)
+    protected ByteArchiveReader(Stream input)
     {
         using var memoryStream = new MemoryStream();
         input.CopyTo(memoryStream);
         _buffer = memoryStream.ToArray();
     }
 
-    public ByteArchiveReader(ReadOnlyMemory<byte> input) => _buffer = input;
+    protected ByteArchiveReader(ReadOnlyMemory<byte> input) => _buffer = input;
 
     public ByteArchiveReader(ReadOnlySpan<byte> input) => _buffer = input.ToArray();
 
@@ -59,17 +59,14 @@ public class ByteArchiveReader : FArchive
 
     public override ReadOnlyMemory<byte> ReadBytes(int count)
     {
-        if (!TryReadBytes(count, out var value))
+        if (TryReadBytes(count, out var value)) return value;
+        if (count < 0)
         {
-            if (count < 0)
-            {
-                throw InvalidCount(nameof(ReadBytes), Position, Length, count);
-            }
-
-            throw EndOfArchive(nameof(ReadBytes), Position, Length, count);
+            throw InvalidCount(nameof(ReadBytes), Position, Length, count);
         }
 
-        return value;
+        throw EndOfArchive(nameof(ReadBytes), Position, Length, count);
+
     }
 
     public override bool TryReadBytes(int count, out ReadOnlyMemory<byte> value)

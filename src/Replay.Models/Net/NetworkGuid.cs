@@ -1,4 +1,4 @@
-namespace Replay.Encoding.Net;
+namespace Replay.Models.Net;
 
 public readonly record struct NetworkGuid(uint Value)
 {

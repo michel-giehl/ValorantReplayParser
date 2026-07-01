@@ -1,5 +1,5 @@
-using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
+using Replay.Models.Net;
 
 namespace Replay.Unreal.Parsing;
 

@@ -19,15 +19,15 @@ public sealed class FieldDescriptorBuilder
         Categories = categories;
     }
 
-    internal string? ExportName { get; }
+    private string? ExportName { get; }
 
-    internal string? PropertyName { get; }
+    private string? PropertyName { get; }
 
-    internal uint? Handle { get; }
+    private uint? Handle { get; }
 
-    internal ExportCategory Categories { get; private set; }
+    private ExportCategory Categories { get; set; }
 
-    internal IFieldDecoderDescriptor? Decoder { get; private set; }
+    private IFieldDecoderDescriptor? Decoder { get; set; }
 
     public FieldDescriptorBuilder WithCategories(ExportCategory categories)
     {

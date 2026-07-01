@@ -4,7 +4,7 @@ namespace Replay.Models.Replay;
 
 public class ReplayHeader
 {
-    public uint NetworkVersion { get; set; }
+    public uint NetworkVersion { get; init; }
 
     public uint NetworkChecksum { get; set; }
 

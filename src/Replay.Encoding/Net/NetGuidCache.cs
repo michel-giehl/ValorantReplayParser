@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Replay.Models.Net;
 
 namespace Replay.Encoding.Net;
 
@@ -22,13 +23,7 @@ public sealed class NetGuidCache
         _exportGroupsByPath.TryGetValue(group.PathName, out var existingByPath);
         _exportGroupsByPathIndex.TryGetValue(group.PathNameIndex, out var existingByIndex);
 
-        if (existingByPath is not null &&
-            existingByIndex is not null &&
-            !ReferenceEquals(existingByPath, existingByIndex))
-        {
-            throw new InvalidOperationException(
-                $"Export group path {group.PathName} and path index {group.PathNameIndex} resolve to different groups.");
-        }
+        ValidateEquality(group, existingByPath, existingByIndex);
 
         var existingGroup = existingByPath ?? existingByIndex;
         if (existingGroup is null)
@@ -38,6 +33,12 @@ public sealed class NetGuidCache
             return group;
         }
 
+        var mergedGroup = MergeWithExistingExportGroup(group, existingGroup);
+        return mergedGroup;
+    }
+
+    private NetFieldExportGroup MergeWithExistingExportGroup(NetFieldExportGroup group, NetFieldExportGroup existingGroup)
+    {
         var mergedLength = Math.Max(existingGroup.NetFieldExportsLength, group.NetFieldExportsLength);
         var mergedGroup = new NetFieldExportGroup
         {
@@ -53,6 +54,18 @@ public sealed class NetGuidCache
         _exportGroupsByPath[group.PathName] = mergedGroup;
         _exportGroupsByPathIndex[group.PathNameIndex] = mergedGroup;
         return mergedGroup;
+    }
+
+    private static void ValidateEquality(NetFieldExportGroup group, NetFieldExportGroup? existingByPath,
+        NetFieldExportGroup? existingByIndex)
+    {
+        if (existingByPath is not null &&
+            existingByIndex is not null &&
+            !ReferenceEquals(existingByPath, existingByIndex))
+        {
+            throw new InvalidOperationException(
+                $"Export group path {group.PathName} and path index {group.PathNameIndex} resolve to different groups.");
+        }
     }
 
     public NetFieldExportGroup GetExportGroup(uint pathNameIndex) =>
@@ -74,7 +87,7 @@ public sealed class NetGuidCache
         {
             _outerNetGuidByNetGuid.Remove(netGuid);
         }
-    }
+     }
 
     public bool TryGetPath(uint netGuid, out string pathName)
     {

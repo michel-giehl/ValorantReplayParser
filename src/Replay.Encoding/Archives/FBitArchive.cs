@@ -34,20 +34,6 @@ public abstract class FBitArchive : FArchive
 
     public abstract void SkipBits(long count);
 
-    public byte PeekByte()
-    {
-        using var checkpoint = CreateCheckpoint();
-        var value = ReadByte();
-        return value;
-    }
-
-    public bool PeekBit()
-    {
-        using var checkpoint = CreateCheckpoint();
-        var value = ReadBit();
-        return value;
-    }
-
     public override byte ReadByte() => (byte)ReadBitsToUInt64(8);
 
     public override bool TryReadByte(out byte value)

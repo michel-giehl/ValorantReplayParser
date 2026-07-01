@@ -2,6 +2,7 @@ using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
+using Replay.Models.Net;
 using Replay.Unreal.Bunches;
 using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Channels;
@@ -53,7 +54,8 @@ public class ContentBlockFramerTests
         var stats = new BunchPayloadStats();
         var channel = CreateKnownActorChannel();
 
-        framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0, replayVersionBranch: ReplayVersion);
+        framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0,
+            replayVersionBranch: ReplayVersion);
 
         var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>
@@ -79,7 +81,8 @@ public class ContentBlockFramerTests
         var stats = new BunchPayloadStats();
         var channel = CreateKnownActorChannel();
 
-        framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0, replayVersionBranch: ReplayVersion);
+        framer.FrameContentBlocks(payload, channel, stats, timeSeconds: 0, packetId: 0,
+            replayVersionBranch: ReplayVersion);
 
         var exportGroup = eventSink.Events.OfType<ExportGroupReceived>().Single();
         Assert.Multiple(() =>

@@ -6,5 +6,5 @@ public enum ReplayChunkType : uint
     ReplayData = 1,
     Checkpoint = 2,
     Event = 3,
-    Unknown = 0xFFFFFFFF
+    Unknown = 0xFFFFFFFF,
 }

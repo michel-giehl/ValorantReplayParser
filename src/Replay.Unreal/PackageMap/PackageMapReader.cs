@@ -1,6 +1,7 @@
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Errors;
+using Replay.Models.Net;
 using Replay.Models.Protocol;
 using Replay.Unreal.Bunches;
 
