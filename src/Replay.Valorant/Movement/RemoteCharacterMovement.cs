@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
@@ -8,12 +9,50 @@ namespace Replay.Valorant.Movement;
 
 public sealed class RemoteCharacterUpdateBatch
 {
-    public List<RemoteCharacterUpdate> Updates { get; } = [];
+    private readonly List<RemoteCharacterUpdate> _updates;
 
-    public override string ToString()
+    internal RemoteCharacterUpdateBatch(int capacity)
     {
-        return string.Join(", ", Updates.Select(u => u.ToString()));
+        _updates = capacity > 0 ? new List<RemoteCharacterUpdate>(capacity) : [];
     }
+
+    public IReadOnlyList<RemoteCharacterUpdate> Updates => _updates;
+
+    public int MoveCount
+    {
+        get
+        {
+            var count = 0;
+            foreach (var update in _updates)
+            {
+                count += update.ComponentDataStream?.MoveCount ?? 0;
+            }
+
+            return count;
+        }
+    }
+
+    public int MovementParseErrorCount
+    {
+        get
+        {
+            var count = 0;
+            foreach (var update in _updates)
+            {
+                if (update.ComponentDataStream?.MovementParseError is not null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+    }
+
+    internal void AddUpdate(RemoteCharacterUpdate update) => _updates.Add(update);
+
+    public override string ToString() =>
+        $"updates={_updates.Count}, moves={MoveCount}, movementErrors={MovementParseErrorCount}";
 }
 
 public sealed class RemoteCharacterUpdate
@@ -22,10 +61,8 @@ public sealed class RemoteCharacterUpdate
     public uint? ShooterCharacterNetGuidValue { get; set; }
     public ComponentDataStream? ComponentDataStream { get; set; }
 
-    public override string ToString()
-    {
-        return $"Guid={ShooterCharacterNetGuidValue}|ComponentDataStream={ComponentDataStream}";
-    }
+    public override string ToString() =>
+        $"Guid={ShooterCharacterNetGuidValue}|ComponentDataStream={ComponentDataStream}";
 }
 
 public sealed class ComponentDataStream
@@ -36,101 +73,87 @@ public sealed class ComponentDataStream
     private const double AngleScale = 360.0 / 65536.0;
     private const int MaxMovementPaddingBits = 31;
 
-    public override string ToString()
-    {
-        return string.Join(",", Moves.Select(_ => _.Position));
-    }
-
     public bool HasMovementSection { get; private set; }
     public bool HasValidMovementMagic { get; private set; }
-    public ushort MovementBitCount { get; private set; }
-    public long TrailingComponentBitCount { get; private set; }
     public string? MovementParseError { get; private set; }
-    public List<MovementMove> Moves { get; } = [];
+    public int MoveCount { get; private set; }
+    public bool HasLatestMove { get; private set; }
+    public MovementMove LatestMove { get; private set; }
 
     public static ComponentDataStream Decode(FBitArchive archive)
     {
         var stream = new ComponentDataStream();
-        stream.Parse(archive);
+        stream.Parse(archive, archive.BitLength);
         return stream;
     }
 
-    private void Parse(FBitArchive archive)
+    internal static ComponentDataStream Decode(FBitArchive archive, long endBit)
     {
-        if (TryReadPayloadBytes(archive, out var payloadBytes))
+        var stream = new ComponentDataStream();
+        stream.Parse(archive, endBit);
+        return stream;
+    }
+
+    public override string ToString() =>
+        $"moves={MoveCount}, error={MovementParseError ?? "<none>"}";
+
+    private void Parse(FBitArchive archive, long endBit)
+    {
+        if (TryParseByteWrappedPayload(archive, endBit))
         {
-            using var payloadArchive = new BitArchiveReader(payloadBytes, payloadBytes.Length * 8);
-            ParseComponentPayload(payloadArchive);
             return;
         }
 
-        ParseComponentPayload(archive);
+        ParseComponentPayload(archive, endBit);
     }
 
-    private void ParseComponentPayload(FBitArchive archive)
+    private bool TryParseByteWrappedPayload(FBitArchive archive, long endBit)
     {
         using var checkpoint = archive.CreateCheckpoint();
 
-        if (!TryReadUInt16(archive, out var movementBitCount))
-        {
-            checkpoint.Commit();
-            return;
-        }
-
-        if (movementBitCount == 0)
-        {
-            HasMovementSection = true;
-            MovementBitCount = (ushort)Math.Min(archive.BitsRemaining, ushort.MaxValue);
-            ParseMovementSection(archive);
-            checkpoint.Commit();
-            return;
-        }
-
-        if (movementBitCount > archive.BitsRemaining)
-        {
-            HasMovementSection = true;
-            MovementBitCount = (ushort)Math.Min(archive.BitsRemaining, ushort.MaxValue);
-            ParseMovementSection(archive);
-            checkpoint.Commit();
-            return;
-        }
-
-        HasMovementSection = true;
-        MovementBitCount = movementBitCount;
-
-        using (var movementArchive = archive.ReadSubArchive(movementBitCount))
-        {
-            ParseMovementSection(movementArchive);
-            movementArchive.SkipRemaining();
-        }
-
-        if (archive.BitsRemaining > 0)
-        {
-            TrailingComponentBitCount = archive.BitsRemaining;
-            archive.SkipRemaining();
-        }
-
-        checkpoint.Commit();
-    }
-
-    private static bool TryReadPayloadBytes(FBitArchive archive, out byte[] payloadBytes)
-    {
-        payloadBytes = [];
-        using var checkpoint = archive.CreateCheckpoint();
-
-        if (!TryReadUInt16(archive, out var byteCount) || byteCount == 0 || archive.BitsRemaining < byteCount * 8L)
+        if (!TryReadUInt16(archive, endBit, out var byteCount) ||
+            byteCount == 0 ||
+            BitsRemaining(archive, endBit) < byteCount * 8L)
         {
             return false;
         }
 
-        payloadBytes = archive.ReadBytes(byteCount).ToArray();
+        var payloadEndBit = archive.BitPosition + byteCount * 8L;
+        ParseComponentPayload(archive, payloadEndBit);
+        archive.SeekBits(payloadEndBit);
         checkpoint.Commit();
         return true;
     }
 
-    private void ParseMovementSection(FBitArchive archive)
+    private void ParseComponentPayload(FBitArchive archive, long componentEndBit)
     {
-        if (!TryReadByte(archive, out var magic))
+        if (!TryReadUInt16(archive, componentEndBit, out var movementBitCount))
+        {
+            return;
+        }
+
+        var remainingBits = BitsRemaining(archive, componentEndBit);
+        if (movementBitCount == 0 || movementBitCount > remainingBits)
+        {
+            HasMovementSection = true;
+            ParseMovementSection(archive, componentEndBit);
+            archive.SeekBits(componentEndBit);
+            return;
+        }
+
+        HasMovementSection = true;
+
+        var movementEndBit = archive.BitPosition + movementBitCount;
+        ParseMovementSection(archive, movementEndBit);
+        archive.SeekBits(movementEndBit);
+
+        if (archive.BitPosition >= componentEndBit) return;
+        archive.SeekBits(componentEndBit);
+    }
+
+    private void ParseMovementSection(FBitArchive archive, long endBit)
+    {
+        if (!TryReadByte(archive, endBit, out var magic))
         {
             MovementParseError = "Missing movement magic";
             return;
@@ -140,12 +163,12 @@ public sealed class ComponentDataStream
         if (!HasValidMovementMagic)
         {
             MovementParseError = $"Invalid movement magic 0x{magic:X2}";
-            archive.SkipRemaining();
+            archive.SeekBits(endBit);
             return;
         }
 
         var expectedMarker = 1;
-        if (!TryReadBits(archive, 3, out var marker))
+        if (!TryReadBits(archive, endBit, 3, out var marker))
         {
             MovementParseError = "Missing first movement marker";
             return;
@@ -156,26 +179,28 @@ public sealed class ComponentDataStream
             if (marker != expectedMarker)
             {
                 MovementParseError = $"Movement marker mismatch: expected {expectedMarker}, got {marker}";
-                archive.SkipRemaining();
+                archive.SeekBits(endBit);
                 return;
             }
 
-            if (!TryReadMove(archive, marker, out var move, out var error))
+            if (!TryReadMove(archive, endBit, marker, out var move, out var error))
             {
                 MovementParseError = error ?? "Invalid movement record";
-                archive.SkipRemaining();
+                archive.SeekBits(endBit);
                 return;
             }
 
-            Moves.Add(move);
+            MoveCount++;
+            LatestMove = move;
+            HasLatestMove = true;
 
-            if (archive.BitsRemaining <= MaxMovementPaddingBits)
+            if (BitsRemaining(archive, endBit) <= MaxMovementPaddingBits)
             {
                 return;
             }
 
             expectedMarker = NextMarker(expectedMarker);
-            if (!TryReadBits(archive, 3, out marker))
+            if (!TryReadBits(archive, endBit, 3, out marker))
             {
                 MovementParseError = "Missing next movement marker";
                 return;
@@ -183,98 +208,127 @@ public sealed class ComponentDataStream
         }
     }
 
-    private static bool TryReadMove(FBitArchive archive, int marker, out MovementMove move, out string? error)
+    private static bool TryReadMove(
+        FBitArchive archive,
+        long endBit,
+        int marker,
+        out MovementMove move,
+        out string? error)
     {
-        move = new MovementMove();
+        move = default;
         error = null;
 
-        if (!TryReadBit(archive, out var moveType) ||
-            !TryReadByte(archive, out var rotationYawMultiplier) ||
-            !TryReadByte(archive, out var movementState) ||
-            !TryReadByte(archive, out var unusedByte))
+        if (!TryReadBitsToUInt64(archive, endBit, 25, out var header))
         {
             error = "Missing movement record header";
             return false;
         }
 
-        move.Marker = marker;
-        move.MoveType = moveType ? (byte)1 : (byte)0;
-        move.RotationYawMultiplier = unchecked((sbyte)rotationYawMultiplier);
-        move.ModeFlags = movementState;
-        move.MovementState = movementState;
-        move.UnusedByte = unusedByte;
+        var moveType = (header & 1UL) != 0;
+        var rotationYawMultiplier = (byte)(header >> 1);
+        var movementState = (byte)(header >> 9);
+        var unusedByte = (byte)(header >> 17);
 
-        if (!TryReadFixedVector(archive, out var rotationInput) ||
-            !TryReadVLQ(archive, out var timestamp) ||
-            !TryReadQuantizedVector(archive, 100, out var position))
+        if (!TryReadFixedVector(archive, endBit, out var rotationInput) ||
+            !TryReadVLQ(archive, endBit, out var timestamp) ||
+            !TryReadQuantizedVector(archive, endBit, 100, out var position))
         {
             error = "Missing movement common vector/timestamp fields";
             return false;
         }
 
-        move.RotationInput = rotationInput;
-        move.Timestamp = timestamp;
-        move.Position = position;
-
-        if (!TryReadBit(archive, out var hasOptionalByte))
+        if (!TryReadBit(archive, endBit, out var hasOptionalByte))
         {
             error = "Missing optional movement value flag";
             return false;
         }
 
-        move.HasOptionalMovementValue = hasOptionalByte;
+        byte? optionalRawByte = null;
+        double? optionalValue = null;
         if (hasOptionalByte)
         {
-            if (!TryReadByte(archive, out var optionalByte))
+            if (!TryReadByte(archive, endBit, out var optionalByte))
             {
                 error = "Missing optional movement value";
                 return false;
             }
 
-            move.OptionalMovementRawByte = optionalByte;
-            move.OptionalMovementValue = optionalByte * OptionalByteScale;
+            optionalRawByte = optionalByte;
+            optionalValue = optionalByte * OptionalByteScale;
         }
 
-        if (!TryReadBit(archive, out var flag48) || !TryReadUInt32(archive, out var packedAngles))
+        if (!TryReadBitsToUInt64(archive, endBit, 33, out var flagAndPackedAngles))
         {
             error = "Missing movement flag/angle fields";
             return false;
         }
 
+        var flag48 = (flagAndPackedAngles & 1UL) != 0;
+        var packedAngles = (uint)(flagAndPackedAngles >> 1);
         var pitch = (ushort)(packedAngles & 0xFFFF);
         var yaw = (ushort)(packedAngles >> 16);
-        move.Flag48 = flag48;
-        move.PackedAngles = packedAngles;
-        move.RawYaw = yaw;
-        move.RawPitch = pitch;
-        move.Yaw = yaw * AngleScale;
-        move.Pitch = pitch * AngleScale;
+
+        FVector? velocity = null;
+        FVector? variant1Vector = null;
+        bool? variant1Flag = null;
+        bool? variant0HasExternalCharacterRef = null;
+        uint? variant0PackedAngles = null;
 
         if (moveType)
         {
-            if (!TryReadBit(archive, out var variant1Flag) ||
-                !TryReadQuantizedVector(archive, 10, out var variant1Vector))
+            if (!TryReadBit(archive, endBit, out var readVariant1Flag) ||
+                !TryReadQuantizedVector(archive, endBit, 10, out var readVariant1Vector))
             {
                 error = "Missing variant-1 movement fields";
                 return false;
             }
 
-            move.Variant1Flag = variant1Flag;
-            move.Variant1Vector = variant1Vector;
-            move.Velocity = variant1Vector;
+            variant1Flag = readVariant1Flag;
+            variant1Vector = readVariant1Vector;
+            velocity = readVariant1Vector;
         }
-        else if (!TryReadVariant0Extra(archive, move, out error))
+        else if (!TryReadVariant0Extra(
+                     archive,
+                     endBit,
+                     out variant0HasExternalCharacterRef,
+                     out variant0PackedAngles,
+                     out error))
         {
             return false;
         }
 
-        if (!TryReadBit(archive, out var errorSentinel))
+        if (!TryReadBit(archive, endBit, out var errorSentinel))
         {
             error = "Missing movement error sentinel";
             return false;
         }
 
-        move.ErrorSentinel = errorSentinel;
+        move = new MovementMove(
+            marker,
+            moveType ? (byte)1 : (byte)0,
+            position,
+            velocity,
+            rotationInput,
+            variant1Vector,
+            timestamp,
+            movementState,
+            movementState,
+            unchecked((sbyte)rotationYawMultiplier),
+            unusedByte,
+            hasOptionalByte,
+            optionalRawByte,
+            optionalValue,
+            flag48,
+            packedAngles,
+            yaw,
+            pitch,
+            yaw * AngleScale,
+            pitch * AngleScale,
+            variant0HasExternalCharacterRef,
+            variant0PackedAngles,
+            variant1Flag,
+            errorSentinel);
+
         if (errorSentinel)
         {
             error = "Movement error sentinel was set";
@@ -283,41 +337,45 @@ public sealed class ComponentDataStream
         return !errorSentinel;
     }
 
-    private static bool TryReadVariant0Extra(FBitArchive archive, MovementMove move, out string? error)
+    private static bool TryReadVariant0Extra(
+        FBitArchive archive,
+        long endBit,
+        out bool? hasExternalCharacterRef,
+        out uint? packedAngles,
+        out string? error)
     {
+        hasExternalCharacterRef = null;
+        packedAngles = null;
         error = null;
-        if (!TryReadBit(archive, out var hasExternalCharacterRef))
-        {
-            error = "Missing variant-0 external reference flag";
-            return false;
-        }
 
-        move.Variant0HasExternalCharacterRef = hasExternalCharacterRef;
-        if (hasExternalCharacterRef)
-        {
-            error = "Variant-0 external character reference is not decoded yet";
-            return false;
-        }
-
-        if (!TryReadUInt32(archive, out var packedAngles))
+        if (!TryReadBitsToUInt64(archive, endBit, 33, out var flagAndAngles))
         {
             error = "Missing variant-0 packed angle dword";
             return false;
         }
 
-        move.Variant0PackedAngles = packedAngles;
+        hasExternalCharacterRef = (flagAndAngles & 1UL) != 0;
+        if (hasExternalCharacterRef.Value)
+        {
+            error = "Variant-0 external character reference is not decoded yet";
+            return false;
+        }
+
+        packedAngles = (uint)(flagAndAngles >> 1);
         return true;
     }
 
-    private static bool TryReadFixedVector(FBitArchive archive, out FVector vector)
+    private static bool TryReadFixedVector(FBitArchive archive, long endBit, out FVector vector)
     {
         vector = default;
-        if (!TryReadSerializedInt(archive, 0x10000, out var x) ||
-            !TryReadSerializedInt(archive, 0x10000, out var y) ||
-            !TryReadSerializedInt(archive, 0x10000, out var z))
+        if (!TryReadBitsToUInt64(archive, endBit, 48, out var bits))
         {
             return false;
         }
+
+        var x = (uint)(bits & 0xFFFF);
+        var y = (uint)((bits >> 16) & 0xFFFF);
+        var z = (uint)((bits >> 32) & 0xFFFF);
 
         vector = new FVector(
             ((int)x - 0x8000) * FixedVectorScale,
@@ -330,10 +388,10 @@ public sealed class ComponentDataStream
         return true;
     }
 
-    private static bool TryReadQuantizedVector(FBitArchive archive, int scaleFactor, out FVector vector)
+    private static bool TryReadQuantizedVector(FBitArchive archive, long endBit, int scaleFactor, out FVector vector)
     {
         vector = default;
-        if (!TryReadSerializedInt(archive, 1 << 7, out var componentBitCountAndExtraInfo))
+        if (!TryReadBitsToUInt64(archive, endBit, 7, out var componentBitCountAndExtraInfo))
         {
             return false;
         }
@@ -343,9 +401,7 @@ public sealed class ComponentDataStream
 
         if (componentBits > 0)
         {
-            if (!TryReadSignedQuantizedComponent(archive, componentBits, out var x) ||
-                !TryReadSignedQuantizedComponent(archive, componentBits, out var y) ||
-                !TryReadSignedQuantizedComponent(archive, componentBits, out var z))
+            if (!TryReadSignedQuantizedComponents(archive, endBit, componentBits, out var x, out var y, out var z))
             {
                 return false;
             }
@@ -363,12 +419,14 @@ public sealed class ComponentDataStream
 
         if (extraInfo == 0)
         {
-            if (archive.BitsRemaining < 96)
+            if (!TryReadSingle(archive, endBit, out var x) ||
+                !TryReadSingle(archive, endBit, out var y) ||
+                !TryReadSingle(archive, endBit, out var z))
             {
                 return false;
             }
 
-            vector = new FVector(archive.ReadSingle(), archive.ReadSingle(), archive.ReadSingle())
+            vector = new FVector(x, y, z)
             {
                 Bits = 32,
                 ScaleFactor = scaleFactor,
@@ -376,12 +434,14 @@ public sealed class ComponentDataStream
             return true;
         }
 
-        if (archive.BitsRemaining < 192)
+        if (!TryReadDouble(archive, endBit, out var dx) ||
+            !TryReadDouble(archive, endBit, out var dy) ||
+            !TryReadDouble(archive, endBit, out var dz))
         {
             return false;
         }
 
-        vector = new FVector(archive.ReadDouble(), archive.ReadDouble(), archive.ReadDouble())
+        vector = new FVector(dx, dy, dz)
         {
             Bits = 64,
             ScaleFactor = scaleFactor,
@@ -389,28 +449,71 @@ public sealed class ComponentDataStream
         return true;
     }
 
-    private static bool TryReadSignedQuantizedComponent(FBitArchive archive, int componentBits, out long value)
+    private static bool TryReadSignedQuantizedComponents(
+        FBitArchive archive,
+        long endBit,
+        int componentBits,
+        out long x,
+        out long y,
+        out long z)
     {
-        value = 0;
-        if (componentBits <= 0 || componentBits > 62 || archive.BitsRemaining < componentBits)
+        x = 0;
+        y = 0;
+        z = 0;
+        if (componentBits <= 0 || componentBits > 62)
         {
             return false;
         }
 
-        var raw = archive.ReadBitsToUInt64(componentBits);
-        var signBit = 1UL << (componentBits - 1);
-        value = (long)(raw ^ signBit) - (long)signBit;
+        var totalBits = checked(componentBits * 3);
+        if (totalBits <= 64)
+        {
+            if (!TryReadBitsToUInt64(archive, endBit, totalBits, out var raw))
+            {
+                return false;
+            }
+
+            var mask = (1UL << componentBits) - 1UL;
+            x = SignExtend(raw & mask, componentBits);
+            y = SignExtend((raw >> componentBits) & mask, componentBits);
+            z = SignExtend((raw >> (componentBits * 2)) & mask, componentBits);
+            return true;
+        }
+
+        return TryReadSignedQuantizedComponent(archive, endBit, componentBits, out x) &&
+               TryReadSignedQuantizedComponent(archive, endBit, componentBits, out y) &&
+               TryReadSignedQuantizedComponent(archive, endBit, componentBits, out z);
+    }
+
+    private static bool TryReadSignedQuantizedComponent(
+        FBitArchive archive,
+        long endBit,
+        int componentBits,
+        out long value)
+    {
+        value = 0;
+        if (componentBits <= 0 || componentBits > 62)
+        {
+            return false;
+        }
+
+        if (!TryReadBitsToUInt64(archive, endBit, componentBits, out var raw))
+        {
+            return false;
+        }
+
+        value = SignExtend(raw, componentBits);
         return true;
     }
 
-    private static bool TryReadVLQ(FBitArchive archive, out uint value)
+    private static bool TryReadVLQ(FBitArchive archive, long endBit, out uint value)
     {
         value = 0;
         var shift = 0;
 
         while (true)
         {
-            if (!TryReadByte(archive, out var b))
+            if (!TryReadByte(archive, endBit, out var b))
             {
                 return false;
             }
@@ -429,63 +532,162 @@ public sealed class ComponentDataStream
         }
     }
 
-    private static bool TryReadSerializedInt(FBitArchive archive, int maxValue, out uint value)
+    private static bool TryReadSingle(FBitArchive archive, long endBit, out float value)
     {
         value = 0;
-        for (uint mask = 1; value + mask < maxValue; mask <<= 1)
+        if (!TryReadUInt32(archive, endBit, out var bits))
         {
-            if (!TryReadBit(archive, out var bit))
+            return false;
+        }
+
+        value = BitConverter.UInt32BitsToSingle(bits);
+        return true;
+    }
+
+    private static bool TryReadDouble(FBitArchive archive, long endBit, out double value)
+    {
+        value = 0;
+        if (!TryReadBitsToUInt64(archive, endBit, 64, out var bits))
+        {
+            return false;
+        }
+
+        value = BitConverter.UInt64BitsToDouble(bits);
+        return true;
+    }
+
+    private static bool TryReadBit(FBitArchive archive, long endBit, out bool value)
+    {
+        if (TryReadBitsToUInt64(archive, endBit, 1, out var bits))
+        {
+            value = bits != 0;
+            return true;
+        }
+
+        value = false;
+        return false;
+    }
+
+    private static bool TryReadBits(FBitArchive archive, long endBit, int bitCount, out int value)
+    {
+        value = 0;
+        if (!TryReadBitsToUInt64(archive, endBit, bitCount, out var bits))
+        {
+            return false;
+        }
+
+        value = (int)bits;
+        return true;
+    }
+
+    private static bool TryReadByte(FBitArchive archive, long endBit, out byte value)
+    {
+        if (TryReadBitsToUInt64(archive, endBit, 8, out var bits))
+        {
+            value = (byte)bits;
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryReadUInt16(FBitArchive archive, long endBit, out ushort value)
+    {
+        if (TryReadBitsToUInt64(archive, endBit, 16, out var bits))
+        {
+            value = (ushort)bits;
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryReadUInt32(FBitArchive archive, long endBit, out uint value)
+    {
+        if (TryReadBitsToUInt64(archive, endBit, 32, out var bits))
+        {
+            value = (uint)bits;
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static bool TryReadBitsToUInt64(FBitArchive archive, long endBit, int bitCount, out ulong value)
+    {
+        if ((uint)bitCount > 64 || BitsRemaining(archive, endBit) < bitCount)
+        {
+            value = 0;
+            return false;
+        }
+
+        value = archive.ReadBitsToUInt64(bitCount);
+        return true;
+    }
+
+    private static long BitsRemaining(FBitArchive archive, long endBit) => endBit - archive.BitPosition;
+
+    private static long CheckedPayloadEnd(FBitArchive archive, long endBit, uint payloadBits, string operation)
+    {
+        if (payloadBits > int.MaxValue || BitsRemaining(archive, endBit) < payloadBits)
+        {
+            throw new ArchiveReadException(
+                ArchiveErrorCode.InvalidBitCount,
+                operation,
+                archive.Position,
+                archive.Length,
+                payloadBits);
+        }
+
+        return archive.BitPosition + payloadBits;
+    }
+
+    private static uint ReadIntPacked(FBitArchive archive, long endBit, string operation)
+    {
+        if (!TryReadIntPacked(archive, endBit, out var value))
+        {
+            throw new ArchiveReadException(
+                ArchiveErrorCode.MalformedPackedInteger,
+                operation,
+                archive.Position,
+                archive.Length,
+                0);
+        }
+
+        return value;
+    }
+
+    private static bool TryReadIntPacked(FBitArchive archive, long endBit, out uint value)
+    {
+        value = 0;
+        var shift = 0;
+
+        for (var i = 0; i < 5; i++)
+        {
+            if (!TryReadByte(archive, endBit, out var nextByte))
             {
                 return false;
             }
 
-            if (bit)
+            value |= (uint)(nextByte >> 1) << shift;
+            if ((nextByte & 1) == 0)
             {
-                value |= mask;
+                return true;
             }
+
+            shift += 7;
         }
 
-        return true;
+        return false;
     }
 
-    private static bool TryReadBit(FBitArchive archive, out bool value) => archive.TryReadBit(out value);
-
-    private static bool TryReadBits(FBitArchive archive, int bitCount, out int value)
+    private static long SignExtend(ulong raw, int bitCount)
     {
-        value = 0;
-        if (bitCount is < 0 or > sizeof(int) * 8 || archive.BitsRemaining < bitCount)
-        {
-            return false;
-        }
-
-        value = (int)archive.ReadBitsToUInt64(bitCount);
-        return true;
-    }
-
-    private static bool TryReadByte(FBitArchive archive, out byte value) => archive.TryReadByte(out value);
-
-    private static bool TryReadUInt16(FBitArchive archive, out ushort value)
-    {
-        value = 0;
-        if (archive.BitsRemaining < 16)
-        {
-            return false;
-        }
-
-        value = archive.ReadUInt16();
-        return true;
-    }
-
-    private static bool TryReadUInt32(FBitArchive archive, out uint value)
-    {
-        value = 0;
-        if (archive.BitsRemaining < 32)
-        {
-            return false;
-        }
-
-        value = archive.ReadUInt32();
-        return true;
+        var signBit = 1UL << (bitCount - 1);
+        return (long)(raw ^ signBit) - (long)signBit;
     }
 
     private static int NextMarker(int marker)
@@ -493,36 +695,57 @@ public sealed class ComponentDataStream
         var next = (marker + 1) & 7;
         return next < 2 ? 1 : next;
     }
+
+    internal static uint ReadIntPackedForRpc(FBitArchive archive, long endBit, string operation) =>
+        ReadIntPacked(archive, endBit, operation);
+
+    internal static long CheckedPayloadEndForRpc(FBitArchive archive, long endBit, uint payloadBits, string operation) =>
+        CheckedPayloadEnd(archive, endBit, payloadBits, operation);
 }
 
-public sealed class MovementMove
+[UsedImplicitly]
+public readonly record struct MovementMove(
+    int Marker,
+    byte MoveType,
+    FVector Position,
+    FVector? Velocity,
+    FVector RotationInput,
+    FVector? Variant1Vector,
+    uint Timestamp,
+    byte ModeFlags,
+    byte MovementState,
+    sbyte RotationYawMultiplier,
+    byte UnusedByte,
+    bool HasOptionalMovementValue,
+    byte? OptionalMovementRawByte,
+    double? OptionalMovementValue,
+    bool Flag48,
+    uint PackedAngles,
+    ushort RawYaw,
+    ushort RawPitch,
+    double Yaw,
+    double Pitch,
+    bool? Variant0HasExternalCharacterRef,
+    uint? Variant0PackedAngles,
+    bool? Variant1Flag,
+    bool ErrorSentinel);
+
+[UsedImplicitly]
+public interface IRemoteCharacterMovementSink
 {
-    public int Marker { get; set; }
-    public byte MoveType { get; set; }
-    public FVector? Position { get; set; }
-    public FVector? Velocity { get; set; }
-    public FVector? RotationInput { get; set; }
-    public FVector? Variant1Vector { get; set; }
-    public uint Timestamp { get; set; }
-    public byte ModeFlags { get; set; }
-    public byte MovementState { get; set; }
-    public sbyte RotationYawMultiplier { get; set; }
-    public byte UnusedByte { get; set; }
-    public bool HasOptionalMovementValue { get; set; }
-    public byte? OptionalMovementRawByte { get; set; }
-    public double? OptionalMovementValue { get; set; }
-    public bool Flag48 { get; set; }
-    public uint PackedAngles { get; set; }
-    public ushort RawYaw { get; set; }
-    public ushort RawPitch { get; set; }
-    public double Yaw { get; set; }
-    public double Pitch { get; set; }
-    public bool? Variant0HasExternalCharacterRef { get; set; }
-    public uint? Variant0PackedAngles { get; set; }
-    public bool? Variant1Flag { get; set; }
-    public bool ErrorSentinel { get; set; }
+    void EmitRemoteCharacterMovement(
+        float timeSeconds,
+        int packetId,
+        uint actorNetGuid,
+        uint objectNetGuid,
+        uint channelIndex,
+        int updateIndex,
+        uint shooterCharacterNetGuidValue,
+        int moveIndex,
+        in MovementMove move);
 }
 
+[UsedImplicitly]
 public sealed record RemoteCharacterMovementReceived(
     float TimeSeconds,
     int PacketId,
@@ -550,42 +773,36 @@ internal sealed class RemoteCharacterUpdatesRpcDecoder : IRpcDecoder
 
     public IReadOnlyList<DecodedReplayField> Decode(ref FieldDecodeContext context, FBitArchive archive)
     {
-        if (!archive.TryReadBit(out _))
+        var endBit = archive.BitLength;
+        if (!TryReadBit(archive, endBit))
         {
             return [];
         }
 
-        var fields = new List<DecodedReplayField>();
-        while (!archive.AtEnd)
+        List<DecodedReplayField>? fields = null;
+        while (archive.BitPosition < endBit)
         {
-            var encodedHandle = archive.ReadIntPacked();
+            var encodedHandle = ReadIntPacked(archive, endBit, nameof(RemoteCharacterUpdatesRpcDecoder));
             if (encodedHandle == 0)
             {
                 break;
             }
 
             var handle = checked((int)encodedHandle - 1);
-            var payloadBits = archive.ReadIntPacked();
-            if (payloadBits > int.MaxValue || archive.BitsRemaining < payloadBits)
-            {
-                throw new ArchiveReadException(
-                    ArchiveErrorCode.InvalidBitCount,
-                    nameof(RemoteCharacterUpdatesRpcDecoder),
-                    archive.Position,
-                    archive.Length,
-                    payloadBits);
-            }
+            var payloadBits = ReadIntPacked(archive, endBit, nameof(RemoteCharacterUpdatesRpcDecoder));
+            var payloadEndBit = CheckedPayloadEnd(archive, endBit, payloadBits, nameof(RemoteCharacterUpdatesRpcDecoder));
 
-            using var fieldPayload = archive.ReadSubArchive((int)payloadBits);
             if (handle != RemoteCharacterUpdatesHandle)
             {
-                fieldPayload.SkipRemaining();
+                archive.SeekBits(payloadEndBit);
                 continue;
             }
 
-            var batch = ReadRemoteCharacterUpdates(fieldPayload);
-            fieldPayload.SkipRemaining();
+            var batch = ReadRemoteCharacterUpdates(archive, payloadEndBit);
+            archive.SeekBits(payloadEndBit);
             EmitMovementEvents(ref context, batch);
+
+            fields ??= new List<DecodedReplayField>(1);
             fields.Add(new DecodedReplayField(
                 handle,
                 "RemoteCharacterUpdates",
@@ -594,12 +811,12 @@ internal sealed class RemoteCharacterUpdatesRpcDecoder : IRpcDecoder
                 DecodedFieldValue.FromObject(batch)));
         }
 
-        return fields;
+        return fields ?? [];
     }
 
-    private static RemoteCharacterUpdateBatch ReadRemoteCharacterUpdates(FBitArchive archive)
+    private static RemoteCharacterUpdateBatch ReadRemoteCharacterUpdates(FBitArchive archive, long endBit)
     {
-        var updateCount = archive.ReadIntPacked();
+        var updateCount = ReadIntPacked(archive, endBit, nameof(ReadRemoteCharacterUpdates));
         if (updateCount > MaxRemoteCharacterUpdates)
         {
             throw new ArchiveReadException(
@@ -610,17 +827,15 @@ internal sealed class RemoteCharacterUpdatesRpcDecoder : IRpcDecoder
                 updateCount);
         }
 
-        var batch = new RemoteCharacterUpdateBatch();
         var updates = new RemoteCharacterUpdate?[updateCount];
-
-        while (!archive.AtEnd)
+        while (archive.BitPosition < endBit)
         {
-            var encodedIndex = archive.ReadIntPacked();
+            var encodedIndex = ReadIntPacked(archive, endBit, nameof(ReadRemoteCharacterUpdates));
             if (encodedIndex == 0)
             {
-                if (archive.BitsRemaining == 8)
+                if (endBit - archive.BitPosition == 8)
                 {
-                    _ = archive.ReadIntPacked();
+                    _ = ReadIntPacked(archive, endBit, nameof(ReadRemoteCharacterUpdates));
                 }
 
                 break;
@@ -629,59 +844,62 @@ internal sealed class RemoteCharacterUpdatesRpcDecoder : IRpcDecoder
             var index = checked((int)encodedIndex - 1);
             if ((uint)index >= updateCount)
             {
-                archive.SkipRemaining();
+                archive.SeekBits(endBit);
                 break;
             }
 
-            updates[index] = ReadRemoteCharacterUpdate(archive, index);
+            updates[index] = ReadRemoteCharacterUpdate(archive, endBit, index);
         }
 
+        var batch = new RemoteCharacterUpdateBatch(checked((int)updateCount));
         foreach (var update in updates)
         {
             if (update is not null)
             {
-                batch.Updates.Add(update);
+                batch.AddUpdate(update);
             }
         }
 
         return batch;
     }
 
-    private static RemoteCharacterUpdate ReadRemoteCharacterUpdate(FBitArchive archive, int index)
+    private static RemoteCharacterUpdate ReadRemoteCharacterUpdate(FBitArchive archive, long endBit, int index)
     {
         var update = new RemoteCharacterUpdate { Index = index };
-        while (!archive.AtEnd)
+        while (archive.BitPosition < endBit)
         {
-            var encodedHandle = archive.ReadIntPacked();
+            var encodedHandle = ReadIntPacked(archive, endBit, nameof(ReadRemoteCharacterUpdate));
             if (encodedHandle == 0)
             {
                 break;
             }
 
             var handle = checked((int)encodedHandle - 1);
-            var payloadBits = archive.ReadIntPacked();
-            if (payloadBits > int.MaxValue || archive.BitsRemaining < payloadBits)
-            {
-                throw new ArchiveReadException(
-                    ArchiveErrorCode.InvalidBitCount,
-                    nameof(ReadRemoteCharacterUpdate),
-                    archive.Position,
-                    archive.Length,
-                    payloadBits);
-            }
+            var payloadBits = ReadIntPacked(archive, endBit, nameof(ReadRemoteCharacterUpdate));
+            var payloadEndBit = CheckedPayloadEnd(archive, endBit, payloadBits, nameof(ReadRemoteCharacterUpdate));
 
-            using var fieldPayload = archive.ReadSubArchive((int)payloadBits);
             switch (handle)
             {
                 case ShooterCharacterNetGuidValueHandle:
-                    update.ShooterCharacterNetGuidValue = fieldPayload.ReadUInt32();
+                    if (!TryReadUInt32(archive, payloadEndBit, out var shooterGuid))
+                    {
+                        throw new ArchiveReadException(
+                            ArchiveErrorCode.InvalidBitCount,
+                            nameof(ReadRemoteCharacterUpdate),
+                            archive.Position,
+                            archive.Length,
+                            payloadBits);
+                    }
+
+                    update.ShooterCharacterNetGuidValue = shooterGuid;
                     break;
+
                 case ComponentDataStreamHandle:
-                    update.ComponentDataStream = ComponentDataStream.Decode(fieldPayload);
+                    update.ComponentDataStream = ComponentDataStream.Decode(archive, payloadEndBit);
                     break;
             }
 
-            fieldPayload.SkipRemaining();
+            archive.SeekBits(payloadEndBit);
         }
 
         return update;
@@ -689,21 +907,23 @@ internal sealed class RemoteCharacterUpdatesRpcDecoder : IRpcDecoder
 
     private static void EmitMovementEvents(ref FieldDecodeContext context, RemoteCharacterUpdateBatch batch)
     {
-        if (context.EventSink is null)
+        if (context.EventSink is null or NullReplayEventSink)
         {
             return;
         }
 
         foreach (var update in batch.Updates)
         {
-            if (update is not { ShooterCharacterNetGuidValue: { } shooterGuid, ComponentDataStream: { } componentDataStream })
+            if (update is not { ShooterCharacterNetGuidValue: { } shooterGuid, ComponentDataStream: { HasLatestMove: true } componentDataStream })
             {
                 continue;
             }
 
-            for (var moveIndex = 0; moveIndex < componentDataStream.Moves.Count; moveIndex++)
+            var moveIndex = componentDataStream.MoveCount - 1;
+            var move = componentDataStream.LatestMove;
+            if (context.EventSink is IRemoteCharacterMovementSink movementSink)
             {
-                context.EventSink.Emit(new RemoteCharacterMovementReceived(
+                movementSink.EmitRemoteCharacterMovement(
                     context.CurrentTimeSeconds,
                     context.CurrentPacketId,
                     context.ActorNetGuid.Value,
@@ -712,8 +932,43 @@ internal sealed class RemoteCharacterUpdatesRpcDecoder : IRpcDecoder
                     update.Index,
                     shooterGuid,
                     moveIndex,
-                    componentDataStream.Moves[moveIndex]));
+                    in move);
+                continue;
             }
+
+            context.EventSink.Emit(new RemoteCharacterMovementReceived(
+                context.CurrentTimeSeconds,
+                context.CurrentPacketId,
+                context.ActorNetGuid.Value,
+                context.ObjectNetGuid.Value,
+                context.ChannelIndex,
+                update.Index,
+                shooterGuid,
+                moveIndex,
+                move));
         }
     }
+
+    private static bool TryReadBit(FBitArchive archive, long endBit)
+    {
+        return archive.BitPosition < endBit && archive.TryReadBit(out _);
+    }
+
+    private static bool TryReadUInt32(FBitArchive archive, long endBit, out uint value)
+    {
+        if (endBit - archive.BitPosition >= 32)
+        {
+            value = (uint)archive.ReadBitsToUInt64(32);
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
+    private static uint ReadIntPacked(FBitArchive archive, long endBit, string operation) =>
+        ComponentDataStream.ReadIntPackedForRpc(archive, endBit, operation);
+
+    private static long CheckedPayloadEnd(FBitArchive archive, long endBit, uint payloadBits, string operation) =>
+        ComponentDataStream.CheckedPayloadEndForRpc(archive, endBit, payloadBits, operation);
 }

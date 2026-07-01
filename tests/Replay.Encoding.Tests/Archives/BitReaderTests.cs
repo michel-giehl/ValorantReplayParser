@@ -46,6 +46,53 @@ public class BitReaderTests
     }
 
     [Test]
+    public void ReadSerializedInt_PowerOfTwoMax_ReadsFixedBitCount()
+    {
+        var reader = new BitArchiveReader([0b1010_1010]);
+        reader.SkipBits(1);
+
+        Assert.That(reader.ReadSerializedInt(128), Is.EqualTo(85u));
+        Assert.That(reader.BitPosition, Is.EqualTo(8));
+    }
+
+    [Test]
+    public void ReadSerializedInt_NonPowerOfTwoMax_StopsWhenHighBitCannotBePresent()
+    {
+        var reader = new BitArchiveReader([0b0000_0111]);
+
+        Assert.That(reader.ReadSerializedInt(15), Is.EqualTo(7u));
+        Assert.That(reader.BitPosition, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void ReadSerializedInt_NonPowerOfTwoMax_ReadsConditionalHighBit()
+    {
+        var reader = new BitArchiveReader([0b0000_1110]);
+
+        Assert.That(reader.ReadSerializedInt(15), Is.EqualTo(14u));
+        Assert.That(reader.BitPosition, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void ReadSerializedInt_MaxValueOne_ReadsNoBits()
+    {
+        var reader = new BitArchiveReader([0xFF]);
+
+        Assert.That(reader.ReadSerializedInt(1), Is.EqualTo(0u));
+        Assert.That(reader.BitPosition, Is.Zero);
+    }
+
+    [Test]
+    public void ReadSerializedInt_NotEnoughBits_ThrowsEndOfArchive()
+    {
+        var reader = new BitArchiveReader([0], bitCount: 6);
+
+        var exception = Assert.Throws<ArchiveReadException>(() => reader.ReadSerializedInt(128));
+
+        Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.EndOfArchive));
+    }
+
+    [Test]
     public void ReadIntPacked_DecodesFromUnalignedPosition()
     {
         var reader = new BitArchiveReader([0x48, 0x30, 0x00]);

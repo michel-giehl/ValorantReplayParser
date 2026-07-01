@@ -16,4 +16,9 @@ public sealed class ParseProfile
     {
         EnabledCategories = ExportCategory.None,
     };
+
+    public static ParseProfile NoMovement { get; } = new()
+    {
+        EnabledCategories = ExportCategory.All & ~ExportCategory.Movement,
+    };
 }

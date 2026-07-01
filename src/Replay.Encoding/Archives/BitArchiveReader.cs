@@ -534,7 +534,7 @@ public sealed class BitArchiveReader : FBitArchive
 
         var neededBytes = (wantedBits - _bitsInBuffer + 7) >> 3;
 
-        ulong chunk = neededBytes == 8
+        var chunk = neededBytes == 8
             ? ReadUInt64LittleEndian(ref Unsafe.Add(ref src, _byteIndex))
             : ReadUpToSevenLittleEndian(ref Unsafe.Add(ref src, _byteIndex), neededBytes);
 
@@ -546,17 +546,15 @@ public sealed class BitArchiveReader : FBitArchive
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ConsumeBufferedBits(int bitCount)
     {
-        if (bitCount == 0)
+        switch (bitCount)
         {
-            return;
-        }
-
-        if (bitCount == 64)
-        {
-            _bitBuffer = 0;
-            _bitsInBuffer = 0;
-            _bitPosition += 64;
-            return;
+            case 0:
+                return;
+            case 64:
+                _bitBuffer = 0;
+                _bitsInBuffer = 0;
+                _bitPosition += 64;
+                return;
         }
 
         _bitBuffer >>= bitCount;

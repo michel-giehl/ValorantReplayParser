@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Replay.Encoding.Archives;
 
 public abstract class FBitArchive : FArchive
@@ -86,18 +88,28 @@ public abstract class FBitArchive : FArchive
                 Length, maxValue);
         }
 
+        var valueBitCount = BitOperations.Log2((uint)maxValue);
         uint value = 0;
-        for (uint mask = 1; value + mask < maxValue; mask <<= 1)
+        if (valueBitCount > 0)
         {
-            if (!TryReadBit(out var bit))
+            if (!TryReadBitsToUInt64(valueBitCount, out var bits))
             {
-                throw EndOfArchive(nameof(ReadSerializedInt), Position, Length, 1);
+                throw EndOfArchive(nameof(ReadSerializedInt), Position, Length, valueBitCount);
             }
 
-            if (bit)
-            {
-                value |= mask;
-            }
+            value = (uint)bits;
+        }
+
+        var mask = 1U << valueBitCount;
+        if (value + mask >= maxValue) return value;
+        if (!TryReadBit(out var highBit))
+        {
+            throw EndOfArchive(nameof(ReadSerializedInt), Position, Length, 1);
+        }
+
+        if (highBit)
+        {
+            value |= mask;
         }
 
         return value;
