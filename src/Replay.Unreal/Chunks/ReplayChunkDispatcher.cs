@@ -140,6 +140,6 @@ public sealed class ReplayChunkDispatcher
 
         var replayDataArchive = _replayDataChunkPayloadReader.ReadPayload(context.ReplayInfo, dataChunk, chunkArchive);
         context.ReplayDataStream = replayDataArchive;
-        _replayDataChunkHandler.Handle(context, dataChunk, replayDataArchive);
+        _replayDataChunkHandler.Handle(context, replayDataArchive);
     }
 }

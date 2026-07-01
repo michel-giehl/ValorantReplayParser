@@ -77,7 +77,8 @@ public class ValorantReplayReaderTests
     [Test]
     public void Read_DuplicateHeaderChunks_ThrowsInvalidReplayInfoException()
     {
-        var archive = new FBinaryArchive(BuildReplayInfo(chunks: [HeaderChunk(BuildHeader()), HeaderChunk(BuildHeader())]));
+        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
+            [HeaderChunk(BuildHeader()), HeaderChunk(BuildHeader())]));
 
         var exception = Assert.Throws<InvalidReplayInfoException>(() =>
             new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive));
@@ -94,7 +95,8 @@ public class ValorantReplayReaderTests
             RawChunk(ReplayChunkType.ReplayData, 15, new byte[15]),
         ]));
 
-        Assert.Throws<InvalidReplayInfoException>(() => new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive));
+        Assert.Throws<InvalidReplayInfoException>(() =>
+            new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive));
     }
 
     [Test]
@@ -131,7 +133,8 @@ public class ValorantReplayReaderTests
         {
             Assert.That(context.ReplayInfo.Chunks, Has.Count.EqualTo(2));
             Assert.That(context.ReplayInfo.HeaderChunkIndex, Is.EqualTo(1));
-            Assert.That(context.ReplayInfo.Chunks[1].DataOffset, Is.GreaterThan(context.ReplayInfo.Chunks[0].DataOffset));
+            Assert.That(context.ReplayInfo.Chunks[1].DataOffset,
+                Is.GreaterThan(context.ReplayInfo.Chunks[0].DataOffset));
         });
     }
 
@@ -200,7 +203,9 @@ public class ValorantReplayReaderTests
         AddUInt32(data, startTime);
         AddUInt32(data, endTime);
         AddInt32(data, payload.Length);
-        AddInt32(data, memorySizeInBytes ?? (payload.Length == 0 ? 0 : BinaryPrimitives.ReadInt32LittleEndian(payload.AsSpan(0, 4))));
+        AddInt32(data,
+            memorySizeInBytes ??
+            (payload.Length == 0 ? 0 : BinaryPrimitives.ReadInt32LittleEndian(payload.AsSpan(0, 4))));
         data.AddRange(payload);
         return RawChunk(ReplayChunkType.ReplayData, data.ToArray());
     }
@@ -426,7 +431,7 @@ public class ValorantReplayReaderTests
     {
         public List<byte[]> Payloads { get; } = [];
 
-        public void Handle(ReplayReaderContext context, ReplayDataChunkInfo dataChunk, FBinaryArchive replayDataArchive)
+        public void Handle(ReplayReaderContext context, FBinaryArchive replayDataArchive)
         {
             Payloads.Add(replayDataArchive.ReadBytes((int)replayDataArchive.Remaining).ToArray());
         }

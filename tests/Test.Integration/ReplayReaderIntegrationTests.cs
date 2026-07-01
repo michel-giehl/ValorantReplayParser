@@ -359,7 +359,7 @@ public class ReplayReaderIntegrationTests
     {
         public long TotalPayloadBytes { get; private set; }
 
-        public void Handle(ReplayReaderContext context, ReplayDataChunkInfo dataChunk, FBinaryArchive replayDataArchive)
+        public void Handle(ReplayReaderContext context, FBinaryArchive replayDataArchive)
         {
             TotalPayloadBytes += replayDataArchive.Length;
         }

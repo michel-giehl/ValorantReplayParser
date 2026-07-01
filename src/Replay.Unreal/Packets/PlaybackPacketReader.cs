@@ -14,16 +14,13 @@ public class PlaybackPacketReader
 {
 
     private readonly ReplayReaderContext _context;
-    private readonly ReplayDataChunkInfo _dataChunk;
     private readonly FBinaryArchive _archive;
 
     public PlaybackPacketReader(
         ReplayReaderContext context,
-        ReplayDataChunkInfo dataChunk,
         FBinaryArchive archive)
     {
         _context = context;
-        _dataChunk = dataChunk;
         _archive = archive;
     }
 

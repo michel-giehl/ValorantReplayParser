@@ -19,7 +19,7 @@ public class PlaybackPacketReaderTests
         var context = CreateContext();
         var archive = new FBinaryArchive(BuildFrame([packet0, packet1], exportData: [], externalData: []));
 
-        new PlaybackPacketReader(context, CreateDataChunk(), archive).Read();
+        new PlaybackPacketReader(context, archive).Read();
 
         Assert.Multiple(() =>
         {
@@ -43,7 +43,7 @@ public class PlaybackPacketReaderTests
         var bytes = BuildFrame(packet, exportData: BuildExportData());
         var archive = new FBinaryArchive(bytes);
 
-        new PlaybackPacketReader(context, CreateDataChunk(), archive).Read();
+        new PlaybackPacketReader(context, archive).Read();
 
         Assert.Multiple(() =>
         {
@@ -62,7 +62,7 @@ public class PlaybackPacketReaderTests
         var bytes = BuildFrame(packet, exportData: [], externalData: BuildExternalData());
         var archive = new FBinaryArchive(bytes);
 
-        new PlaybackPacketReader(context, CreateDataChunk(), archive).Read();
+        new PlaybackPacketReader(context, archive).Read();
 
         Assert.Multiple(() =>
         {
@@ -80,7 +80,7 @@ public class PlaybackPacketReaderTests
         var archive = new FBinaryArchive(BuildFrameWithPacketSize(-1));
 
         Assert.Throws<InvalidReplayInfoException>(() =>
-            new PlaybackPacketReader(context, CreateDataChunk(), archive).Read());
+            new PlaybackPacketReader(context, archive).Read());
     }
 
     [Test]
@@ -90,7 +90,7 @@ public class PlaybackPacketReaderTests
         var archive = new FBinaryArchive(BuildFrameWithPacketSize((Constants.MaxPacketSizeInBits / 8) + 1));
 
         Assert.Throws<InvalidReplayInfoException>(() =>
-            new PlaybackPacketReader(context, CreateDataChunk(), archive).Read());
+            new PlaybackPacketReader(context, archive).Read());
     }
 
     private static ReplayReaderContext CreateContext()
@@ -104,11 +104,6 @@ public class PlaybackPacketReaderTests
             },
         };
     }
-
-    private static ReplayDataChunkInfo CreateDataChunk() => new()
-    {
-        ChunkIndex = 4,
-    };
 
     private static byte[] BuildFrame(byte[] packet, byte[] exportData, byte[]? externalData = null) =>
         BuildFrame([packet], exportData, externalData ?? []);
