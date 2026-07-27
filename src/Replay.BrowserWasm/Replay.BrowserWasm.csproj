@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <Nullable>enable</Nullable>
+        <PublishTrimmed>false</PublishTrimmed>
+        <RootNamespace>Replay.BrowserWasm</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />
+        <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
+        <ProjectReference Include="..\Replay.Valorant\Replay.Valorant.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="..\CliReader\JsonExport\ReplayEventJsonWriter.cs"
+                 Link="JsonExport\ReplayEventJsonWriter.cs" />
+        <Compile Include="..\CliReader\JsonExport\ReplayJsonNormalizer.cs"
+                 Link="JsonExport\ReplayJsonNormalizer.cs" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VALORANT replay WASM smoke test</title>
+</head>
+<body>
+    <main>
+        <h1>VALORANT replay WASM smoke test</h1>
+        <input id="replay" type="file" accept=".vrf">
+        <p id="status">Loading parser…</p>
+        <pre id="result"></pre>
+    </main>
+
+    <script type="module">
+        import { ValorantReplayParserWorker } from "./replay-parser-client.js";
+
+        const input = document.querySelector("#replay");
+        const status = document.querySelector("#status");
+        const result = document.querySelector("#result");
+        const parser = new ValorantReplayParserWorker();
+
+        async function parse(source) {
+            status.textContent = "Parsing…";
+            try {
+                const parsed = await parser.parse(source);
+                status.textContent =
+                    `Parsed ${parsed.counts.emitted} events from ${parsed.metadata.replay_build}.`;
+                result.textContent = JSON.stringify({
+                    metadata: parsed.metadata,
+                    stats: parsed.stats,
+                    counts: parsed.counts,
+                }, null, 2);
+                document.body.dataset.testResult = "passed";
+            } catch (error) {
+                status.textContent = error instanceof Error ? error.message : String(error);
+                document.body.dataset.testResult = "failed";
+            }
+        }
+
+        input.addEventListener("change", () => {
+            if (input.files?.[0]) {
+                void parse(input.files[0]);
+            }
+        });
+
+        await parser.ready;
+        status.textContent = "Choose a replay.";
+
+        const replayUrl = new URLSearchParams(location.search).get("replay");
+        if (replayUrl) {
+            const response = await fetch(replayUrl);
+            if (!response.ok) {
+                throw new Error(`Unable to fetch smoke-test replay: ${response.status}`);
+            }
+
+            await parse(await response.blob());
+        }
+    </script>
+</body>
+</html>
