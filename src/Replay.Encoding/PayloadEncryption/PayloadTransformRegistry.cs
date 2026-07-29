@@ -27,6 +27,7 @@ public sealed class PayloadTransformRegistry
         new ValorantSeededTransform12_11(),
         new ValorantSeededTransform13_00(),
         new ValorantSeededTransform13_01(),
+        new ValorantSeededTransform13_02(),
     ]);
 
     public IPayloadTransform GetRequired(string replayVersion)

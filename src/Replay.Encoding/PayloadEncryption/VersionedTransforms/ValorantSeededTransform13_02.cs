@@ -3,13 +3,13 @@ using static Replay.Encoding.PayloadEncryption.ValorantSeededTransformHelpers;
 
 namespace Replay.Encoding.PayloadEncryption.VersionedTransforms;
 
-public sealed class ValorantSeededTransform13_00 : IPayloadTransform
+public sealed class ValorantSeededTransform13_02 : IPayloadTransform
 {
-    private const uint SeedAddend = 0x2949b6efu;
-    private const uint InitAOffset = 0x11u;
-    private const byte TailXor = 0xef;
+    private const uint SeedAddend = 0x9e81a37cu;
+    private const uint InitAOffset = 0x04u;
+    private const byte TailXor = 0x7c;
 
-    public IReadOnlyCollection<string> SupportedReplayVersions { get; } = ["++Ares-Core+release-13.00"];
+    public IReadOnlyCollection<string> SupportedReplayVersions { get; } = ["++Ares-Core+release-13.02"];
 
     public int GetOutputByteCount(int bitCount) => ValorantSeededTransformHelpers.GetOutputByteCount(bitCount);
 
@@ -43,17 +43,16 @@ public sealed class ValorantSeededTransform13_00 : IPayloadTransform
         {
             while (bitsRemaining > 63)
             {
-                var value = ReadUInt64(output, byteOffset);
-                var ror1 = RotateRight(state, 1);
+                var value = SubstituteBytes(ReadUInt64(output, byteOffset), SubstituteTable64);
+                var ror2 = RotateRight(state, 2);
                 var ror3 = RotateRight(state, 3);
                 var ror6 = RotateRight(state, 6);
-                var ror8 = RotateRight(state, 8);
 
-                value += ror8;
                 value = ReverseBits64WithoutFinal16BitSwap(value);
-                value = (value + ror6) ^ ror3;
-                value = SubstituteBytes(value, SubstituteTable64);
-                value = RotateRight(value, (int)(ror1 % 63) + 1);
+                value = ~(value - ror6);
+                value = ReverseBits64WithoutFinal16BitSwap(value);
+                value = RotateLeft(value, (int)(ror3 % 63) + 1);
+                value = RotateRight(value, (int)(ror2 % 63) + 1);
 
                 WriteUInt64(output, byteOffset, value);
                 AdvanceTransformState(ref state, ref prngA, ref prngB, out streamByte);
@@ -63,17 +62,16 @@ public sealed class ValorantSeededTransform13_00 : IPayloadTransform
 
             while (bitsRemaining > 31)
             {
-                var value = ReadUInt32(output, byteOffset);
-                var rol1 = RotateLeft(state, 1);
+                var value = SubstituteBytes(ReadUInt32(output, byteOffset), SubstituteTable32);
+                var rol2 = RotateLeft(state, 2);
                 var rol3 = RotateLeft(state, 3);
                 var rol6 = RotateLeft(state, 6);
-                var rol8 = RotateLeft(state, 8);
 
-                value += rol8;
                 value = ReverseBits32(value);
-                value = ~(value + rol6) ^ rol3;
-                value = SubstituteBytes(value, SubstituteTable32);
-                value = RotateRight(value, (int)(rol1 % 31) + 1);
+                value = ~(value - rol6);
+                value = ReverseBits32(value);
+                value = RotateLeft(value, (int)(rol3 % 31) + 1);
+                value = RotateRight(value, (int)(rol2 % 31) + 1);
 
                 WriteUInt32(output, byteOffset, value);
                 AdvanceTransformState(ref state, ref prngA, ref prngB, out streamByte);
@@ -83,14 +81,15 @@ public sealed class ValorantSeededTransform13_00 : IPayloadTransform
 
             while (bitsRemaining > 7)
             {
-                var value = output[byteOffset];
-                var mix = state * 0x533u;
+                var mixA = state * 0x79u;
+                var mixB = mixA * 0x0bu;
+                var value = SubstituteTable8[output[byteOffset]];
 
-                value = (byte)(value + (byte)mix * 0x1b);
                 value = ReverseBits8(value);
-                value = (byte)(~(value + (byte)mix * 0x33) ^ (byte)mix);
-                value = SubstituteTable8[value];
-                value = RotateRight(value, (int)(state * 0x0bu % 7) + 1);
+                value = (byte)~(value - (byte)(mixB * 0x33u));
+                value = ReverseBits8(value);
+                value = RotateLeft(value, (int)(mixB % 7) + 1);
+                value = RotateRight(value, (int)(mixA % 7) + 1);
 
                 output[byteOffset] = value;
                 AdvanceTransformState(ref state, ref prngA, ref prngB, out streamByte);
