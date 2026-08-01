@@ -14,8 +14,6 @@ public sealed class FlameWallDescriptor : ExportGroupDescriptor<FlameWallDescrip
     public FRepMovement ReplicatedMovement { get; set; }
     public uint Owner { get; set; }
     public uint Instigator { get; set; }
-    public uint A { get; set; }
-    public uint B { get; set; }
 
     protected override void Configure()
     {
@@ -23,7 +21,5 @@ public sealed class FlameWallDescriptor : ExportGroupDescriptor<FlameWallDescrip
             .ReplicatedMovement(ERotatorQuantization.ByteComponents);
         AddProperty(x => x.Owner).ObjectNetGuid();
         AddProperty(x => x.Instigator).ObjectNetGuid();
-        AddProperty("215", x => x.A).Int32();
-        AddProperty("216", x => x.B).Int32();
     }
 }
