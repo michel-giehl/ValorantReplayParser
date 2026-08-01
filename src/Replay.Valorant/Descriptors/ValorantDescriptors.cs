@@ -55,6 +55,7 @@ public static class ValorantDescriptors
         catalog.Add(IrisDescriptors.CreateDescriptors());
         catalog.Add(KilljoyDescriptors.CreateDescriptors());
         catalog.Add(MageDescriptors.CreateDescriptors());
+        catalog.Add(MageDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(NoxDescriptors.CreateDescriptors());
         catalog.Add(PandemicDescriptors.CreateDescriptors());
         catalog.Add(PandemicDescriptors.CreateClassNetCacheDescriptors());
