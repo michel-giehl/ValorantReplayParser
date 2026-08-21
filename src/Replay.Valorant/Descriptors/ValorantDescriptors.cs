@@ -95,6 +95,7 @@ public static class ValorantDescriptors
         catalog.Add(new ArmorDamageSectionClassNetCacheDescriptor());
         catalog.Add(new ReplayEffectComponentClassNetCacheDescriptor());
         catalog.Add(new DamageableComponentClassNetCacheDescriptor());
+        catalog.Add(new OwnerExclusivePlayerInfoDescriptor());
         catalog.Add(AgentClassNetCacheDescriptors.Create(
             catalog.ExportGroupDescriptors.Where(descriptor => descriptor.Categories.HasFlag(ExportCategory.Agent))));
 
