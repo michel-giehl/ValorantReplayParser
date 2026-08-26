@@ -67,6 +67,17 @@ public class ValorantSeededTransformTests
         new("++Ares-Core+release-13.02", 65, "5F6596632DA86F7B01"),
         new("++Ares-Core+release-13.02", 287, "B10ED4B77D1031CB749931F80C11719110B1AC15F65AAB929706868895077F43AF407273"),
         new("++Ares-Core+release-13.02", 288, "0F926639D681FAB6D03122E222E923CCC987DA22625B2BFC077F432F912DBD96F2368E1E"),
+        new("++Ares-Core+release-13.04", 0, ""),
+        new("++Ares-Core+release-13.04", 1, "00"),
+        new("++Ares-Core+release-13.04", 7, "62"),
+        new("++Ares-Core+release-13.04", 8, "58"),
+        new("++Ares-Core+release-13.04", 31, "401FF266"),
+        new("++Ares-Core+release-13.04", 32, "FF8A7E7E"),
+        new("++Ares-Core+release-13.04", 63, "40B87FB6C26BFE15"),
+        new("++Ares-Core+release-13.04", 64, "9810FC015D410C63"),
+        new("++Ares-Core+release-13.04", 65, "A610FC0171420C7301"),
+        new("++Ares-Core+release-13.04", 287, "84E03F1B100292AF828AEACE5D0296906D2C9A6B8E6FB68C5CBBFD3456336D094F1C8E2C"),
+        new("++Ares-Core+release-13.04", 288, "F40A38092699F880EEF8808AFFFF992BCFD4F45DE7C09B2FD84F63FF135765D4CA9FE1BD"),
     ];
 
     [TestCaseSource(nameof(KnownTransformVectors))]
@@ -87,6 +98,7 @@ public class ValorantSeededTransformTests
     [TestCase("++Ares-Core+release-13.00", 65)]
     [TestCase("++Ares-Core+release-13.01", 65)]
     [TestCase("++Ares-Core+release-13.02", 65)]
+    [TestCase("++Ares-Core+release-13.04", 65)]
     public void Apply_WithExplicitBitCount_ConsumesOnlyRequestedPayloadBits(string replayVersion, int bitCount)
     {
         var bytes = Convert.FromHexString(PayloadHex);
@@ -152,6 +164,7 @@ public class ValorantSeededTransformTests
         Assert.That(registry.GetRequired("++Ares-Core+release-13.00"), Is.Not.Null);
         Assert.That(registry.GetRequired("++Ares-Core+release-13.01"), Is.Not.Null);
         Assert.That(registry.GetRequired("++Ares-Core+release-13.02"), Is.Not.Null);
+        Assert.That(registry.GetRequired("++Ares-Core+release-13.04"), Is.Not.Null);
     }
 
     [Test]
