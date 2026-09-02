@@ -78,6 +78,17 @@ public class ValorantSeededTransformTests
         new("++Ares-Core+release-13.04", 65, "A610FC0171420C7301"),
         new("++Ares-Core+release-13.04", 287, "84E03F1B100292AF828AEACE5D0296906D2C9A6B8E6FB68C5CBBFD3456336D094F1C8E2C"),
         new("++Ares-Core+release-13.04", 288, "F40A38092699F880EEF8808AFFFF992BCFD4F45DE7C09B2FD84F63FF135765D4CA9FE1BD"),
+        new("++Ares-Core+release-13.05", 0, ""),
+        new("++Ares-Core+release-13.05", 1, "01"),
+        new("++Ares-Core+release-13.05", 7, "29"),
+        new("++Ares-Core+release-13.05", 8, "6F"),
+        new("++Ares-Core+release-13.05", 31, "D7EE8546"),
+        new("++Ares-Core+release-13.05", 32, "657FF38B"),
+        new("++Ares-Core+release-13.05", 63, "AD6F9E5F50ED1644"),
+        new("++Ares-Core+release-13.05", 64, "2010CACFAE06022E"),
+        new("++Ares-Core+release-13.05", 65, "1710A023675703D300"),
+        new("++Ares-Core+release-13.05", 287, "06C2AF5F0948219CA0A0F2C594AB186C06A83368E775AB191816B3A3FE0D6A75BD29DE40"),
+        new("++Ares-Core+release-13.05", 288, "C8FFAE068FAF1F6077CABD2AF1BAC4FFE292BC1A74B1D0E4F2E34FADC6C9DD2C433D66C9"),
     ];
 
     [TestCaseSource(nameof(KnownTransformVectors))]
@@ -99,6 +110,7 @@ public class ValorantSeededTransformTests
     [TestCase("++Ares-Core+release-13.01", 65)]
     [TestCase("++Ares-Core+release-13.02", 65)]
     [TestCase("++Ares-Core+release-13.04", 65)]
+    [TestCase("++Ares-Core+release-13.05", 65)]
     public void Apply_WithExplicitBitCount_ConsumesOnlyRequestedPayloadBits(string replayVersion, int bitCount)
     {
         var bytes = Convert.FromHexString(PayloadHex);
@@ -165,6 +177,7 @@ public class ValorantSeededTransformTests
         Assert.That(registry.GetRequired("++Ares-Core+release-13.01"), Is.Not.Null);
         Assert.That(registry.GetRequired("++Ares-Core+release-13.02"), Is.Not.Null);
         Assert.That(registry.GetRequired("++Ares-Core+release-13.04"), Is.Not.Null);
+        Assert.That(registry.GetRequired("++Ares-Core+release-13.05"), Is.Not.Null);
     }
 
     [Test]
