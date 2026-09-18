@@ -9,6 +9,7 @@ using Replay.Unreal.Chunks;
 using Replay.Unreal.Readers;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Descriptors;
+using Replay.Valorant.Flashes;
 
 namespace Replay.Valorant;
 
@@ -72,7 +73,8 @@ public sealed class ValorantReplayReader
         EnsureFullParseSupported(metadata);
 
         var netGuidCache = new Encoding.Net.NetGuidCache();
-        var eventSink = new ValorantShotEventEnricher(_eventSink, netGuidCache);
+        var flashEventEnricher = new ValorantFlashEventEnricher(_eventSink, netGuidCache);
+        var eventSink = new ValorantShotEventEnricher(flashEventEnricher, netGuidCache);
         var context = new ReplayReaderContext(
             archive,
             eventSink,
@@ -87,6 +89,7 @@ public sealed class ValorantReplayReader
         context.UEVersion = metadata.UEVersion;
 
         _chunkDispatcher.DispatchRemaining(context);
+        flashEventEnricher.Complete();
 
         return context;
     }

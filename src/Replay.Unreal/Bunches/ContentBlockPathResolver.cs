@@ -12,6 +12,7 @@ internal sealed class ContentBlockPathResolver
         {
             ["ReplayEffect"] = "/Script/ShooterGame.ReplayEffectComponent",
             ["EffectManager"] = "/Script/ShooterGame.EffectManagerComponent",
+            ["BlindManagerComponent"] = "/Script/ShooterGame.BlindManagerComponent",
             ["LocationalEffectManager"] = "/Script/ShooterGame.LocationalEffectManagerComponent",
             ["DamageHandlerComponent"] = "/Script/ShooterGame.DamageableComponent",
         };
@@ -45,7 +46,7 @@ internal sealed class ContentBlockPathResolver
     {
         if (!header.ClassNetGuid.IsValid)
         {
-            return null;
+            return ResolveKnownSubobjectClassPath(header);
         }
 
         var classNetGuid = header.ClassNetGuid.Value;
@@ -56,7 +57,7 @@ internal sealed class ContentBlockPathResolver
 
         if (!_netGuidCache.TryGetPath(classNetGuid, out var path))
         {
-            return null;
+            return ResolveKnownSubobjectClassPath(header);
         }
 
         var resolved = ResolveExportGroupPath(path, archetypePath: null);
@@ -65,7 +66,7 @@ internal sealed class ContentBlockPathResolver
             _subobjectExportGroupPathByClassNetGuid[classNetGuid] = resolved;
         }
 
-        return resolved;
+        return resolved ?? ResolveKnownSubobjectClassPath(header);
     }
 
     private string? ResolveSubobjectClassPath(ContentBlockHeader header)

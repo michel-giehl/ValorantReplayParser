@@ -2,6 +2,7 @@ using System.Text.Json;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Valorant.Combat;
+using Replay.Valorant.Flashes;
 using Replay.Valorant.Movement;
 
 namespace CliReader.JsonExport;
@@ -120,6 +121,70 @@ internal sealed class ReplayEventJsonWriter
         writer.WriteEndObject();
     }
 
+    public void WriteValorantFlashCast(Utf8JsonWriter writer, ValorantFlashCast cast)
+    {
+        WriteEventStart(writer, "valorant_flash_cast", cast);
+        WriteFlashIdentity(writer, cast.FlashActorNetGuid, cast.FlashKind);
+        WriteNullableValue(writer, "caster_character_net_guid", cast.CasterCharacterNetGuid);
+        WriteNullableValue(writer, "caster_player_state_net_guid", cast.CasterPlayerStateNetGuid);
+        WriteNullableString(writer, "caster_subject", cast.CasterSubject);
+        WriteNullableValue(writer, "location", cast.Location);
+        WriteNullableValue(writer, "rotation", cast.Rotation);
+        WriteNullableValue(writer, "velocity", cast.Velocity);
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantFlashPathUpdated(Utf8JsonWriter writer, ValorantFlashPathUpdated path)
+    {
+        WriteEventStart(writer, "valorant_flash_path_updated", path);
+        WriteFlashIdentity(writer, path.FlashActorNetGuid, path.FlashKind);
+        writer.WriteNumber("sample_index", path.SampleIndex);
+        writer.WriteString("source", ReplayJsonNormalizer.ToSnakeCase(path.Source.ToString()));
+        WriteNullableValue(writer, "location", path.Location);
+        WriteNullableValue(writer, "rotation", path.Rotation);
+        WriteNullableValue(writer, "linear_velocity", path.LinearVelocity);
+        WriteNullableValue(writer, "angular_velocity", path.AngularVelocity);
+        WriteNullableValue(writer, "server_frame", path.ServerFrame);
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantFlashExploded(Utf8JsonWriter writer, ValorantFlashExploded exploded)
+    {
+        WriteEventStart(writer, "valorant_flash_exploded", exploded);
+        WriteFlashIdentity(writer, exploded.FlashActorNetGuid, exploded.FlashKind);
+        WriteNullableValue(writer, "location", exploded.Location);
+        writer.WriteString("evidence", ReplayJsonNormalizer.ToSnakeCase(exploded.Evidence.ToString()));
+        WriteNullableValue(writer, "max_flash_duration_seconds", exploded.MaxFlashDurationSeconds);
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantFlashPlayerHit(Utf8JsonWriter writer, ValorantFlashPlayerHit hit)
+    {
+        WriteEventStart(writer, "valorant_flash_player_hit", hit);
+        WriteNullableValue(writer, "flash_actor_net_guid", hit.FlashActorNetGuid);
+        if (hit.FlashKind is { } flashKind)
+        {
+            writer.WriteString("flash_kind", ReplayJsonNormalizer.ToSnakeCase(flashKind.ToString()));
+        }
+        else
+        {
+            writer.WriteNull("flash_kind");
+        }
+
+        writer.WriteNumber("target_character_net_guid", hit.TargetCharacterNetGuid);
+        WriteNullableValue(writer, "target_player_state_net_guid", hit.TargetPlayerStateNetGuid);
+        WriteNullableString(writer, "target_subject", hit.TargetSubject);
+        WriteNullableValue(writer, "initial_duration_seconds", hit.InitialDurationSeconds);
+        WriteNullableValue(writer, "blind_id", hit.BlindId);
+        WriteNullableValue(writer, "effect_id", hit.EffectId);
+        WriteNullableValue(writer, "blind_config_net_guid", hit.BlindConfigNetGuid);
+        WriteNullableValue(writer, "causing_actor_net_guid", hit.CausingActorNetGuid);
+        WriteNullableValue(writer, "start_net_movement_time", hit.StartNetMovementTime);
+        writer.WriteString("correlation", ReplayJsonNormalizer.ToSnakeCase(hit.Correlation.ToString()));
+        writer.WriteString("duration_source", ReplayJsonNormalizer.ToSnakeCase(hit.DurationSource.ToString()));
+        writer.WriteEndObject();
+    }
+
     public void WriteMovement(
         Utf8JsonWriter writer, RemoteCharacterMovementReceived movement)
     {
@@ -205,6 +270,15 @@ internal sealed class ReplayEventJsonWriter
         writer.WriteNumber("actor_net_guid", actorNetGuid);
         writer.WriteNumber("object_net_guid", objectNetGuid);
         writer.WriteNumber("channel", channelIndex);
+    }
+
+    private static void WriteFlashIdentity(
+        Utf8JsonWriter writer,
+        uint flashActorNetGuid,
+        ValorantFlashKind flashKind)
+    {
+        writer.WriteNumber("flash_actor_net_guid", flashActorNetGuid);
+        writer.WriteString("flash_kind", ReplayJsonNormalizer.ToSnakeCase(flashKind.ToString()));
     }
 
     private static void WriteDecodeMetadata(

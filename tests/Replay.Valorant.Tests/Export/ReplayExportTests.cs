@@ -8,6 +8,7 @@ using Replay.Models.Replay;
 using Replay.Models.Unreal;
 using Replay.Unreal.Readers;
 using Replay.Valorant.Combat;
+using Replay.Valorant.Flashes;
 using Replay.Valorant.GameState;
 using Replay.Valorant.Movement;
 
@@ -123,6 +124,59 @@ public class ReplayExportTests
     }
 
     [Test]
+    public void EventSink_WritesFlashLifecycleAsSnakeCaseEvents()
+    {
+        using var events = new MemoryStream();
+        using var movement = new MemoryStream();
+        using (var sink = CreateSink(events, movement))
+        {
+            sink.Emit(FlashCast());
+            sink.Emit(FlashPath());
+            sink.Emit(FlashExplosion());
+            sink.Emit(FlashHit());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sink.Statistics.EventCount, Is.EqualTo(4));
+                Assert.That(sink.Statistics.ValorantFlashCastCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantFlashPathUpdatedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantFlashExplodedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantFlashPlayerHitCount, Is.EqualTo(1));
+            });
+        }
+
+        var documents = ParseLines(events);
+        Assert.That(
+            documents.Select(document => document.RootElement.GetProperty("type").GetString()),
+            Is.EqualTo(new[]
+            {
+                "valorant_flash_cast",
+                "valorant_flash_path_updated",
+                "valorant_flash_exploded",
+                "valorant_flash_player_hit",
+            }));
+
+        var cast = documents[0].RootElement;
+        var path = documents[1].RootElement;
+        var explosion = documents[2].RootElement;
+        var hit = documents[3].RootElement;
+        Assert.Multiple(() =>
+        {
+            Assert.That(cast.GetProperty("flash_kind").GetString(), Is.EqualTo("kayo_flash_drive_underhand"));
+            Assert.That(cast.GetProperty("caster_subject").GetString(), Is.EqualTo("subject-1"));
+            Assert.That(path.GetProperty("sample_index").GetInt32(), Is.EqualTo(2));
+            Assert.That(path.GetProperty("source").GetString(), Is.EqualTo("replicated_movement"));
+            Assert.That(explosion.GetProperty("evidence").GetString(), Is.EqualTo("stop_projectile_rpc"));
+            Assert.That(explosion.GetProperty("max_flash_duration_seconds").GetDouble(), Is.EqualTo(2.25));
+            Assert.That(hit.GetProperty("blind_id").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(hit.GetProperty("duration_source").GetString(), Is.EqualTo("effect_data_gameplay_tag"));
+            Assert.That(hit.GetProperty("correlation").GetString(), Is.EqualTo("causing_projectile"));
+        });
+
+        Dispose(documents);
+    }
+
+    [Test]
     public void EventSink_WritesStructuredRoundResultPayload()
     {
         using var events = new MemoryStream();
@@ -221,6 +275,10 @@ public class ReplayExportTests
             using var sink = CreateSink(events, movement);
             sink.Emit(Spawned());
             sink.Emit(Shot());
+            sink.Emit(FlashCast());
+            sink.Emit(FlashPath());
+            sink.Emit(FlashExplosion());
+            sink.Emit(FlashHit());
             sink.Emit(Export(wasDecoded: false, payload: null));
 
             new ReplayExportManifestWriter().Write(
@@ -236,7 +294,7 @@ public class ReplayExportTests
             var manifest = document.RootElement;
             Assert.Multiple(() =>
             {
-                Assert.That(manifest.GetProperty("schema_version").GetInt32(), Is.EqualTo(4));
+                Assert.That(manifest.GetProperty("schema_version").GetInt32(), Is.EqualTo(5));
                 Assert.That(manifest.GetProperty("source_sha256").GetString(), Has.Length.EqualTo(64));
                 Assert.That(manifest.GetProperty("replay_build").GetString(), Does.EndWith("release-13.01"));
                 Assert.That(manifest.GetProperty("duration_ms").GetInt32(), Is.EqualTo(60000));
@@ -246,7 +304,11 @@ public class ReplayExportTests
                 Assert.That(
                     manifest.GetProperty("counts").GetProperty("valorant_shot_received").GetInt32(),
                     Is.EqualTo(1));
-                Assert.That(manifest.GetProperty("counts").GetProperty("events").GetInt32(), Is.EqualTo(2));
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_cast").GetInt32(), Is.EqualTo(1));
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_path_updated").GetInt32(), Is.EqualTo(1));
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_exploded").GetInt32(), Is.EqualTo(1));
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_player_hit").GetInt32(), Is.EqualTo(1));
+                Assert.That(manifest.GetProperty("counts").GetProperty("events").GetInt32(), Is.EqualTo(6));
                 Assert.That(manifest.GetProperty("net_field_export_groups").GetArrayLength(), Is.Zero);
                 Assert.That(
                     manifest.GetProperty("counts").GetProperty("undecoded_export_groups").GetInt32(),
@@ -365,6 +427,61 @@ public class ReplayExportTests
                 Equippable: new ValorantEquippable(500, "Vandal", ValorantEquippableCategory.Rifle, "/Game/Vandal"),
                 FireMode: ValorantShotFireMode.Alternate,
                 FireModeEvidence: "source:ZoomedFire"));
+
+    private static ValorantFlashCast FlashCast() =>
+        new(
+            5,
+            50,
+            600,
+            ValorantFlashKind.KayoFlashDriveUnderhand,
+            100,
+            300,
+            "subject-1",
+            new FVector(1, 2, 3),
+            new FRotator(4, 5, 6),
+            new FVector(7, 8, 9));
+
+    private static ValorantFlashPathUpdated FlashPath() =>
+        new(
+            5.1f,
+            51,
+            600,
+            ValorantFlashKind.KayoFlashDriveUnderhand,
+            2,
+            ValorantFlashPathSampleSource.ReplicatedMovement,
+            new FVector(10, 11, 12),
+            new FRotator(13, 14, 15),
+            new FVector(16, 17, 18),
+            new FVector(19, 20, 21),
+            22);
+
+    private static ValorantFlashExploded FlashExplosion() =>
+        new(
+            5.2f,
+            52,
+            600,
+            ValorantFlashKind.KayoFlashDriveUnderhand,
+            new FVector(10, 11, 12),
+            ValorantFlashExplosionEvidence.StopProjectileRpc,
+            2.25);
+
+    private static ValorantFlashPlayerHit FlashHit() =>
+        new(
+            5.3f,
+            53,
+            600,
+            ValorantFlashKind.KayoFlashDriveUnderhand,
+            100,
+            300,
+            "subject-1",
+            1.4f,
+            null,
+            99,
+            null,
+            600,
+            5.25f,
+            ValorantFlashHitCorrelation.CausingProjectile,
+            ValorantFlashDurationSource.EffectDataGameplayTag);
 
     private static MovementMove Movement() =>
         new(

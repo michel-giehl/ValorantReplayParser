@@ -7,7 +7,7 @@ namespace CliReader.JsonExport;
 
 internal sealed class ReplayExportManifestWriter
 {
-    private const int SchemaVersion = 4;
+    private const int SchemaVersion = 5;
 
     public void Write(
         string outputDirectory,
@@ -103,6 +103,10 @@ internal sealed class ReplayExportManifestWriter
         writer.WriteNumber("export_group_received", statistics.ExportGroupCount);
         writer.WriteNumber("rpc_received", statistics.RpcCount);
         writer.WriteNumber("valorant_shot_received", statistics.ValorantShotReceivedCount);
+        writer.WriteNumber("valorant_flash_cast", statistics.ValorantFlashCastCount);
+        writer.WriteNumber("valorant_flash_path_updated", statistics.ValorantFlashPathUpdatedCount);
+        writer.WriteNumber("valorant_flash_exploded", statistics.ValorantFlashExplodedCount);
+        writer.WriteNumber("valorant_flash_player_hit", statistics.ValorantFlashPlayerHitCount);
         writer.WriteNumber("filtered_export_groups", statistics.FilteredExportGroupCount);
         writer.WriteNumber("undecoded_export_groups", statistics.UndecodedExportGroupCount);
         writer.WriteNumber("empty_decoded_export_groups", statistics.EmptyDecodedExportGroupCount);

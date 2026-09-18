@@ -19,4 +19,19 @@ public class ContentBlockPathResolverTests
 
         Assert.That(classPath, Is.EqualTo("/Script/ShooterGame.DamageableComponent"));
     }
+
+    [Test]
+    public void ResolveClassPath_StableBlindManager_ReturnsBlindManagerComponent()
+    {
+        var netGuidCache = new NetGuidCache();
+        netGuidCache.SetNetGuidPath(18, "BlindManagerComponent");
+        var resolver = new ContentBlockPathResolver(netGuidCache);
+        var header = new ContentBlockHeader { ObjectNetGuid = new NetworkGuid(18) };
+
+        var classPath = resolver.ResolveClassPath(header, new ActorChannelState());
+        var exportGroupPath = resolver.ResolveExportGroupPath(header, new ActorChannelState());
+
+        Assert.That(classPath, Is.EqualTo("/Script/ShooterGame.BlindManagerComponent"));
+        Assert.That(exportGroupPath, Is.EqualTo("/Script/ShooterGame.BlindManagerComponent"));
+    }
 }

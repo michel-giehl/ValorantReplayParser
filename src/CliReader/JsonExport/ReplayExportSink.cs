@@ -1,5 +1,6 @@
 using Replay.Models.Events;
 using Replay.Valorant.Combat;
+using Replay.Valorant.Flashes;
 using Replay.Valorant.Movement;
 
 namespace CliReader.JsonExport;
@@ -66,6 +67,22 @@ internal sealed class ReplayExportSink :
             case ValorantShotReceived shot:
                 _events.Write(writer => _eventWriter.WriteValorantShot(writer, shot));
                 Statistics.ValorantShotReceivedCount++;
+                break;
+            case ValorantFlashCast cast:
+                _events.Write(writer => _eventWriter.WriteValorantFlashCast(writer, cast));
+                Statistics.ValorantFlashCastCount++;
+                break;
+            case ValorantFlashPathUpdated path:
+                _events.Write(writer => _eventWriter.WriteValorantFlashPathUpdated(writer, path));
+                Statistics.ValorantFlashPathUpdatedCount++;
+                break;
+            case ValorantFlashExploded exploded:
+                _events.Write(writer => _eventWriter.WriteValorantFlashExploded(writer, exploded));
+                Statistics.ValorantFlashExplodedCount++;
+                break;
+            case ValorantFlashPlayerHit hit:
+                _events.Write(writer => _eventWriter.WriteValorantFlashPlayerHit(writer, hit));
+                Statistics.ValorantFlashPlayerHitCount++;
                 break;
             case RemoteCharacterMovementReceived movement:
                 EmitRemoteCharacterMovement(movement);

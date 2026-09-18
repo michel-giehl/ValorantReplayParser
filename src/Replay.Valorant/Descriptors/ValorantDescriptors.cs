@@ -31,6 +31,7 @@ using Replay.Valorant.Descriptors.Agents.Vampire;
 using Replay.Valorant.Descriptors.Agents.Wraith;
 using Replay.Valorant.Descriptors.Agents.Wushu;
 using Replay.Valorant.Descriptors.Effects.Replay;
+using Replay.Valorant.Flashes.Descriptors;
 using Replay.Valorant.GameState;
 
 namespace Replay.Valorant.Descriptors;
@@ -94,6 +95,21 @@ public static class ValorantDescriptors
         catalog.Add(new AttachedDamageSectionClassNetCacheDescriptor());
         catalog.Add(new ArmorDamageSectionClassNetCacheDescriptor());
         catalog.Add(new ReplayEffectComponentClassNetCacheDescriptor());
+        catalog.Add(new EffectManagerComponentDescriptor());
+        catalog.Add(new EffectManagerComponentClassNetCacheDescriptor());
+        catalog.Add(new BlindManagerComponentDescriptor());
+        catalog.Add(new SkyeFlashProjectileDescriptor());
+        catalog.Add(new KayoOverhandFlashProjectileDescriptor());
+        catalog.Add(new KayoUnderhandFlashProjectileDescriptor());
+        catalog.Add(new BreachFlashProjectileDescriptor());
+        catalog.Add(new PhoenixLeftFlashProjectileDescriptor());
+        catalog.Add(new PhoenixRightFlashProjectileDescriptor());
+        catalog.Add(new YoruFlashProjectileDescriptor());
+        catalog.Add(new SkyeFlashSourceDescriptor());
+        catalog.Add(new SkyeFlashSourceClassNetCacheDescriptor());
+        catalog.Add(new VyseFlashSourceDescriptor());
+        catalog.Add(new VyseFlashSourceClassNetCacheDescriptor());
+        catalog.Add(FlashProjectileClassNetCacheDescriptors.Create());
         catalog.Add(new DamageableComponentClassNetCacheDescriptor());
         catalog.Add(AgentClassNetCacheDescriptors.Create(
             catalog.ExportGroupDescriptors.Where(descriptor => descriptor.Categories.HasFlag(ExportCategory.Agent))));

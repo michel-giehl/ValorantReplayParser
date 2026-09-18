@@ -16,10 +16,16 @@ internal sealed class ReplayExportStatistics
     public int EmptyDecodedExportGroupCount { get; private set; }
     public int RpcCount { get; internal set; }
     public int ValorantShotReceivedCount { get; internal set; }
+    public int ValorantFlashCastCount { get; internal set; }
+    public int ValorantFlashPathUpdatedCount { get; internal set; }
+    public int ValorantFlashExplodedCount { get; internal set; }
+    public int ValorantFlashPlayerHitCount { get; internal set; }
     public int MovementCount { get; internal set; }
 
     public int EventCount =>
-        ActorSpawnedCount + ActorClosedCount + ExportGroupCount + RpcCount + ValorantShotReceivedCount;
+        ActorSpawnedCount + ActorClosedCount + ExportGroupCount + RpcCount + ValorantShotReceivedCount +
+        ValorantFlashCastCount + ValorantFlashPathUpdatedCount + ValorantFlashExplodedCount +
+        ValorantFlashPlayerHitCount;
 
     public IReadOnlyCollection<FilteredExportGroupSummary> FilteredExportGroups =>
         _filteredExportGroups.Values;
