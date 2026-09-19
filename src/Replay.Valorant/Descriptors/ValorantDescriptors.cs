@@ -33,6 +33,8 @@ using Replay.Valorant.Descriptors.Agents.Wushu;
 using Replay.Valorant.Descriptors.Effects.Replay;
 using Replay.Valorant.Flashes.Descriptors;
 using Replay.Valorant.GameState;
+using Replay.Valorant.Nearsights.Descriptors;
+using Replay.Valorant.Walls.Descriptors;
 
 namespace Replay.Valorant.Descriptors;
 
@@ -110,6 +112,19 @@ public static class ValorantDescriptors
         catalog.Add(new VyseFlashSourceDescriptor());
         catalog.Add(new VyseFlashSourceClassNetCacheDescriptor());
         catalog.Add(FlashProjectileClassNetCacheDescriptors.Create());
+        catalog.Add(new OmenNearsightProjectileDescriptor());
+        catalog.Add(new ReynaNearsightProjectileDescriptor());
+        catalog.Add(new HarborNearsightProjectileDescriptor());
+        catalog.Add(new ReynaNearsightSourceDescriptor());
+        catalog.Add(new HarborNearsightSourceDescriptor());
+        catalog.Add(NearsightProjectileClassNetCacheDescriptors.Create());
+        catalog.Add(new SageWallDescriptor());
+        catalog.Add(new SageWallSegmentDescriptor());
+        catalog.Add(new SageWallSegmentClassNetCacheDescriptor());
+        catalog.Add(new VyseWallTrapDescriptor());
+        catalog.Add(new VyseWallTrapClassNetCacheDescriptor());
+        catalog.Add(new VyseWallDescriptor());
+        catalog.Add(new VyseWallClassNetCacheDescriptor());
         catalog.Add(new DamageableComponentClassNetCacheDescriptor());
         catalog.Add(AgentClassNetCacheDescriptors.Create(
             catalog.ExportGroupDescriptors.Where(descriptor => descriptor.Categories.HasFlag(ExportCategory.Agent))));

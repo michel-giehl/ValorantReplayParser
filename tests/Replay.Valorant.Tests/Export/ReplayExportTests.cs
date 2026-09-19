@@ -11,6 +11,8 @@ using Replay.Valorant.Combat;
 using Replay.Valorant.Flashes;
 using Replay.Valorant.GameState;
 using Replay.Valorant.Movement;
+using Replay.Valorant.Nearsights;
+using Replay.Valorant.Walls;
 
 namespace Replay.Valorant.Tests.Export;
 
@@ -177,6 +179,101 @@ public class ReplayExportTests
     }
 
     [Test]
+    public void EventSink_WritesNearsightLifecycleAsSnakeCaseEvents()
+    {
+        using var events = new MemoryStream();
+        using var movement = new MemoryStream();
+        using (var sink = CreateSink(events, movement))
+        {
+            sink.Emit(NearsightCast());
+            sink.Emit(NearsightPath());
+            sink.Emit(NearsightActivation());
+            sink.Emit(NearsightHit());
+            sink.Emit(NearsightEffectEnded());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sink.Statistics.EventCount, Is.EqualTo(5));
+                Assert.That(sink.Statistics.ValorantNearsightCastCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantNearsightPathUpdatedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantNearsightActivatedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantNearsightPlayerHitCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantNearsightPlayerEffectEndedCount, Is.EqualTo(1));
+            });
+        }
+
+        var documents = ParseLines(events);
+        Assert.That(
+            documents.Select(document => document.RootElement.GetProperty("type").GetString()),
+            Is.EqualTo(new[]
+            {
+                "valorant_nearsight_cast",
+                "valorant_nearsight_path_updated",
+                "valorant_nearsight_activated",
+                "valorant_nearsight_player_hit",
+                "valorant_nearsight_player_effect_ended",
+            }));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(documents[0].RootElement.GetProperty("nearsight_kind").GetString(), Is.EqualTo("reyna_leer"));
+            Assert.That(documents[1].RootElement.GetProperty("source").GetString(), Is.EqualTo("replicated_movement"));
+            Assert.That(documents[2].RootElement.GetProperty("evidence").GetString(), Is.EqualTo("source_actor_spawned"));
+            Assert.That(documents[3].RootElement.GetProperty("duration_until_removed").GetBoolean(), Is.True);
+            Assert.That(documents[3].RootElement.GetProperty("configured_duration_seconds").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(documents[4].RootElement.GetProperty("observed_duration_seconds").GetDouble(), Is.EqualTo(0.25));
+        });
+
+        Dispose(documents);
+    }
+
+    [Test]
+    public void EventSink_WritesWallLifecycleAsSnakeCaseEvents()
+    {
+        using var events = new MemoryStream();
+        using var movement = new MemoryStream();
+        using (var sink = CreateSink(events, movement))
+        {
+            sink.Emit(WallPlaced());
+            sink.Emit(WallSegmentSpawned());
+            sink.Emit(WallActivated());
+            sink.Emit(WallSegmentDestroyed());
+            sink.Emit(WallDestroyed());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(sink.Statistics.EventCount, Is.EqualTo(5));
+                Assert.That(sink.Statistics.ValorantWallPlacedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantWallSegmentSpawnedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantWallActivatedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantWallSegmentDestroyedCount, Is.EqualTo(1));
+                Assert.That(sink.Statistics.ValorantWallDestroyedCount, Is.EqualTo(1));
+            });
+        }
+
+        var documents = ParseLines(events);
+        Assert.That(documents.Select(document => document.RootElement.GetProperty("type").GetString()),
+            Is.EqualTo(new[]
+            {
+                "valorant_wall_placed",
+                "valorant_wall_segment_spawned",
+                "valorant_wall_activated",
+                "valorant_wall_segment_destroyed",
+                "valorant_wall_destroyed",
+            }));
+        Assert.Multiple(() =>
+        {
+            Assert.That(documents[0].RootElement.GetProperty("wall_kind").GetString(), Is.EqualTo("vyse_shear"));
+            Assert.That(documents[0].RootElement.GetProperty("wall_start").GetProperty("x").GetDouble(), Is.EqualTo(1));
+            Assert.That(documents[1].RootElement.GetProperty("segment_index").GetInt32(), Is.EqualTo(2));
+            Assert.That(documents[2].RootElement.GetProperty("trigger_subject").GetString(), Is.EqualTo("trigger"));
+            Assert.That(documents[3].RootElement.GetProperty("evidence").GetString(), Is.EqualTo("disable_collision_rpc"));
+            Assert.That(documents[4].RootElement.GetProperty("active_duration_seconds").GetDouble(), Is.EqualTo(6));
+        });
+        Dispose(documents);
+    }
+
+    [Test]
     public void EventSink_WritesStructuredRoundResultPayload()
     {
         using var events = new MemoryStream();
@@ -294,7 +391,7 @@ public class ReplayExportTests
             var manifest = document.RootElement;
             Assert.Multiple(() =>
             {
-                Assert.That(manifest.GetProperty("schema_version").GetInt32(), Is.EqualTo(5));
+                Assert.That(manifest.GetProperty("schema_version").GetInt32(), Is.EqualTo(7));
                 Assert.That(manifest.GetProperty("source_sha256").GetString(), Has.Length.EqualTo(64));
                 Assert.That(manifest.GetProperty("replay_build").GetString(), Does.EndWith("release-13.01"));
                 Assert.That(manifest.GetProperty("duration_ms").GetInt32(), Is.EqualTo(60000));
@@ -308,6 +405,16 @@ public class ReplayExportTests
                 Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_path_updated").GetInt32(), Is.EqualTo(1));
                 Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_exploded").GetInt32(), Is.EqualTo(1));
                 Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_player_hit").GetInt32(), Is.EqualTo(1));
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_nearsight_cast").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_nearsight_path_updated").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_nearsight_activated").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_nearsight_player_hit").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_nearsight_player_effect_ended").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_wall_placed").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_wall_segment_spawned").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_wall_activated").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_wall_segment_destroyed").GetInt32(), Is.Zero);
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_wall_destroyed").GetInt32(), Is.Zero);
                 Assert.That(manifest.GetProperty("counts").GetProperty("events").GetInt32(), Is.EqualTo(6));
                 Assert.That(manifest.GetProperty("net_field_export_groups").GetArrayLength(), Is.Zero);
                 Assert.That(
@@ -482,6 +589,51 @@ public class ReplayExportTests
             5.25f,
             ValorantFlashHitCorrelation.CausingProjectile,
             ValorantFlashDurationSource.EffectDataGameplayTag);
+
+    private static ValorantNearsightCast NearsightCast() =>
+        new(6, 60, 700, ValorantNearsightKind.ReynaLeer, 100, 300, "subject-1",
+            new FVector(1, 2, 3), new FRotator(4, 5, 6), new FVector(7, 8, 9));
+
+    private static ValorantNearsightPathUpdated NearsightPath() =>
+        new(6.1f, 61, 700, ValorantNearsightKind.ReynaLeer, 2,
+            ValorantNearsightPathSampleSource.ReplicatedMovement, new FVector(10, 11, 12),
+            new FRotator(13, 14, 15), new FVector(16, 17, 18), new FVector(19, 20, 21), 22);
+
+    private static ValorantNearsightActivated NearsightActivation() =>
+        new(6.2f, 62, 700, ValorantNearsightKind.ReynaLeer, 701, new FVector(10, 11, 12),
+            ValorantNearsightActivationEvidence.SourceActorSpawned);
+
+    private static ValorantNearsightPlayerHit NearsightHit() =>
+        new(6.3f, 63, 700, ValorantNearsightKind.ReynaLeer, 101, 301, "subject-2", null, true,
+            99, 702, 701, 6.25f, ValorantNearsightHitCorrelation.EffectContextSource,
+            ValorantNearsightDurationSource.TargetEffectBuffDuration);
+
+    private static ValorantNearsightPlayerEffectEnded NearsightEffectEnded() =>
+        new(6.55f, 64, 700, ValorantNearsightKind.ReynaLeer, 101, 301, "subject-2", 99, 6.3f,
+            6.25f, 6.5f, 0.25f);
+
+    private static ValorantWallPlaced WallPlaced() =>
+        new(7, 70, 800, ValorantWallKind.VyseShear, 100, 300, "subject-1",
+            new FVector(1, 2, 3), new FRotator(4, 5, 6), new FVector(1, 2, 0),
+            new FVector(5, 2, 0), new FVector(1, 2, 3), new FVector(1, 0, 0),
+            ValorantWallPlacementEvidence.VyseTrapAnchorsInitialized);
+
+    private static ValorantWallSegmentSpawned WallSegmentSpawned() =>
+        new(7.1f, 71, 800, 801, 2, new FVector(2, 2, 0), new FRotator(0, 90, 0));
+
+    private static ValorantWallActivated WallActivated() =>
+        new(7.2f, 72, 800, 802, ValorantWallKind.VyseShear, new FVector(1, 2, 0),
+            new FRotator(0, 90, 0), new FVector(1, 2, 0), new FVector(5, 2, 0),
+            new FVector(1, 0, 0), 101, 301, "trigger",
+            ValorantWallActivationEvidence.VyseDynamicCollisionEnabled);
+
+    private static ValorantWallSegmentDestroyed WallSegmentDestroyed() =>
+        new(8, 73, 800, 801, 2, new FVector(2, 2, 0), 0.9f,
+            ValorantWallSegmentDestructionEvidence.DisableCollisionRpc);
+
+    private static ValorantWallDestroyed WallDestroyed() =>
+        new(13.2f, 74, 800, 802, ValorantWallKind.VyseShear, new FVector(1, 2, 0), 6.2f, 6,
+            ValorantWallDestructionEvidence.VyseActiveWallActorDestroyed);
 
     private static MovementMove Movement() =>
         new(

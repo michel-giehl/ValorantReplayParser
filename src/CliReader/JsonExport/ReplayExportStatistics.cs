@@ -20,12 +20,26 @@ internal sealed class ReplayExportStatistics
     public int ValorantFlashPathUpdatedCount { get; internal set; }
     public int ValorantFlashExplodedCount { get; internal set; }
     public int ValorantFlashPlayerHitCount { get; internal set; }
+    public int ValorantNearsightCastCount { get; internal set; }
+    public int ValorantNearsightPathUpdatedCount { get; internal set; }
+    public int ValorantNearsightActivatedCount { get; internal set; }
+    public int ValorantNearsightPlayerHitCount { get; internal set; }
+    public int ValorantNearsightPlayerEffectEndedCount { get; internal set; }
+    public int ValorantWallPlacedCount { get; internal set; }
+    public int ValorantWallSegmentSpawnedCount { get; internal set; }
+    public int ValorantWallActivatedCount { get; internal set; }
+    public int ValorantWallSegmentDestroyedCount { get; internal set; }
+    public int ValorantWallDestroyedCount { get; internal set; }
     public int MovementCount { get; internal set; }
 
     public int EventCount =>
         ActorSpawnedCount + ActorClosedCount + ExportGroupCount + RpcCount + ValorantShotReceivedCount +
         ValorantFlashCastCount + ValorantFlashPathUpdatedCount + ValorantFlashExplodedCount +
-        ValorantFlashPlayerHitCount;
+        ValorantFlashPlayerHitCount + ValorantNearsightCastCount + ValorantNearsightPathUpdatedCount +
+        ValorantNearsightActivatedCount + ValorantNearsightPlayerHitCount +
+        ValorantNearsightPlayerEffectEndedCount + ValorantWallPlacedCount +
+        ValorantWallSegmentSpawnedCount + ValorantWallActivatedCount +
+        ValorantWallSegmentDestroyedCount + ValorantWallDestroyedCount;
 
     public IReadOnlyCollection<FilteredExportGroupSummary> FilteredExportGroups =>
         _filteredExportGroups.Values;

@@ -10,6 +10,8 @@ using Replay.Unreal.Readers;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Descriptors;
 using Replay.Valorant.Flashes;
+using Replay.Valorant.Nearsights;
+using Replay.Valorant.Walls;
 
 namespace Replay.Valorant;
 
@@ -73,7 +75,9 @@ public sealed class ValorantReplayReader
         EnsureFullParseSupported(metadata);
 
         var netGuidCache = new Encoding.Net.NetGuidCache();
-        var flashEventEnricher = new ValorantFlashEventEnricher(_eventSink, netGuidCache);
+        var wallEventEnricher = new ValorantWallEventEnricher(_eventSink);
+        var nearsightEventEnricher = new ValorantNearsightEventEnricher(wallEventEnricher, netGuidCache);
+        var flashEventEnricher = new ValorantFlashEventEnricher(nearsightEventEnricher, netGuidCache);
         var eventSink = new ValorantShotEventEnricher(flashEventEnricher, netGuidCache);
         var context = new ReplayReaderContext(
             archive,
@@ -90,6 +94,8 @@ public sealed class ValorantReplayReader
 
         _chunkDispatcher.DispatchRemaining(context);
         flashEventEnricher.Complete();
+        nearsightEventEnricher.Complete();
+        wallEventEnricher.Complete();
 
         return context;
     }

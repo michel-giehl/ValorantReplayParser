@@ -2,6 +2,8 @@ using Replay.Models.Events;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Flashes;
 using Replay.Valorant.Movement;
+using Replay.Valorant.Nearsights;
+using Replay.Valorant.Walls;
 
 namespace CliReader.JsonExport;
 
@@ -83,6 +85,46 @@ internal sealed class ReplayExportSink :
             case ValorantFlashPlayerHit hit:
                 _events.Write(writer => _eventWriter.WriteValorantFlashPlayerHit(writer, hit));
                 Statistics.ValorantFlashPlayerHitCount++;
+                break;
+            case ValorantNearsightCast cast:
+                _events.Write(writer => _eventWriter.WriteValorantNearsightCast(writer, cast));
+                Statistics.ValorantNearsightCastCount++;
+                break;
+            case ValorantNearsightPathUpdated path:
+                _events.Write(writer => _eventWriter.WriteValorantNearsightPathUpdated(writer, path));
+                Statistics.ValorantNearsightPathUpdatedCount++;
+                break;
+            case ValorantNearsightActivated activated:
+                _events.Write(writer => _eventWriter.WriteValorantNearsightActivated(writer, activated));
+                Statistics.ValorantNearsightActivatedCount++;
+                break;
+            case ValorantNearsightPlayerHit hit:
+                _events.Write(writer => _eventWriter.WriteValorantNearsightPlayerHit(writer, hit));
+                Statistics.ValorantNearsightPlayerHitCount++;
+                break;
+            case ValorantNearsightPlayerEffectEnded ended:
+                _events.Write(writer => _eventWriter.WriteValorantNearsightPlayerEffectEnded(writer, ended));
+                Statistics.ValorantNearsightPlayerEffectEndedCount++;
+                break;
+            case ValorantWallPlaced placed:
+                _events.Write(writer => _eventWriter.WriteValorantWallPlaced(writer, placed));
+                Statistics.ValorantWallPlacedCount++;
+                break;
+            case ValorantWallSegmentSpawned spawned:
+                _events.Write(writer => _eventWriter.WriteValorantWallSegmentSpawned(writer, spawned));
+                Statistics.ValorantWallSegmentSpawnedCount++;
+                break;
+            case ValorantWallActivated activated:
+                _events.Write(writer => _eventWriter.WriteValorantWallActivated(writer, activated));
+                Statistics.ValorantWallActivatedCount++;
+                break;
+            case ValorantWallSegmentDestroyed destroyed:
+                _events.Write(writer => _eventWriter.WriteValorantWallSegmentDestroyed(writer, destroyed));
+                Statistics.ValorantWallSegmentDestroyedCount++;
+                break;
+            case ValorantWallDestroyed destroyed:
+                _events.Write(writer => _eventWriter.WriteValorantWallDestroyed(writer, destroyed));
+                Statistics.ValorantWallDestroyedCount++;
                 break;
             case RemoteCharacterMovementReceived movement:
                 EmitRemoteCharacterMovement(movement);

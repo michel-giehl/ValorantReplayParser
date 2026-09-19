@@ -7,7 +7,7 @@ namespace CliReader.JsonExport;
 
 internal sealed class ReplayExportManifestWriter
 {
-    private const int SchemaVersion = 5;
+    private const int SchemaVersion = 7;
 
     public void Write(
         string outputDirectory,
@@ -107,6 +107,18 @@ internal sealed class ReplayExportManifestWriter
         writer.WriteNumber("valorant_flash_path_updated", statistics.ValorantFlashPathUpdatedCount);
         writer.WriteNumber("valorant_flash_exploded", statistics.ValorantFlashExplodedCount);
         writer.WriteNumber("valorant_flash_player_hit", statistics.ValorantFlashPlayerHitCount);
+        writer.WriteNumber("valorant_nearsight_cast", statistics.ValorantNearsightCastCount);
+        writer.WriteNumber("valorant_nearsight_path_updated", statistics.ValorantNearsightPathUpdatedCount);
+        writer.WriteNumber("valorant_nearsight_activated", statistics.ValorantNearsightActivatedCount);
+        writer.WriteNumber("valorant_nearsight_player_hit", statistics.ValorantNearsightPlayerHitCount);
+        writer.WriteNumber(
+            "valorant_nearsight_player_effect_ended",
+            statistics.ValorantNearsightPlayerEffectEndedCount);
+        writer.WriteNumber("valorant_wall_placed", statistics.ValorantWallPlacedCount);
+        writer.WriteNumber("valorant_wall_segment_spawned", statistics.ValorantWallSegmentSpawnedCount);
+        writer.WriteNumber("valorant_wall_activated", statistics.ValorantWallActivatedCount);
+        writer.WriteNumber("valorant_wall_segment_destroyed", statistics.ValorantWallSegmentDestroyedCount);
+        writer.WriteNumber("valorant_wall_destroyed", statistics.ValorantWallDestroyedCount);
         writer.WriteNumber("filtered_export_groups", statistics.FilteredExportGroupCount);
         writer.WriteNumber("undecoded_export_groups", statistics.UndecodedExportGroupCount);
         writer.WriteNumber("empty_decoded_export_groups", statistics.EmptyDecodedExportGroupCount);

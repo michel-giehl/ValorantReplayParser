@@ -4,6 +4,8 @@ using Replay.Models.Events;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Flashes;
 using Replay.Valorant.Movement;
+using Replay.Valorant.Nearsights;
+using Replay.Valorant.Walls;
 
 namespace CliReader.JsonExport;
 
@@ -185,6 +187,147 @@ internal sealed class ReplayEventJsonWriter
         writer.WriteEndObject();
     }
 
+    public void WriteValorantNearsightCast(Utf8JsonWriter writer, ValorantNearsightCast cast)
+    {
+        WriteEventStart(writer, "valorant_nearsight_cast", cast);
+        WriteNearsightIdentity(writer, cast.NearsightActorNetGuid, cast.NearsightKind);
+        WriteNullableValue(writer, "caster_character_net_guid", cast.CasterCharacterNetGuid);
+        WriteNullableValue(writer, "caster_player_state_net_guid", cast.CasterPlayerStateNetGuid);
+        WriteNullableString(writer, "caster_subject", cast.CasterSubject);
+        WriteNullableValue(writer, "location", cast.Location);
+        WriteNullableValue(writer, "rotation", cast.Rotation);
+        WriteNullableValue(writer, "velocity", cast.Velocity);
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantNearsightPathUpdated(Utf8JsonWriter writer, ValorantNearsightPathUpdated path)
+    {
+        WriteEventStart(writer, "valorant_nearsight_path_updated", path);
+        WriteNearsightIdentity(writer, path.NearsightActorNetGuid, path.NearsightKind);
+        writer.WriteNumber("sample_index", path.SampleIndex);
+        writer.WriteString("source", ReplayJsonNormalizer.ToSnakeCase(path.Source.ToString()));
+        WriteNullableValue(writer, "location", path.Location);
+        WriteNullableValue(writer, "rotation", path.Rotation);
+        WriteNullableValue(writer, "linear_velocity", path.LinearVelocity);
+        WriteNullableValue(writer, "angular_velocity", path.AngularVelocity);
+        WriteNullableValue(writer, "server_frame", path.ServerFrame);
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantNearsightActivated(Utf8JsonWriter writer, ValorantNearsightActivated activated)
+    {
+        WriteEventStart(writer, "valorant_nearsight_activated", activated);
+        WriteNearsightIdentity(writer, activated.NearsightActorNetGuid, activated.NearsightKind);
+        WriteNullableValue(writer, "source_actor_net_guid", activated.SourceActorNetGuid);
+        WriteNullableValue(writer, "location", activated.Location);
+        writer.WriteString("evidence", ReplayJsonNormalizer.ToSnakeCase(activated.Evidence.ToString()));
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantNearsightPlayerHit(Utf8JsonWriter writer, ValorantNearsightPlayerHit hit)
+    {
+        WriteEventStart(writer, "valorant_nearsight_player_hit", hit);
+        WriteNearsightIdentity(writer, hit.NearsightActorNetGuid, hit.NearsightKind);
+        writer.WriteNumber("target_character_net_guid", hit.TargetCharacterNetGuid);
+        WriteNullableValue(writer, "target_player_state_net_guid", hit.TargetPlayerStateNetGuid);
+        WriteNullableString(writer, "target_subject", hit.TargetSubject);
+        WriteNullableValue(writer, "configured_duration_seconds", hit.ConfiguredDurationSeconds);
+        writer.WriteBoolean("duration_until_removed", hit.DurationUntilRemoved);
+        WriteNullableValue(writer, "effect_id", hit.EffectId);
+        WriteNullableValue(writer, "effect_container_net_guid", hit.EffectContainerNetGuid);
+        writer.WriteNumber("effect_context_net_guid", hit.EffectContextNetGuid);
+        WriteNullableValue(writer, "start_net_movement_time", hit.StartNetMovementTime);
+        writer.WriteString("correlation", ReplayJsonNormalizer.ToSnakeCase(hit.Correlation.ToString()));
+        writer.WriteString("duration_source", ReplayJsonNormalizer.ToSnakeCase(hit.DurationSource.ToString()));
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantNearsightPlayerEffectEnded(
+        Utf8JsonWriter writer,
+        ValorantNearsightPlayerEffectEnded ended)
+    {
+        WriteEventStart(writer, "valorant_nearsight_player_effect_ended", ended);
+        WriteNearsightIdentity(writer, ended.NearsightActorNetGuid, ended.NearsightKind);
+        writer.WriteNumber("target_character_net_guid", ended.TargetCharacterNetGuid);
+        WriteNullableValue(writer, "target_player_state_net_guid", ended.TargetPlayerStateNetGuid);
+        WriteNullableString(writer, "target_subject", ended.TargetSubject);
+        writer.WriteNumber("effect_id", ended.EffectId);
+        writer.WriteNumber("applied_time_ms", ToMilliseconds(ended.AppliedTimeSeconds));
+        WriteNullableValue(writer, "start_net_movement_time", ended.StartNetMovementTime);
+        WriteNullableValue(writer, "stop_net_movement_time", ended.StopNetMovementTime);
+        writer.WriteNumber("observed_duration_seconds", ended.ObservedDurationSeconds);
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantWallPlaced(Utf8JsonWriter writer, ValorantWallPlaced placed)
+    {
+        WriteEventStart(writer, "valorant_wall_placed", placed);
+        WriteWallIdentity(writer, placed.WallActorNetGuid, placed.WallKind);
+        WriteNullableValue(writer, "caster_character_net_guid", placed.CasterCharacterNetGuid);
+        WriteNullableValue(writer, "caster_player_state_net_guid", placed.CasterPlayerStateNetGuid);
+        WriteNullableString(writer, "caster_subject", placed.CasterSubject);
+        WriteNullableValue(writer, "location", placed.Location);
+        WriteNullableValue(writer, "rotation", placed.Rotation);
+        WriteNullableValue(writer, "wall_start", placed.WallStart);
+        WriteNullableValue(writer, "wall_end", placed.WallEnd);
+        WriteNullableValue(writer, "impact_point", placed.ImpactPoint);
+        WriteNullableValue(writer, "impact_normal", placed.ImpactNormal);
+        writer.WriteString("evidence", ReplayJsonNormalizer.ToSnakeCase(placed.Evidence.ToString()));
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantWallSegmentSpawned(Utf8JsonWriter writer, ValorantWallSegmentSpawned spawned)
+    {
+        WriteEventStart(writer, "valorant_wall_segment_spawned", spawned);
+        writer.WriteNumber("wall_actor_net_guid", spawned.WallActorNetGuid);
+        writer.WriteNumber("segment_actor_net_guid", spawned.SegmentActorNetGuid);
+        writer.WriteNumber("segment_index", spawned.SegmentIndex);
+        WriteNullableValue(writer, "location", spawned.Location);
+        WriteNullableValue(writer, "rotation", spawned.Rotation);
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantWallActivated(Utf8JsonWriter writer, ValorantWallActivated activated)
+    {
+        WriteEventStart(writer, "valorant_wall_activated", activated);
+        WriteWallIdentity(writer, activated.WallActorNetGuid, activated.WallKind);
+        writer.WriteNumber("active_wall_actor_net_guid", activated.ActiveWallActorNetGuid);
+        WriteNullableValue(writer, "location", activated.Location);
+        WriteNullableValue(writer, "rotation", activated.Rotation);
+        WriteNullableValue(writer, "wall_start", activated.WallStart);
+        WriteNullableValue(writer, "wall_end", activated.WallEnd);
+        WriteNullableValue(writer, "impact_normal", activated.ImpactNormal);
+        WriteNullableValue(writer, "trigger_character_net_guid", activated.TriggerCharacterNetGuid);
+        WriteNullableValue(writer, "trigger_player_state_net_guid", activated.TriggerPlayerStateNetGuid);
+        WriteNullableString(writer, "trigger_subject", activated.TriggerSubject);
+        writer.WriteString("evidence", ReplayJsonNormalizer.ToSnakeCase(activated.Evidence.ToString()));
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantWallSegmentDestroyed(Utf8JsonWriter writer, ValorantWallSegmentDestroyed destroyed)
+    {
+        WriteEventStart(writer, "valorant_wall_segment_destroyed", destroyed);
+        writer.WriteNumber("wall_actor_net_guid", destroyed.WallActorNetGuid);
+        writer.WriteNumber("segment_actor_net_guid", destroyed.SegmentActorNetGuid);
+        writer.WriteNumber("segment_index", destroyed.SegmentIndex);
+        WriteNullableValue(writer, "location", destroyed.Location);
+        writer.WriteNumber("lifetime_seconds", destroyed.LifetimeSeconds);
+        writer.WriteString("evidence", ReplayJsonNormalizer.ToSnakeCase(destroyed.Evidence.ToString()));
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantWallDestroyed(Utf8JsonWriter writer, ValorantWallDestroyed destroyed)
+    {
+        WriteEventStart(writer, "valorant_wall_destroyed", destroyed);
+        WriteWallIdentity(writer, destroyed.WallActorNetGuid, destroyed.WallKind);
+        WriteNullableValue(writer, "active_wall_actor_net_guid", destroyed.ActiveWallActorNetGuid);
+        WriteNullableValue(writer, "location", destroyed.Location);
+        writer.WriteNumber("lifetime_seconds", destroyed.LifetimeSeconds);
+        WriteNullableValue(writer, "active_duration_seconds", destroyed.ActiveDurationSeconds);
+        writer.WriteString("evidence", ReplayJsonNormalizer.ToSnakeCase(destroyed.Evidence.ToString()));
+        writer.WriteEndObject();
+    }
+
     public void WriteMovement(
         Utf8JsonWriter writer, RemoteCharacterMovementReceived movement)
     {
@@ -279,6 +422,24 @@ internal sealed class ReplayEventJsonWriter
     {
         writer.WriteNumber("flash_actor_net_guid", flashActorNetGuid);
         writer.WriteString("flash_kind", ReplayJsonNormalizer.ToSnakeCase(flashKind.ToString()));
+    }
+
+    private static void WriteNearsightIdentity(
+        Utf8JsonWriter writer,
+        uint nearsightActorNetGuid,
+        ValorantNearsightKind nearsightKind)
+    {
+        writer.WriteNumber("nearsight_actor_net_guid", nearsightActorNetGuid);
+        writer.WriteString("nearsight_kind", ReplayJsonNormalizer.ToSnakeCase(nearsightKind.ToString()));
+    }
+
+    private static void WriteWallIdentity(
+        Utf8JsonWriter writer,
+        uint wallActorNetGuid,
+        ValorantWallKind wallKind)
+    {
+        writer.WriteNumber("wall_actor_net_guid", wallActorNetGuid);
+        writer.WriteString("wall_kind", ReplayJsonNormalizer.ToSnakeCase(wallKind.ToString()));
     }
 
     private static void WriteDecodeMetadata(
