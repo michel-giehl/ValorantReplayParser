@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Valorant.Nearsights.Descriptors;
 
 namespace Replay.Valorant.Descriptors.Agents.Wraith;
 
@@ -10,6 +11,12 @@ public static class WraithDescriptors
         [
             new WraithAgentDescriptor(),
             new DarkCoverAbilityDescriptor(),
+            new OmenNearsightProjectileDescriptor(),
         ];
     }
+
+    public static IReadOnlyList<ClassNetCacheDescriptor> CreateClassNetCacheDescriptors() =>
+    [
+        NearsightProjectileClassNetCacheDescriptors.CreateStopProjectile(NearsightPaths.OmenProjectile, 3),
+    ];
 }

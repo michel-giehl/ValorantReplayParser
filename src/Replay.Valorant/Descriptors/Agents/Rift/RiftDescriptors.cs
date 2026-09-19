@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Valorant.Smokes.Descriptors;
 
 namespace Replay.Valorant.Descriptors.Agents.Rift;
 
@@ -9,6 +10,15 @@ public static class RiftDescriptors
         return
         [
             new RiftAgentDescriptor(),
+            new RiftSmokeAbilityDescriptor(),
+            new RiftWorldTargetingSmokeAbilityDescriptor(),
+            new RiftSmokeZoneDescriptor(),
+            new RiftFakeSmokeZoneDescriptor(),
         ];
     }
+
+    public static IReadOnlyList<ClassNetCacheDescriptor> CreateClassNetCacheDescriptors() =>
+    [
+        SmokeClassNetCacheDescriptors.CreateMovedToPersistentData(RiftSmokePaths.Ability, 0),
+    ];
 }

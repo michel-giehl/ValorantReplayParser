@@ -102,14 +102,7 @@ public sealed class HarborNearsightSourceDescriptor
 
 internal static class NearsightProjectileClassNetCacheDescriptors
 {
-    public static IReadOnlyList<ClassNetCacheDescriptor> Create() =>
-    [
-        CreateStopProjectile(NearsightPaths.OmenProjectile, 3),
-        CreateStopProjectile(NearsightPaths.ReynaProjectile, 4),
-        CreateStopProjectile(NearsightPaths.HarborProjectile, 3),
-    ];
-
-    private static ClassNetCacheDescriptor CreateStopProjectile(string projectilePath, uint handle) =>
+    public static ClassNetCacheDescriptor CreateStopProjectile(string projectilePath, uint handle) =>
         new(
             projectilePath + "_ClassNetCache",
             [

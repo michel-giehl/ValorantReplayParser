@@ -81,17 +81,7 @@ public sealed class YoruFlashProjectileDescriptor
 
 internal static class FlashProjectileClassNetCacheDescriptors
 {
-    public static IReadOnlyList<ClassNetCacheDescriptor> Create() =>
-    [
-        CreateStopProjectile(FlashPaths.KayoOverhandProjectile),
-        CreateStopProjectile(FlashPaths.KayoUnderhandProjectile),
-        CreateStopProjectile(FlashPaths.BreachProjectile),
-        CreateStopProjectile(FlashPaths.PhoenixLeftProjectile),
-        CreateStopProjectile(FlashPaths.PhoenixRightProjectile),
-        CreateStopProjectile(FlashPaths.YoruProjectile),
-    ];
-
-    private static ClassNetCacheDescriptor CreateStopProjectile(string projectilePath) =>
+    public static ClassNetCacheDescriptor CreateStopProjectile(string projectilePath) =>
         new(
             projectilePath + "_ClassNetCache",
             [
