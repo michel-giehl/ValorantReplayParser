@@ -1,3 +1,5 @@
+using Replay.Models.Descriptors;
+
 namespace Replay.Unreal.Parsing;
 
 internal sealed class BoundExportStore
@@ -8,6 +10,9 @@ internal sealed class BoundExportStore
     private readonly Dictionary<string, BoundClassNetCache> _boundCachesByPath = new(PathComparer);
     private readonly Dictionary<string, List<BoundRpcFunction>> _pendingRpcFunctionsByExportPath = new(PathComparer);
     private readonly Dictionary<uint, string> _pathIndexToPath = new();
+    private IReplayPathAliasProvider? _pathAliasProvider;
+
+    public void SetPathAliasProvider(IReplayPathAliasProvider? provider) => _pathAliasProvider = provider;
 
     public void SetPathIndex(uint pathNameIndex, string path)
     {
@@ -15,7 +20,7 @@ internal sealed class BoundExportStore
     }
 
     public BoundExportGroup? GetBoundGroup(string path) =>
-        TryGetByLookup(_boundGroupsByPath, path, ReplayPath.LookupKeys, out var boundGroup) ? boundGroup : null;
+        TryGetByLookup(_boundGroupsByPath, ReplayPath.LookupKeys(path, _pathAliasProvider), out var boundGroup) ? boundGroup : null;
 
     public BoundExportGroup? GetBoundGroupByIndex(uint pathNameIndex)
     {
@@ -28,7 +33,7 @@ internal sealed class BoundExportStore
     }
 
     public BoundClassNetCache? GetBoundCache(string path) =>
-        TryGetByLookup(_boundCachesByPath, path, ReplayPath.ClassNetCacheLookupKeys, out var boundCache) ? boundCache : null;
+        TryGetByLookup(_boundCachesByPath, ReplayPath.ClassNetCacheLookupKeys(path, _pathAliasProvider), out var boundCache) ? boundCache : null;
 
     public BoundClassNetCache? GetBoundCacheByIndex(uint pathNameIndex)
     {
@@ -44,18 +49,12 @@ internal sealed class BoundExportStore
 
     public void IndexBoundExportGroup(string path, BoundExportGroup bound)
     {
-        foreach (var key in ReplayPath.LookupKeys(path))
-        {
-            _boundGroupsByPath[key] = bound;
-        }
+        _boundGroupsByPath[path] = bound;
     }
 
     public void IndexBoundClassNetCache(string path, BoundClassNetCache bound)
     {
-        foreach (var key in ReplayPath.ClassNetCacheLookupKeys(path))
-        {
-            _boundCachesByPath[key] = bound;
-        }
+        _boundCachesByPath[path] = bound;
     }
 
     public void AddPendingRpcFunction(string functionExportPath, BoundRpcFunction function)
@@ -92,11 +91,10 @@ internal sealed class BoundExportStore
 
     private static bool TryGetByLookup<TValue>(
         Dictionary<string, TValue> valuesByPath,
-        string path,
-        Func<string, IEnumerable<string>> lookupKeys,
+        IEnumerable<string> keys,
         out TValue value)
     {
-        foreach (var key in lookupKeys(path))
+        foreach (var key in keys)
         {
             if (valuesByPath.TryGetValue(key, out value!))
             {

@@ -5,6 +5,7 @@ using Replay.Models.Net;
 namespace Replay.Unreal.Bunches;
 
 internal interface IPartialBunchAccumulator
+    : IDisposable
 {
     PartialBunchResult AddFragment(
         uint chIndex,
@@ -13,4 +14,10 @@ internal interface IPartialBunchAccumulator
         BunchPayloadStats stats);
 
     bool TryComplete(uint chIndex, out IMemoryOwner<byte> buffer, out int bitCount, out RawBunchHeader storedHeader);
+
+    /// <summary>
+    /// Discards and reports unfinished assemblies after normal replay traversal.
+    /// Dispose remains silent so exception cleanup cannot add diagnostics.
+    /// </summary>
+    int FinalizePending();
 }

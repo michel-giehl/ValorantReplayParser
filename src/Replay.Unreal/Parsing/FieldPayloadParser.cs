@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Errors;
 using Replay.Models.Events;
 
 namespace Replay.Unreal.Parsing;
@@ -19,6 +20,26 @@ public class FieldPayloadParser
         BoundExportGroup boundGroup,
         ref FieldDecodeContext context,
         bool readPropertyChecksum = true)
+    {
+        try
+        {
+            return ParseRepLayoutPropertiesCore(payload, boundGroup, ref context, readPropertyChecksum);
+        }
+        catch (ArchiveReadException exception)
+        {
+            throw InvalidPayload(context, exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw InvalidPayload(context, exception);
+        }
+    }
+
+    private DecodedPayloadResult ParseRepLayoutPropertiesCore(
+        FBitArchive payload,
+        BoundExportGroup boundGroup,
+        ref FieldDecodeContext context,
+        bool readPropertyChecksum)
     {
         if (boundGroup.Grammar is FieldStreamGrammar.ClassNetCache)
         {
@@ -61,6 +82,25 @@ public class FieldPayloadParser
         BoundClassNetCache boundCache,
         ref FieldDecodeContext context)
     {
+        try
+        {
+            return ParseClassNetCachePayloadCore(payload, boundCache, ref context);
+        }
+        catch (ArchiveReadException exception)
+        {
+            throw InvalidPayload(context, exception);
+        }
+        catch (OverflowException exception)
+        {
+            throw InvalidPayload(context, exception);
+        }
+    }
+
+    private IReadOnlyList<DecodedRpcInvocation> ParseClassNetCachePayloadCore(
+        FBitArchive payload,
+        BoundClassNetCache boundCache,
+        ref FieldDecodeContext context)
+    {
         if (boundCache.Grammar is not FieldStreamGrammar.ClassNetCache)
         {
             GetLogger(context).LogWarning(
@@ -80,29 +120,26 @@ public class FieldPayloadParser
         var invocations = new List<DecodedRpcInvocation>();
         while (!payload.AtEnd)
         {
-            var handle = (int)payload.ReadSerializedInt(boundCache.FunctionsByHandle.Length);
+            context.FieldName = null;
+            var handle = (int)payload.ReadSerializedInt(Math.Max(boundCache.FunctionsByHandle.Length, 2));
             if (payload.BitsRemaining < 8)
             {
                 payload.SkipRemaining();
-                return invocations;
-            }
-
-            var payloadBits = payload.ReadIntPacked();
-            if (payloadBits > int.MaxValue || payload.BitsRemaining < payloadBits)
-            {
-                GetLogger(context).LogWarning(
-                    "Malformed class net cache payload: handle={Handle}, bits={PayloadBits}, remaining={PayloadBitsRemaining}",
-                    handle,
-                    payloadBits,
-                    payload.BitsRemaining);
-                payload.SkipRemaining();
-                return invocations;
+                break;
             }
 
             BoundRpcFunction? rpcFunction = null;
             if ((uint)handle < boundCache.FunctionsByHandle.Length)
             {
                 rpcFunction = boundCache.FunctionsByHandle[handle];
+            }
+
+            context.FieldName = rpcFunction?.Name ?? $"RPC handle {handle}";
+            var payloadBits = payload.ReadIntPacked();
+            if (payloadBits > int.MaxValue || payload.BitsRemaining < payloadBits)
+            {
+                throw InvalidBitCount(payload, nameof(ParseClassNetCachePayload), payloadBits,
+                    $"RPC handle {handle} declares {payloadBits} bits with {payload.BitsRemaining} remaining.");
             }
 
             var rpcPayload = payload.ReadSubArchive((int)payloadBits);
@@ -112,7 +149,6 @@ public class FieldPayloadParser
                 continue;
             }
 
-            context.FieldName = rpcFunction.Name;
             context.Categories = rpcFunction.Categories;
             context.CaptureDiagnosticFields = rpcFunction.CaptureDiagnosticFields;
 
@@ -123,10 +159,7 @@ public class FieldPayloadParser
             if (rpcFunction.Decoder is not null)
             {
                 result = rpcFunction.Decoder.Decode(ref context, rpcPayload);
-                if (!rpcPayload.AtEnd)
-                {
-                    rpcPayload.EnsureFullyConsumed($"RPC '{rpcFunction.Name}' (handle {handle})");
-                }
+                EnsureRpcPayloadConsumed(rpcPayload, rpcFunction.Name, handle);
             }
             else if (rpcFunction.FunctionGroup is { Enabled: true })
             {
@@ -135,6 +168,7 @@ public class FieldPayloadParser
                     rpcFunction.FunctionGroup,
                     ref context,
                     readPropertyChecksum: true);
+                EnsureRpcPayloadConsumed(rpcPayload, rpcFunction.Name, handle);
             }
             else
             {
@@ -174,6 +208,10 @@ public class FieldPayloadParser
         }
 
         var handle = checked((int)(encodedHandle - 1));
+        var fieldBinding = GetBinding(handle, boundGroup);
+        context.FieldName = fieldBinding.Name ?? $"field handle {handle}";
+        context.Categories = fieldBinding.Categories;
+
         var payloadBits = payload.ReadIntPacked();
         if (payloadBits == 0)
         {
@@ -182,62 +220,33 @@ public class FieldPayloadParser
 
         if (payloadBits > int.MaxValue || payload.BitsRemaining < payloadBits)
         {
-            GetLogger(context).LogWarning(
-                "Malformed field payload: handle={Handle}, bits={PayloadBits}, remaining={PayloadBitsRemaining}",
-                handle,
-                payloadBits,
-                payload.BitsRemaining);
-            payload.SkipRemaining();
-            return true;
+            throw InvalidBitCount(payload, nameof(ParseRepLayoutProperties), payloadBits,
+                $"Field handle {handle} declares {payloadBits} bits with {payload.BitsRemaining} remaining.");
         }
 
-        var fieldBinding = GetBinding(handle, boundGroup);
         if (!fieldBinding.Enabled || fieldBinding.Decoder is null)
         {
             payload.SkipBits(payloadBits);
             return false;
         }
 
-        context.FieldName = fieldBinding.Name;
-        context.Categories = fieldBinding.Categories;
-
         var fieldPayload = payload.ReadSubArchive((int)payloadBits);
-        try
+        var decodedValue = fieldBinding.Decoder.Decode(ref context, fieldPayload);
+        if (!fieldPayload.AtEnd)
         {
-            var decodedValue = fieldBinding.Decoder.Decode(ref context, fieldPayload);
-            if (!fieldPayload.AtEnd)
-            {
-                fieldPayload.EnsureFullyConsumed($"field '{fieldBinding.Name}' (handle {handle})");
-            }
-
-            if (decodedValue.HasValue)
-            {
-                DecodedValueAssigner.Assign(payloadObject, fieldBinding, decodedValue);
-                decodedFieldCount++;
-                diagnosticFields?.Add(new DecodedReplayField(
-                    handle,
-                    fieldBinding.Name,
-                    fieldBinding.ExportName,
-                    fieldBinding.Categories,
-                    decodedValue));
-            }
+            fieldPayload.EnsureFullyConsumed($"field '{fieldBinding.Name}' (handle {handle})");
         }
-        catch (Exception exception)
+
+        if (decodedValue.HasValue)
         {
-            GetLogger(context).LogError(
-                exception,
-                "Failed to decode field '{FieldName}' (export '{ExportName}', handle {Handle}) in export group " +
-                "'{ExportGroupPath}' for packet {PacketId} on channel {ChannelIndex} at field payload position " +
-                "{FieldPayloadPosition} of {FieldPayloadLength} bits.",
+            DecodedValueAssigner.Assign(payloadObject, fieldBinding, decodedValue);
+            decodedFieldCount++;
+            diagnosticFields?.Add(new DecodedReplayField(
+                handle,
                 fieldBinding.Name,
                 fieldBinding.ExportName,
-                handle,
-                context.ExportGroupPath ?? boundGroup.SourceDescriptor.Path,
-                context.CurrentPacketId,
-                context.ChannelIndex,
-                fieldPayload.Position,
-                fieldPayload.Length);
-            throw;
+                fieldBinding.Categories,
+                decodedValue));
         }
 
         return false;
@@ -269,4 +278,26 @@ public class FieldPayloadParser
 
     private static ILogger<FieldPayloadParser> GetLogger(FieldDecodeContext context) =>
         context.LoggerFactory?.CreateLogger<FieldPayloadParser>() ?? NullLogger<FieldPayloadParser>.Instance;
+
+    private static InvalidReplayDataException InvalidPayload(FieldDecodeContext context, Exception exception) =>
+        new(
+            $"Error decoding export group '{context.ExportGroupPath ?? "<unknown>"}', field '{context.FieldName ?? "<unknown>"}', " +
+            $"packet {context.CurrentPacketId} on channel {context.ChannelIndex}: {exception.Message}",
+            exception);
+
+    private static void EnsureRpcPayloadConsumed(FBitArchive payload, string functionName, int handle)
+    {
+        if (!payload.AtEnd)
+        {
+            payload.EnsureFullyConsumed($"RPC '{functionName}' (handle {handle})");
+        }
+    }
+
+    private static ArchiveReadException InvalidBitCount(
+        FBitArchive payload,
+        string operation,
+        long requested,
+        string message) =>
+        new(ArchiveErrorCode.InvalidBitCount, operation, payload.Position, payload.Length, requested, message);
+
 }

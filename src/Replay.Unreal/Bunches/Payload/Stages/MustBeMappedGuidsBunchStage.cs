@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
+using Replay.Models.Errors;
 
 namespace Replay.Unreal.Bunches.Payload.Stages;
 
@@ -19,19 +20,10 @@ internal sealed class MustBeMappedGuidsBunchStage : IBunchPayloadStage
         }
         catch (ArchiveReadException exception)
         {
-            context.ReaderContext.LoggerFactory?
-                .CreateLogger<MustBeMappedGuidsBunchStage>()
-                .LogError(
-                    exception,
-                    "Failed to parse must-be-mapped GUIDs in packet {PacketId} on channel {ChannelIndex} at payload position {PayloadPosition} of {PayloadLength} bits.",
-                    context.Header.PacketId,
-                    context.Header.ChIndex,
-                    context.Payload.Position,
-                    context.Payload.Length);
-            context.Stats.MalformedPayloadCount++;
-            context.Stats.MalformedMustBeMappedGuidCount++;
-            context.Payload.SkipRemaining();
-            return BunchStageResult.Stop;
+            throw new InvalidReplayDataException(
+                $"Malformed must-be-mapped GUIDs in packet {context.Header.PacketId} on channel {context.Header.ChIndex} " +
+                $"at payload position {context.Payload.Position} of {context.Payload.Length} bits: {exception.Message}",
+                exception);
         }
     }
 

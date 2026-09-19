@@ -1,5 +1,6 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Errors;
 using Replay.Models.Events;
 using Replay.Unreal.Parsing;
 
@@ -249,8 +250,8 @@ public class FieldPayloadParserTests
             ],
         };
 
-        var bytes = BuildClassNetCachePayload(bitCount: 8, data: [0xFF]);
-        var payload = new BitArchiveReader(bytes, bytes.Length * 8);
+        var payloadData = BuildClassNetCachePayload(handle: 0, functionCount: 1, bitCount: 8, data: [0xFF]);
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
         var context = CreateContext("/Game/Test.Test_C_ClassNetCache");
 
         var invocations = new FieldPayloadParser().ParseClassNetCachePayload(payload, boundCache, ref context);
@@ -262,6 +263,86 @@ public class FieldPayloadParserTests
             Assert.That(invocations[0].Name, Is.EqualTo("SomeFunction"));
             Assert.That(payload.AtEnd, Is.True);
         });
+    }
+
+    [Test]
+    public void ParseClassNetCachePayload_ConsumesShortTrailingTerminator()
+    {
+        var functions = new BoundRpcFunction[19];
+        functions[4] = new BoundRpcFunction
+        {
+            Name = "SomeFunction",
+            FunctionExportPath = "/Game/Test.Test_C:SomeFunction",
+            Enabled = true,
+            Decoder = new SkipRpcDecoder(),
+        };
+        var boundCache = new BoundClassNetCache
+        {
+            Path = "/Game/Test.Test_C_ClassNetCache",
+            SourceDescriptor = new ClassNetCacheDescriptor("/Game/Test.Test_C_ClassNetCache"),
+            Grammar = FieldStreamGrammar.ClassNetCache,
+            Enabled = true,
+            FunctionsByHandle = functions,
+        };
+        var bits = new List<bool>();
+        WriteSerializedInt(bits, value: 4, maxValue: functions.Length);
+        WriteIntPacked(bits, 1);
+        bits.Add(false);
+        bits.AddRange([false, false, false, false, false]);
+        var payload = new BitArchiveReader(PackBits(bits), bits.Count);
+        var context = CreateContext(boundCache.Path);
+
+        var invocations = new FieldPayloadParser().ParseClassNetCachePayload(payload, boundCache, ref context);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(invocations, Has.Count.EqualTo(1));
+            Assert.That(invocations[0].Handle, Is.EqualTo(4));
+            Assert.That(payload.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
+    public void ParseClassNetCachePayload_OversizedRpcLength_ThrowsContextualInvalidReplayData()
+    {
+        var boundCache = CreateSingleFunctionBoundCache(new SkipRpcDecoder());
+        var payloadData = BuildClassNetCachePayload(handle: 0, functionCount: 1, bitCount: 16, data: [0xFF], dataBitCount: 8);
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
+        var context = new FieldDecodeContext
+        {
+            ExportGroupPath = "/Game/Test.Test_C_ClassNetCache",
+            CurrentPacketId = 42,
+            ChannelIndex = 7,
+        };
+
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
+            new FieldPayloadParser().ParseClassNetCachePayload(payload, boundCache, ref context));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.InnerException, Is.TypeOf<ArchiveReadException>());
+            Assert.That(((ArchiveReadException)exception.InnerException!).ErrorCode,
+                Is.EqualTo(ArchiveErrorCode.InvalidBitCount));
+            Assert.That(exception.Message, Does.Contain("SomeFunction"));
+            Assert.That(exception.Message, Does.Contain("packet 42"));
+            Assert.That(exception.Message, Does.Contain("channel 7"));
+        });
+    }
+
+    [Test]
+    public void ParseClassNetCachePayload_RequiredDecoderUnderRead_Throws()
+    {
+        var boundCache = CreateSingleFunctionBoundCache(new UnderReadingRpcDecoder());
+        var payloadData = BuildClassNetCachePayload(handle: 0, functionCount: 1, bitCount: 8, data: [0xFF]);
+        var payload = new BitArchiveReader(payloadData.Bytes, payloadData.BitCount);
+        var context = CreateContext("/Game/Test.Test_C_ClassNetCache");
+
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
+            new FieldPayloadParser().ParseClassNetCachePayload(payload, boundCache, ref context));
+
+        Assert.That(exception!.InnerException, Is.TypeOf<ArchiveReadException>());
+        Assert.That(((ArchiveReadException)exception.InnerException!).ErrorCode,
+            Is.EqualTo(ArchiveErrorCode.UnexpectedTrailingData));
     }
 
     private static FieldDecodeContext CreateContext(string path) => new()
@@ -299,6 +380,24 @@ public class FieldPayloadParserTests
             FieldsByHandle = bindings,
         };
     }
+
+    private static BoundClassNetCache CreateSingleFunctionBoundCache(IRpcDecoder decoder) => new()
+    {
+        Path = "/Game/Test.Test_C_ClassNetCache",
+        SourceDescriptor = new ClassNetCacheDescriptor("/Game/Test.Test_C_ClassNetCache"),
+        Grammar = FieldStreamGrammar.ClassNetCache,
+        Enabled = true,
+        FunctionsByHandle =
+        [
+            new BoundRpcFunction
+            {
+                Name = "SomeFunction",
+                FunctionExportPath = "/Game/Test.Test_C:SomeFunction",
+                Enabled = true,
+                Decoder = decoder,
+            },
+        ],
+    };
 
     private static FieldPayloadData BuildFieldPayload(params (uint handle, int bitCount, byte[] data)[] fields)
     {
@@ -362,12 +461,33 @@ public class FieldPayloadParserTests
 
     private readonly record struct FieldPayloadData(byte[] Bytes, int BitCount);
 
-    private static byte[] BuildClassNetCachePayload(int bitCount, byte[] data)
+    private static FieldPayloadData BuildClassNetCachePayload(
+        uint handle,
+        int functionCount,
+        int bitCount,
+        byte[] data,
+        int? dataBitCount = null)
     {
-        using var ms = new MemoryStream();
-        ms.Write(EncodeIntPacked((uint)bitCount));
-        ms.Write(data);
-        return ms.ToArray();
+        var bits = new List<bool>();
+        WriteSerializedInt(bits, handle, Math.Max(functionCount, 2));
+        WriteIntPacked(bits, (uint)bitCount);
+        WriteBits(bits, data, dataBitCount ?? bitCount);
+        return new FieldPayloadData(PackBits(bits), bits.Count);
+    }
+
+    private static void WriteSerializedInt(List<bool> bits, uint value, int maxValue)
+    {
+        var valueBitCount = System.Numerics.BitOperations.Log2((uint)maxValue);
+        for (var bit = 0; bit < valueBitCount; bit++)
+        {
+            bits.Add((value & (1u << bit)) != 0);
+        }
+
+        var mask = 1u << valueBitCount;
+        if (value + mask < maxValue)
+        {
+            bits.Add((value & mask) != 0);
+        }
     }
 
     private sealed class SkipRpcDecoder : IRpcDecoder
@@ -377,6 +497,12 @@ public class FieldPayloadParserTests
             archive.SkipRemaining();
             return DecodedPayloadResult.Empty;
         }
+    }
+
+    private sealed class UnderReadingRpcDecoder : IRpcDecoder
+    {
+        public DecodedPayloadResult Decode(ref FieldDecodeContext context, FBitArchive archive) =>
+            DecodedPayloadResult.Empty;
     }
 
     private sealed class TestPayloadDescriptor : ExportGroupDescriptor<TestPayloadDescriptor>

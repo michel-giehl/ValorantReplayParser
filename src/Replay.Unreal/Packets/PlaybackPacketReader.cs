@@ -10,7 +10,7 @@ using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Packets;
 
-public class PlaybackPacketReader
+internal sealed class PlaybackPacketReader
 {
 
     private readonly ReplayReaderContext _context;
@@ -84,13 +84,13 @@ public class PlaybackPacketReader
                 case 0:
                     return;
                 case < 0:
-                    throw new InvalidReplayInfoException($"Replay packet size {packetSize} is negative.");
+                    throw new InvalidReplayDataException($"Replay packet size {packetSize} is negative.");
             }
 
             const int maxPacketSizeInBytes = Constants.MaxPacketSizeInBits / 8;
             if (packetSize > maxPacketSizeInBytes)
             {
-                throw new InvalidReplayInfoException(
+                throw new InvalidReplayDataException(
                     $"Replay packet size {packetSize} exceeds maximum {maxPacketSizeInBytes}.");
             }
 
@@ -101,7 +101,7 @@ public class PlaybackPacketReader
             _context.BunchPayloadStats.PacketCount++;
             if (result.IsMalformed)
             {
-                throw new InvalidReplayInfoException($"Replay packet {packetIndex} is malformed.");
+                throw new InvalidReplayDataException($"Replay packet {packetIndex} is malformed.");
             }
         }
     }

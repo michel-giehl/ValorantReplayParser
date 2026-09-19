@@ -1,6 +1,5 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Events;
-using Replay.Unreal.Readers;
 using Replay.Valorant;
 using Replay.Valorant.Walls;
 
@@ -100,13 +99,13 @@ public class WallLifecycleIntegrationTests
         });
     }
 
-    private static (CapturingReplayEventSink Sink, ReplayReaderContext Context) Read(string replayPath)
+    private static (CapturingReplayEventSink Sink, ValorantReplayReadResult Result) Read(string replayPath)
     {
         var sink = new CapturingReplayEventSink();
         using var stream = File.OpenRead(replayPath);
         using var archive = new FBinaryArchive(stream);
-        var context = ValorantReplayReader.CreateDefault(loggerFactory: null, eventSink: sink).Read(archive);
-        return (sink, context);
+        var result = ValorantReplayReader.CreateDefault(loggerFactory: null, eventSink: sink).Read(archive);
+        return (sink, result);
     }
 
     private static string ResolvePath(string variable, string fileName)

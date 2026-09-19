@@ -1,3 +1,5 @@
+using Replay.Encoding.Archives;
+
 namespace Replay.Unreal.Bunches.Payload.Stages;
 
 internal sealed class TrailingPayloadBunchStage : IBunchPayloadStage
@@ -10,9 +12,13 @@ internal sealed class TrailingPayloadBunchStage : IBunchPayloadStage
         }
 
         var unconsumed = context.Payload.BitsRemaining;
-        context.Payload.SkipBits(unconsumed);
-        context.Stats.MalformedPayloadCount++;
-        context.Stats.TrailingPayloadCount++;
-        return BunchStageResult.Continue;
+        throw new ArchiveReadException(
+            ArchiveErrorCode.UnexpectedTrailingData,
+            nameof(TrailingPayloadBunchStage),
+            context.Payload.Position,
+            context.Payload.Length,
+            unconsumed,
+            $"Bunch has {unconsumed} unexpected trailing bits in packet {context.Header.PacketId} " +
+            $"on channel {context.Header.ChIndex}.");
     }
 }

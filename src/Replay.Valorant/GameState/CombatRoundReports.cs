@@ -1,5 +1,6 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Diagnostics;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors;
 
@@ -57,6 +58,7 @@ internal sealed class CompatibleCombatRoundReportsDecoder : IFieldDecoder
 
     public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive)
     {
+        string? fallbackReason = null;
         using (var checkpoint = archive.CreateCheckpoint())
         {
             try
@@ -65,13 +67,23 @@ internal sealed class CompatibleCombatRoundReportsDecoder : IFieldDecoder
                 checkpoint.Commit();
                 return value;
             }
-            catch (ArchiveReadException)
+            catch (ArchiveReadException exception)
             {
+                fallbackReason = exception.Message;
             }
-            catch (OverflowException)
+            catch (OverflowException exception)
             {
+                fallbackReason = exception.Message;
             }
         }
+        context.Diagnostics?.Add(new ReplayDiagnostic(
+            ReplayDiagnosticCode.RawPayloadFallback,
+            $"Field '{context.FieldName}' fell back to raw payload: {fallbackReason ?? "unsupported layout"}",
+            context.CurrentPacketId,
+            context.ChannelIndex,
+            context.CurrentTimeSeconds,
+            context.ExportGroupPath,
+            context.FieldName));
         return _fallback.Decode(ref context, archive);
     }
 }

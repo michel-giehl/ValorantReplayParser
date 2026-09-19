@@ -8,6 +8,24 @@ namespace Replay.Valorant.Tests.Descriptors;
 
 public class ValorantDescriptorsTests
 {
+    [TestCase("ReplayEffect", "/Script/ShooterGame.ReplayEffectComponent")]
+    [TestCase("EffectManager", "/Script/ShooterGame.EffectManagerComponent")]
+    [TestCase("BlindManagerComponent", "/Script/ShooterGame.BlindManagerComponent")]
+    [TestCase("LocationalEffectManager", "/Script/ShooterGame.LocationalEffectManagerComponent")]
+    [TestCase("DamageHandlerComponent", "/Script/ShooterGame.DamageableComponent")]
+    public void CreateCatalog_RegistersStableSubobjectClasses(string objectName, string classPath)
+    {
+        Assert.That(ValorantDescriptors.CreateCatalog().SubobjectClassPaths[objectName], Is.EqualTo(classPath));
+    }
+
+    [TestCase("/Game/Characters/Foo/Foo_PC.Foo_PC_C", "/Game/Characters/_Core/Foo/Foo_PC.Foo_PC_C")]
+    [TestCase("/Game/Characters/_Core/Foo/Foo_PC.Foo_PC_C", "/Game/Characters/Foo/Foo_PC.Foo_PC_C")]
+    [TestCase("/Game/Other/Thing.Thing_C", null)]
+    public void CreateCatalog_PathAliasProvider_ResolvesValorantCoreAlias(string path, string? expected)
+    {
+        Assert.That(ValorantDescriptors.CreateCatalog().PathAliasProvider!.GetAlternatePath(path), Is.EqualTo(expected));
+    }
+
     [Test]
     public void CreateCatalog_IncludesPlayableAgentDescriptors()
     {

@@ -4,7 +4,7 @@ using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Frames;
 
-public class GameSpecificFrameDataReader
+internal sealed class GameSpecificFrameDataReader
 {
     private readonly ReplayReaderContext _context;
     private readonly FBinaryArchive _archive;

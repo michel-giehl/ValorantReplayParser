@@ -321,6 +321,52 @@ public class ExportBindingRegistryTests
         Assert.That(registry.GetBoundGroup("/Game/Test.Test_C"), Is.Null);
     }
 
+    [Test]
+    public void SymmetricAliases_PreserveExactExportGroupMatches()
+    {
+        const string firstPath = "/Invented/First.First_C";
+        const string secondPath = "/Invented/Second.Second_C";
+        var catalog = new DescriptorCatalog
+        {
+            PathAliasProvider = new SymmetricAliasProvider(firstPath, secondPath),
+        };
+        catalog.Add(new ExportGroupDescriptor(firstPath));
+        catalog.Add(new ExportGroupDescriptor(secondPath));
+        var registry = new ExportBindingRegistry(catalog);
+
+        registry.OnExportGroupChanged(CreateReplayGroup(firstPath));
+        registry.OnExportGroupChanged(CreateReplayGroup(secondPath));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.GetBoundGroup(firstPath)!.SourceDescriptor.Path, Is.EqualTo(firstPath));
+            Assert.That(registry.GetBoundGroup(secondPath)!.SourceDescriptor.Path, Is.EqualTo(secondPath));
+        });
+    }
+
+    [Test]
+    public void SymmetricAliases_PreserveExactClassNetCacheMatches()
+    {
+        const string firstPath = "/Invented/First.First_C_ClassNetCache";
+        const string secondPath = "/Invented/Second.Second_C_ClassNetCache";
+        var catalog = new DescriptorCatalog
+        {
+            PathAliasProvider = new SymmetricAliasProvider(firstPath, secondPath),
+        };
+        catalog.Add(new ClassNetCacheDescriptor(firstPath));
+        catalog.Add(new ClassNetCacheDescriptor(secondPath));
+        var registry = new ExportBindingRegistry(catalog);
+
+        registry.OnExportGroupChanged(CreateReplayGroup(firstPath));
+        registry.OnExportGroupChanged(CreateReplayGroup(secondPath));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registry.GetBoundCache(firstPath)!.SourceDescriptor.Path, Is.EqualTo(firstPath));
+            Assert.That(registry.GetBoundCache(secondPath)!.SourceDescriptor.Path, Is.EqualTo(secondPath));
+        });
+    }
+
     private static ExportBindingRegistry CreateRegistry(Action<DescriptorCatalog> configure)
     {
         var catalog = new DescriptorCatalog();
@@ -456,5 +502,15 @@ public class ExportBindingRegistryTests
         {
             AddProperty(x => x.Param1).Float();
         }
+    }
+
+    private sealed class SymmetricAliasProvider(string firstPath, string secondPath) : IReplayPathAliasProvider
+    {
+        public string? GetAlternatePath(string path) => path switch
+        {
+            var value when value == firstPath => secondPath,
+            var value when value == secondPath => firstPath,
+            _ => null,
+        };
     }
 }

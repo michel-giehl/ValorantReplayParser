@@ -32,17 +32,15 @@ try
     await using var file = File.OpenRead(replayPath);
     using var archive = new FBinaryArchive(file);
 
-    var context = ValorantReplayReader.CreateDefault(
+    var result = ValorantReplayReader.CreateDefault(
         loggerFactory,
         null,
         ParseProfile.Default).Read(archive);
 
-
-    var guidCache = context.NetGuidCache;
     var outPath = args[1];
 
-    var guidCacheString = string.Join("\n", guidCache.ExportGroupsByPath.Values.Select(_ =>
-        $"{_.PathName}\n\t{string.Join("\n\t", _.NetFieldExports.Where(__ => __?.Name != null).Select(__ => $" {__!.Name} ({__.Handle})"))}"));
+    var guidCacheString = string.Join("\n", result.ExportGroups.Select(group =>
+        $"{group.PathName}\n\t{string.Join("\n\t", group.Fields.Select(field => $" {field.Name} ({field.Handle})"))}"));
 
     await using var writer = File.Create(outPath);
     await writer.WriteAsync(Encoding.UTF8.GetBytes(guidCacheString));

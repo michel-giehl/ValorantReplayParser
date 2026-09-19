@@ -2,11 +2,12 @@ using System.Text.Json;
 using CliReader.JsonExport;
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Diagnostics;
 using Replay.Models.Events;
 using Replay.Models.Net;
 using Replay.Models.Replay;
 using Replay.Models.Unreal;
-using Replay.Unreal.Readers;
+using Replay.Models.Results;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Flashes;
 using Replay.Valorant.GameState;
@@ -354,19 +355,30 @@ public class ReplayExportTests
         Directory.CreateDirectory(directory);
         try
         {
-            using var archive = new FBinaryArchive(ReadOnlyMemory<byte>.Empty);
-            var context = new ReplayReaderContext(archive)
-            {
-                ReplayInfo = new ReplayInfo { LengthInMs = 60000 },
-                ReplayVersion = new ReplayVersion
-                {
-                    Major = 13,
-                    Minor = 1,
-                    Patch = 0,
-                    Changelist = 123,
-                    Branch = "++Ares-Core+release-13.01",
-                },
-            };
+            var result = new ValorantReplayReadResult(
+                new ValorantReplayMetadata(
+                    new ReplayInfo { LengthInMs = 60000 },
+                    new ReplayInfoSerializationMetadata(),
+                    new ReplayHeader(),
+                    new ReplayVersion
+                    {
+                        Major = 13,
+                        Minor = 1,
+                        Patch = 0,
+                        Changelist = 123,
+                        Branch = "++Ares-Core+release-13.01",
+                    },
+                    new UEVersion(),
+                    ValorantReplaySupportStatus.Supported,
+                    null),
+                new ReplayPacketStatistics(0, 0, 0, 0, 0, 0, 0, 0),
+                new ReplayBunchStatistics(
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                ReplayReadStatus.CompletedWithWarnings,
+                [new ReplayDiagnostic(ReplayDiagnosticCode.PartialSequenceError, "Discarded mismatched continuation.", 4, 9, 12.5f)],
+                1,
+                0,
+                Array.Empty<ReplayExportGroupSummary>());
             using var events = new MemoryStream();
             using var movement = new MemoryStream();
             using var sink = CreateSink(events, movement);
@@ -384,17 +396,24 @@ public class ReplayExportTests
                 new string('a', 64),
                 42,
                 "viewer",
-                context,
+                result,
                 sink.Statistics);
 
             using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "manifest.json")));
             var manifest = document.RootElement;
             Assert.Multiple(() =>
             {
-                Assert.That(manifest.GetProperty("schema_version").GetInt32(), Is.EqualTo(7));
+                Assert.That(manifest.GetProperty("schema_version").GetInt32(), Is.EqualTo(8));
                 Assert.That(manifest.GetProperty("source_sha256").GetString(), Has.Length.EqualTo(64));
                 Assert.That(manifest.GetProperty("replay_build").GetString(), Does.EndWith("release-13.01"));
                 Assert.That(manifest.GetProperty("duration_ms").GetInt32(), Is.EqualTo(60000));
+                Assert.That(manifest.GetProperty("parse_status").GetString(), Is.EqualTo("completed_with_warnings"));
+                Assert.That(manifest.GetProperty("total_diagnostic_count").GetInt64(), Is.EqualTo(1));
+                Assert.That(manifest.GetProperty("suppressed_diagnostic_count").GetInt64(), Is.Zero);
+                var diagnostic = manifest.GetProperty("diagnostics")[0];
+                Assert.That(diagnostic.GetProperty("code").GetString(), Is.EqualTo("partial_sequence_error"));
+                Assert.That(diagnostic.GetProperty("packet_id").GetInt32(), Is.EqualTo(4));
+                Assert.That(diagnostic.GetProperty("channel_index").GetUInt32(), Is.EqualTo(9));
                 Assert.That(manifest.GetProperty("parse_profile").GetString(), Is.EqualTo("viewer"));
                 Assert.That(manifest.GetProperty("parser_version").GetString(), Is.Not.Empty);
                 Assert.That(manifest.GetProperty("counts").GetProperty("actor_spawned").GetInt32(), Is.EqualTo(1));

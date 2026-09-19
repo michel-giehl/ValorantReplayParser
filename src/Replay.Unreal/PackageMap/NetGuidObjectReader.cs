@@ -23,7 +23,7 @@ internal sealed class NetGuidObjectReader
     {
         if (recursionDepth >= MaxNetGuidRecursionDepth)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 $"Exported net GUID recursion depth exceeded {MaxNetGuidRecursionDepth}.");
         }
 

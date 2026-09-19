@@ -1,6 +1,6 @@
 namespace Replay.Unreal.Bunches;
 
-public sealed class BunchPayloadStats
+internal sealed class BunchPayloadStats
 {
     public int PacketCount { get; set; }
     public int BunchCount { get; set; }

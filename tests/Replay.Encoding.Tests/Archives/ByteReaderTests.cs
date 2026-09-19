@@ -1,3 +1,4 @@
+using System.Buffers;
 using Replay.Encoding.Archives;
 
 namespace Replay.Encoding.Tests.Archives;
@@ -62,5 +63,35 @@ public class ByteReaderTests
 
         reader.Seek(-1, SeekOrigin.End);
         Assert.That(reader.ReadByte(), Is.EqualTo(0x40));
+    }
+
+    [Test]
+    public void OwnerBackedReader_DisposeIsIdempotentAndRejectsFurtherAccess()
+    {
+        var owner = new CountingMemoryOwner([0x10, 0x20]);
+        var reader = new ByteArchiveReader(owner, 2);
+
+        reader.Dispose();
+        reader.Dispose();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(owner.DisposeCount, Is.EqualTo(1));
+            Assert.Throws<ObjectDisposedException>(() => reader.ReadByte());
+            Assert.Throws<ObjectDisposedException>(() => reader.TryReadByte(out _));
+            Assert.Throws<ObjectDisposedException>(() => reader.ReadBytes(1));
+            Assert.Throws<ObjectDisposedException>(() => reader.TryReadBytes(1, out _));
+            Assert.Throws<ObjectDisposedException>(() => reader.Seek(0));
+            Assert.Throws<ObjectDisposedException>(() => reader.Skip(0));
+        });
+    }
+
+    private sealed class CountingMemoryOwner(byte[] buffer) : IMemoryOwner<byte>
+    {
+        public int DisposeCount { get; private set; }
+
+        public Memory<byte> Memory => buffer;
+
+        public void Dispose() => DisposeCount++;
     }
 }

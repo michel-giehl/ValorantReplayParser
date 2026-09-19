@@ -1,6 +1,5 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Events;
-using Replay.Unreal.Readers;
 using Replay.Valorant;
 using Replay.Valorant.Nearsights;
 
@@ -74,7 +73,7 @@ public class NearsightLifecycleIntegrationTests
             Assert.That(hits, Has.Length.EqualTo(27));
             Assert.That(ended, Has.Length.EqualTo(29));
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
-            Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(12));
+            Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
             Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(470));
         });
 
@@ -141,13 +140,13 @@ public class NearsightLifecycleIntegrationTests
         }
     }
 
-    private static (CapturingReplayEventSink Sink, ReplayReaderContext Context) Read(string replayPath)
+    private static (CapturingReplayEventSink Sink, ValorantReplayReadResult Result) Read(string replayPath)
     {
         var sink = new CapturingReplayEventSink();
         using var stream = File.OpenRead(replayPath);
         using var archive = new FBinaryArchive(stream);
-        var context = ValorantReplayReader.CreateDefault(loggerFactory: null, eventSink: sink).Read(archive);
-        return (sink, context);
+        var result = ValorantReplayReader.CreateDefault(loggerFactory: null, eventSink: sink).Read(archive);
+        return (sink, result);
     }
 
     private static string ResolveReplayPath(string environmentVariable, string fileName)

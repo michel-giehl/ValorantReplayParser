@@ -5,7 +5,12 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>Replay.Valorant</RootNamespace>
+        <IsPackable>true</IsPackable>
+        <PackageId>ValorantReplayParser</PackageId>
+        <Description>VALORANT replay (.vrf) parsing with typed gameplay events and replay metadata. Experimental API.</Description>
     </PropertyGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)..\..\build\LibraryPackage.props" />
 
     <ItemGroup>
         <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />

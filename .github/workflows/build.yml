@@ -1,4 +1,4 @@
-name: Build
+name: Build and Package Validation
 
 on:
   push:
@@ -7,26 +7,40 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
+  validate:
+    name: Validate on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 10.0.x
-    - name: Restore dependencies
-      run: |
-        dotnet restore src/CliReader/CliReader.csproj
-        dotnet restore tests/Replay.Encoding.Tests/Replay.Encoding.Tests.csproj
-        dotnet restore tests/Replay.Unreal.Tests/Replay.Unreal.Tests.csproj
-        dotnet restore tests/Replay.Valorant.Tests/Replay.Valorant.Tests.csproj
-    - name: Build
-      run: dotnet build src/CliReader/CliReader.csproj --no-restore
-    - name: Test
-      run: |
-        dotnet test tests/Replay.Encoding.Tests/Replay.Encoding.Tests.csproj --no-restore --verbosity normal
-        dotnet test tests/Replay.Unreal.Tests/Replay.Unreal.Tests.csproj --no-restore --verbosity normal
-        dotnet test tests/Replay.Valorant.Tests/Replay.Valorant.Tests.csproj --no-restore --verbosity normal
+      - uses: actions/checkout@v4
+      - name: Setup .NET SDK from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution
+        run: dotnet restore ValorantReplayParser.sln -p:Configuration=Release
+      - name: Build solution
+        run: dotnet build ValorantReplayParser.sln --configuration Release --no-restore
+      - name: Test all projects
+        run: dotnet test ValorantReplayParser.sln --configuration Release --no-build --no-restore --results-directory artifacts/test-results --logger trx
+        env:
+          SNAPSHOOTER_STRICT_MODE: true
+      - name: Validate NuGet packages with an isolated consumer
+        shell: pwsh
+        run: pwsh -File build/Test-Packages.ps1 -Version 0.1.0-alpha.1
+      - name: Upload packages, symbols, and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ matrix.os }}-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+            artifacts/test-results/*.trx
+            artifacts/test-results/**/*.trx

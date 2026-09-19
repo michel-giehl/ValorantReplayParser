@@ -1,13 +1,12 @@
 using System.Reflection;
 using System.Text.Json;
-using Replay.Unreal.Readers;
 using Replay.Valorant;
 
 namespace CliReader.JsonExport;
 
 internal sealed class ReplayExportManifestWriter
 {
-    private const int SchemaVersion = 7;
+    private const int SchemaVersion = 8;
 
     public void Write(
         string outputDirectory,
@@ -15,7 +14,7 @@ internal sealed class ReplayExportManifestWriter
         string sourceSha256,
         long sourceSize,
         string profileName,
-        ReplayReaderContext context,
+        ValorantReplayReadResult result,
         ReplayExportStatistics statistics)
     {
         var path = Path.Combine(outputDirectory, "manifest.json");
@@ -35,7 +34,7 @@ internal sealed class ReplayExportManifestWriter
                     sourceSha256,
                     sourceSize,
                     profileName,
-                    context,
+                    result,
                     statistics);
             }
 
@@ -54,10 +53,10 @@ internal sealed class ReplayExportManifestWriter
         string sourceSha256,
         long sourceSize,
         string profileName,
-        ReplayReaderContext context,
+        ValorantReplayReadResult result,
         ReplayExportStatistics statistics)
     {
-        var version = context.ReplayVersion;
+        var version = result.Metadata.ReplayVersion;
         var parserAssembly = typeof(ValorantReplayReader).Assembly;
 
         writer.WriteStartObject();
@@ -68,21 +67,22 @@ internal sealed class ReplayExportManifestWriter
         writer.WriteString("replay_build", version.Branch);
         writer.WriteString("replay_version", $"{version.Major}.{version.Minor}.{version.Patch}");
         writer.WriteNumber("replay_changelist", version.Changelist);
-        writer.WriteNumber("duration_ms", context.ReplayInfo.LengthInMs);
+        writer.WriteNumber("duration_ms", result.Metadata.ReplayInfo.LengthInMs);
         writer.WriteString("parse_profile", profileName);
         writer.WriteString("parser_assembly", parserAssembly.GetName().Name);
         writer.WriteString("parser_version", ParserVersion(parserAssembly));
-        WriteStats(writer, context);
+        WriteStats(writer, result);
+        WriteDiagnostics(writer, result);
         WriteCounts(writer, statistics);
-        WriteNetFieldExportGroups(writer, context);
+        WriteNetFieldExportGroups(writer, result);
         WriteFilteredExportGroups(writer, statistics);
         WriteLimitations(writer);
         writer.WriteEndObject();
     }
 
-    private static void WriteStats(Utf8JsonWriter writer, ReplayReaderContext context)
+    private static void WriteStats(Utf8JsonWriter writer, ValorantReplayReadResult result)
     {
-        var stats = context.PacketStats;
+        var stats = result.PacketStats;
         writer.WriteStartObject("stats");
         writer.WriteNumber("packet_count", stats.PacketCount);
         writer.WriteNumber("packets_with_bunches", stats.PacketsWithBunches);
@@ -91,6 +91,48 @@ internal sealed class ReplayExportManifestWriter
         writer.WriteNumber("partial_error_count", stats.PartialErrorCount);
         writer.WriteNumber("total_packet_bytes", stats.TotalPacketBytes);
         writer.WriteEndObject();
+    }
+
+    private static void WriteDiagnostics(Utf8JsonWriter writer, ValorantReplayReadResult result)
+    {
+        writer.WriteString("parse_status", ReplayJsonNormalizer.ToSnakeCase(result.Status.ToString()));
+        writer.WriteNumber("total_diagnostic_count", result.TotalDiagnosticCount);
+        writer.WriteNumber("suppressed_diagnostic_count", result.SuppressedDiagnosticCount);
+        writer.WriteStartArray("diagnostics");
+        foreach (var diagnostic in result.Diagnostics)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("code", ReplayJsonNormalizer.ToSnakeCase(diagnostic.Code.ToString()));
+            writer.WriteString("message", diagnostic.Message);
+            if (diagnostic.PacketId is int packetId)
+            {
+                writer.WriteNumber("packet_id", packetId);
+            }
+
+            if (diagnostic.ChannelIndex is uint channelIndex)
+            {
+                writer.WriteNumber("channel_index", channelIndex);
+            }
+
+            if (diagnostic.TimeSeconds is float timeSeconds)
+            {
+                writer.WriteNumber("time_seconds", timeSeconds);
+            }
+
+            if (diagnostic.ExportGroupPath is not null)
+            {
+                writer.WriteString("export_group_path", diagnostic.ExportGroupPath);
+            }
+
+            if (diagnostic.FieldName is not null)
+            {
+                writer.WriteString("field_name", diagnostic.FieldName);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
     }
 
     private static void WriteCounts(Utf8JsonWriter writer, ReplayExportStatistics statistics)
@@ -155,20 +197,19 @@ internal sealed class ReplayExportManifestWriter
 
     private static void WriteNetFieldExportGroups(
         Utf8JsonWriter writer,
-        ReplayReaderContext context)
+        ValorantReplayReadResult result)
     {
         writer.WriteStartArray("net_field_export_groups");
-        foreach (var group in context.NetGuidCache.ExportGroupsByPath.Values
-                     .OrderBy(item => item.PathName, StringComparer.Ordinal))
+        foreach (var group in result.ExportGroups)
         {
             writer.WriteStartObject();
             writer.WriteString("path", group.PathName);
             writer.WriteNumber("path_name_index", group.PathNameIndex);
             writer.WriteStartArray("fields");
-            foreach (var field in group.NetFieldExports.Where(item => item is not null))
+            foreach (var field in group.Fields)
             {
                 writer.WriteStartObject();
-                writer.WriteNumber("handle", field!.Handle);
+                writer.WriteNumber("handle", field.Handle);
                 writer.WriteString("name", field.Name);
                 writer.WriteNumber("compatible_checksum", field.CompatibleChecksum);
                 writer.WriteEndObject();

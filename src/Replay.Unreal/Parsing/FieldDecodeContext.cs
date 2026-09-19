@@ -3,6 +3,7 @@ using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Models.Net;
+using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Parsing;
 
@@ -20,4 +21,5 @@ public sealed class FieldDecodeContext
     public string? FieldName { get; set; }
     public ExportCategory Categories { get; set; }
     public bool CaptureDiagnosticFields { get; set; }
+    internal ReplayDiagnosticCollector? Diagnostics { get; init; }
 }

@@ -125,7 +125,7 @@ public class ExportDataReaderTests
     }
 
     [Test]
-    public void ReadNetFieldExports_UnknownPathIndexThrowsInvalidReplayInfoException()
+    public void ReadNetFieldExports_UnknownPathIndexThrowsInvalidReplayDataException()
     {
         var cache = new NetGuidCache();
         var bytes = BuildNetFieldExports(
@@ -135,7 +135,7 @@ public class ExportDataReaderTests
                 AddIntPacked(writer, 0);
             });
 
-        var exception = Assert.Throws<InvalidReplayInfoException>(() =>
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
             new ExportDataReader(new FBinaryArchive(bytes), cache).ReadNetFieldExports());
 
         Assert.That(exception!.Message, Does.Contain("unknown path index 42"));
@@ -187,7 +187,7 @@ public class ExportDataReaderTests
         AddIntPacked(bytes, 1);
         AddInt32(bytes, -1);
 
-        Assert.Throws<InvalidReplayInfoException>(() =>
+        Assert.Throws<InvalidReplayDataException>(() =>
             new ExportDataReader(new FBinaryArchive(bytes.ToArray()), cache).ReadExportGuids());
     }
 

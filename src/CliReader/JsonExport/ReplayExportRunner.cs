@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
-using Replay.Unreal.Readers;
 using Replay.Valorant;
 
 namespace CliReader.JsonExport;
@@ -31,11 +30,11 @@ internal sealed class ReplayExportRunner
         file.Position = 0;
 
         var sink = ReplayExportSink.Create(outputDirectory);
-        ReplayReaderContext context;
+        ValorantReplayReadResult result;
         try
         {
             using var archive = new FBinaryArchive(file);
-            context = ValorantReplayReader.CreateDefault(
+            result = ValorantReplayReader.CreateDefault(
                 _loggerFactory,
                 sink,
                 options.ParseProfile).Read(archive);
@@ -51,7 +50,7 @@ internal sealed class ReplayExportRunner
             sourceSha256,
             sourceSize,
             options.ProfileName,
-            context,
+            result,
             sink.Statistics);
     }
 }

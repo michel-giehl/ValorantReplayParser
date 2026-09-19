@@ -7,29 +7,24 @@ namespace Replay.Unreal.Bunches;
 
 internal sealed class ContentBlockPathResolver
 {
-    private static readonly IReadOnlyDictionary<string, string> KnownSubobjectClassPaths =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["ReplayEffect"] = "/Script/ShooterGame.ReplayEffectComponent",
-            ["EffectManager"] = "/Script/ShooterGame.EffectManagerComponent",
-            ["BlindManagerComponent"] = "/Script/ShooterGame.BlindManagerComponent",
-            ["LocationalEffectManager"] = "/Script/ShooterGame.LocationalEffectManagerComponent",
-            ["DamageHandlerComponent"] = "/Script/ShooterGame.DamageableComponent",
-        };
-
     private readonly NetGuidCache _netGuidCache;
+    private readonly ExportBindingRegistry _bindingRegistry;
     private readonly Dictionary<ulong, string> _actorExportGroupPathByChannel = [];
     private readonly Dictionary<ulong, string> _actorClassPathByChannel = [];
     private readonly Dictionary<uint, string> _subobjectExportGroupPathByClassNetGuid = [];
     private readonly Dictionary<uint, string> _subobjectClassPathByClassNetGuid = [];
+    private long _catalogRevision;
 
-    public ContentBlockPathResolver(NetGuidCache netGuidCache)
+    public ContentBlockPathResolver(NetGuidCache netGuidCache, ExportBindingRegistry bindingRegistry)
     {
         _netGuidCache = netGuidCache;
+        _bindingRegistry = bindingRegistry;
+        _catalogRevision = bindingRegistry.CatalogRevision;
     }
 
     public string? ResolveExportGroupPath(ContentBlockHeader header, ActorChannelState channel)
     {
+        ClearStaleCatalogCache();
         return header.IsActor
             ? ResolveCachedActorExportGroupPath(channel)
             : ResolveSubobjectExportGroupPath(header);
@@ -37,6 +32,7 @@ internal sealed class ContentBlockPathResolver
 
     public string? ResolveClassPath(ContentBlockHeader header, ActorChannelState channel)
     {
+        ClearStaleCatalogCache();
         return header.IsActor
             ? ResolveCachedActorClassPath(channel)
             : ResolveSubobjectClassPath(header);
@@ -105,9 +101,7 @@ internal sealed class ContentBlockPathResolver
         }
 
         var leafName = GetLeafName(objectPath);
-        return KnownSubobjectClassPaths.TryGetValue(leafName, out var classPath)
-            ? classPath
-            : null;
+        return _bindingRegistry.GetSubobjectClassPath(leafName);
     }
 
     private string? ResolveCachedActorExportGroupPath(ActorChannelState channel)
@@ -216,8 +210,8 @@ internal sealed class ContentBlockPathResolver
             return true;
         }
 
-        if (ReplayPath.TryGetAlias(path, out var alias) &&
-            _netGuidCache.ExportGroupsByPath.TryGetValue(alias, out group))
+        var alias = _bindingRegistry.GetAlternatePath(path);
+        if (alias is not null && _netGuidCache.ExportGroupsByPath.TryGetValue(alias, out group))
         {
             exportGroupPath = group.PathName;
             return true;
@@ -349,4 +343,18 @@ internal sealed class ContentBlockPathResolver
 
     private static ulong ActorCacheKey(ActorChannelState channel) =>
         ((ulong)channel.ChannelIndex << 32) | channel.ActorNetGuid.Value;
+
+    private void ClearStaleCatalogCache()
+    {
+        if (_catalogRevision == _bindingRegistry.CatalogRevision)
+        {
+            return;
+        }
+
+        _actorExportGroupPathByChannel.Clear();
+        _actorClassPathByChannel.Clear();
+        _subobjectExportGroupPathByClassNetGuid.Clear();
+        _subobjectClassPathByClassNetGuid.Clear();
+        _catalogRevision = _bindingRegistry.CatalogRevision;
+    }
 }

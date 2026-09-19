@@ -1,3 +1,4 @@
+using System.Buffers;
 using NSubstitute;
 using Replay.Encoding.Archives;
 
@@ -232,5 +233,39 @@ public class BitReaderTests
 
         Assert.That(reader.BitLength, Is.EqualTo(6));
         Assert.That(reader.ReadBitsToUInt64(6), Is.EqualTo(0b10_1111UL));
+    }
+
+    [Test]
+    public void OwnerBackedReader_DisposeIsIdempotentAndRejectsFurtherAccess()
+    {
+        var owner = new CountingMemoryOwner([0xFF, 0x00]);
+        var reader = new BitArchiveReader(owner, bitCount: 16);
+
+        reader.Dispose();
+        reader.Dispose();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(owner.DisposeCount, Is.EqualTo(1));
+            Assert.Throws<ObjectDisposedException>(() => reader.ReadBit());
+            Assert.Throws<ObjectDisposedException>(() => reader.TryReadBit(out _));
+            Assert.Throws<ObjectDisposedException>(() => reader.ReadBitsToUInt64(1));
+            Assert.Throws<ObjectDisposedException>(() => reader.TryReadBitsToUInt64(1, out _));
+            Assert.Throws<ObjectDisposedException>(() => reader.ReadBits(1));
+            Assert.Throws<ObjectDisposedException>(() => reader.TryReadBits(1, out _));
+            Assert.Throws<ObjectDisposedException>(() => reader.CopyBitsTo(new byte[1], 1));
+            Assert.Throws<ObjectDisposedException>(() => reader.ReadSubArchive(1));
+            Assert.Throws<ObjectDisposedException>(() => reader.SeekBits(0));
+            Assert.Throws<ObjectDisposedException>(() => reader.SkipBits(0));
+        });
+    }
+
+    private sealed class CountingMemoryOwner(byte[] buffer) : IMemoryOwner<byte>
+    {
+        public int DisposeCount { get; private set; }
+
+        public Memory<byte> Memory => buffer;
+
+        public void Dispose() => DisposeCount++;
     }
 }

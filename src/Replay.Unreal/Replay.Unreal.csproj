@@ -4,7 +4,12 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>ValorantReplayParser.Unreal</PackageId>
+        <Description>VALORANT replay container, header, chunk, and network parsing.</Description>
     </PropertyGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)..\..\build\LibraryPackage.props" />
 
     <ItemGroup>
       <ProjectReference Include="..\Replay.Encoding\Replay.Encoding.csproj" />

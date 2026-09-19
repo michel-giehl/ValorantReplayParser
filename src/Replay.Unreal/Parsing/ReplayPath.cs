@@ -1,13 +1,13 @@
+using Replay.Models.Descriptors;
+
 namespace Replay.Unreal.Parsing;
 
 internal static class ReplayPath
 {
     public const string ClassNetCacheSuffix = "_ClassNetCache";
-    private const string CoreSegment = "/_Core/";
-    private const string CharactersRoot = "/Game/Characters/";
     private const string DefaultObjectPrefix = "Default__";
 
-    public static IEnumerable<string> LookupKeys(string path)
+    public static IEnumerable<string> LookupKeys(string path, IReplayPathAliasProvider? aliasProvider = null)
     {
         yield return path;
 
@@ -17,16 +17,18 @@ internal static class ReplayPath
             yield return defaultAlias;
         }
 
-        var coreAlias = TryGetCoreAlias(path);
-        if (coreAlias is not null)
+        var alternatePath = aliasProvider?.GetAlternatePath(path);
+        if (alternatePath is not null && !string.Equals(alternatePath, path, StringComparison.Ordinal))
         {
-            yield return coreAlias;
+            yield return alternatePath;
         }
     }
 
-    public static IEnumerable<string> ClassNetCacheLookupKeys(string path)
+    public static IEnumerable<string> ClassNetCacheLookupKeys(
+        string path,
+        IReplayPathAliasProvider? aliasProvider = null)
     {
-        foreach (var key in LookupKeys(path))
+        foreach (var key in LookupKeys(path, aliasProvider))
         {
             yield return key;
 
@@ -55,31 +57,6 @@ internal static class ReplayPath
         return path.AsSpan(leafStart + 1).StartsWith("Default__", StringComparison.Ordinal);
     }
 
-    public static bool TryGetAlias(string path, out string alias)
-    {
-        var coreSegmentIndex = path.IndexOf(CoreSegment, StringComparison.Ordinal);
-        if (coreSegmentIndex >= 0)
-        {
-            alias = string.Concat(
-                path.AsSpan(0, coreSegmentIndex),
-                "/",
-                path.AsSpan(coreSegmentIndex + CoreSegment.Length));
-            return true;
-        }
-
-        if (path.StartsWith(CharactersRoot, StringComparison.Ordinal))
-        {
-            alias = string.Concat(
-                CharactersRoot,
-                "_Core/",
-                path.AsSpan(CharactersRoot.Length));
-            return true;
-        }
-
-        alias = string.Empty;
-        return false;
-    }
-
     private static string? RemoveClassNetCacheSuffix(string path)
     {
         var aliasLength = path.Length - ClassNetCacheSuffix.Length;
@@ -89,11 +66,6 @@ internal static class ReplayPath
         }
 
         return path[..aliasLength];
-    }
-
-    private static string? TryGetCoreAlias(string path)
-    {
-        return TryGetAlias(path, out var alias) ? alias : null;
     }
 
     private static string? TryGetDefaultObjectAlias(string path)

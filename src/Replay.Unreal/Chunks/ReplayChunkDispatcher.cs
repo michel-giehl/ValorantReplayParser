@@ -10,7 +10,7 @@ using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Chunks;
 
-public sealed class ReplayChunkDispatcher
+internal sealed class ReplayChunkDispatcher
 {
     private readonly ReplayDataChunkPayloadReader _replayDataChunkPayloadReader;
     private readonly IReplayDataChunkHandler _replayDataChunkHandler;
@@ -109,13 +109,13 @@ public sealed class ReplayChunkDispatcher
         }
         catch (ArchiveReadException exception)
         {
-            throw new InvalidReplayInfoException(
-                $"Error while parsing replay chunk: {exception.Message}", exception);
+            throw new InvalidReplayDataException(
+                $"Error while parsing replay data chunk: {exception.Message}", exception);
         }
         catch (OverflowException exception)
         {
-            throw new InvalidReplayInfoException(
-                $"Error while parsing replay chunk: {exception.Message}", exception);
+            throw new InvalidReplayDataException(
+                $"Error while parsing replay data chunk: {exception.Message}", exception);
         }
     }
 
@@ -198,7 +198,7 @@ public sealed class ReplayChunkDispatcher
 
         if (dataChunk.MemorySizeInBytes < 0)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 $"Replay-data memory size {dataChunk.MemorySizeInBytes} is negative.");
         }
 

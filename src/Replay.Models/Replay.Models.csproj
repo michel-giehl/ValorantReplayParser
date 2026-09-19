@@ -4,6 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>ValorantReplayParser.Models</PackageId>
+        <Description>Shared models and public data contracts for VALORANT replay parsing.</Description>
     </PropertyGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)..\..\build\LibraryPackage.props" />
 
 </Project>

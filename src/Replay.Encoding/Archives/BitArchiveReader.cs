@@ -21,6 +21,7 @@ public sealed class BitArchiveReader : FBitArchive
     private readonly long _bitLength;
 
     private long _bitPosition;
+    private bool _disposed;
 
     // Absolute index into _source
     private int _byteIndex;
@@ -126,6 +127,7 @@ public sealed class BitArchiveReader : FBitArchive
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override bool ReadBit()
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (_bitPosition >= _bitLength)
         {
             throw EndOfArchive(nameof(ReadBit), Position, Length, 1);
@@ -137,6 +139,7 @@ public sealed class BitArchiveReader : FBitArchive
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override bool TryReadBit(out bool value)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (_bitPosition >= _bitLength)
         {
             value = false;
@@ -166,6 +169,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override ulong ReadBitsToUInt64(int bitCount)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if ((uint)bitCount > 64)
         {
             throw new ArchiveReadException(
@@ -186,6 +190,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override bool TryReadBitsToUInt64(int bitCount, out ulong value)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if ((uint)bitCount > 64 || RemainingBits < bitCount)
         {
             value = 0;
@@ -259,6 +264,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override ReadOnlyMemory<byte> ReadBits(int bitCount)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (bitCount < 0)
         {
             throw new ArchiveReadException(
@@ -284,6 +290,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override bool TryReadBits(int bitCount, out ReadOnlyMemory<byte> value)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (bitCount < 0 || RemainingBits < bitCount)
         {
             value = default;
@@ -301,6 +308,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override void CopyBitsTo(Span<byte> destination, int bitCount)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (bitCount < 0)
         {
             throw new ArchiveReadException(
@@ -438,6 +446,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override FBitArchive ReadSubArchive(int bitCount)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (bitCount < 0)
         {
             throw new ArchiveReadException(
@@ -462,6 +471,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override void SeekBits(long position)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (position < 0 || position > _bitLength)
         {
             throw InvalidSeek(nameof(SeekBits), Position, Length, position);
@@ -480,6 +490,7 @@ public sealed class BitArchiveReader : FBitArchive
 
     public override void SkipBits(long count)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (count < 0)
         {
             throw InvalidCount(nameof(SkipBits), Position, Length, count);
@@ -501,13 +512,15 @@ public sealed class BitArchiveReader : FBitArchive
 
     protected internal override void RestorePosition(long position)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         ResetStateToPosition(position);
     }
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !_disposed)
         {
+            _disposed = true;
             _owner?.Dispose();
         }
     }

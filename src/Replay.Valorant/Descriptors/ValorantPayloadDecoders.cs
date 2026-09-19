@@ -1,5 +1,6 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Diagnostics;
 using Replay.Models.Events;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Combat;
@@ -37,6 +38,7 @@ internal static class ValorantPayloadDecoders
 
         public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive)
         {
+            string? fallbackReason = null;
             using (var checkpoint = archive.CreateCheckpoint())
             {
                 try
@@ -47,15 +49,27 @@ internal static class ValorantPayloadDecoders
                         checkpoint.Commit();
                         return value;
                     }
+
+                    fallbackReason = $"Typed decoder left {archive.BitsRemaining} bits unread.";
                 }
-                catch (ArchiveReadException)
+                catch (ArchiveReadException exception)
                 {
+                    fallbackReason = exception.Message;
                 }
-                catch (OverflowException)
+                catch (OverflowException exception)
                 {
+                    fallbackReason = exception.Message;
                 }
             }
 
+            context.Diagnostics?.Add(new ReplayDiagnostic(
+                ReplayDiagnosticCode.RawPayloadFallback,
+                $"Field '{context.FieldName}' fell back to raw payload: {fallbackReason}",
+                context.CurrentPacketId,
+                context.ChannelIndex,
+                context.CurrentTimeSeconds,
+                context.ExportGroupPath,
+                context.FieldName));
             return _rawDecoder.Decode(ref context, archive);
         }
     }

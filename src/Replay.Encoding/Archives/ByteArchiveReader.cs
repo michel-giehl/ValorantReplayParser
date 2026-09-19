@@ -7,6 +7,7 @@ public class ByteArchiveReader : FArchive
     private readonly IMemoryOwner<byte>? _owner;
     private readonly ReadOnlyMemory<byte> _buffer;
     private long _position;
+    private bool _disposed;
 
     protected ByteArchiveReader(Stream input)
     {
@@ -36,6 +37,7 @@ public class ByteArchiveReader : FArchive
 
     public override byte ReadByte()
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (!TryReadByte(out var value))
         {
             throw EndOfArchive(nameof(ReadByte), Position, Length, 1);
@@ -46,6 +48,7 @@ public class ByteArchiveReader : FArchive
 
     public override bool TryReadByte(out byte value)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (Remaining < 1)
         {
             value = 0;
@@ -59,6 +62,7 @@ public class ByteArchiveReader : FArchive
 
     public override ReadOnlyMemory<byte> ReadBytes(int count)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (TryReadBytes(count, out var value)) return value;
         if (count < 0)
         {
@@ -71,6 +75,7 @@ public class ByteArchiveReader : FArchive
 
     public override bool TryReadBytes(int count, out ReadOnlyMemory<byte> value)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (count < 0 || Remaining < count)
         {
             value = default;
@@ -84,6 +89,7 @@ public class ByteArchiveReader : FArchive
 
     public override void Seek(long position)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (position < 0 || position > Length)
         {
             throw InvalidSeek(nameof(Seek), Position, Length, position);
@@ -94,6 +100,7 @@ public class ByteArchiveReader : FArchive
 
     public override void Skip(long count)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (count < 0)
         {
             throw InvalidCount(nameof(Skip), Position, Length, count);
@@ -102,12 +109,17 @@ public class ByteArchiveReader : FArchive
         Seek(Position + count);
     }
 
-    protected internal override void RestorePosition(long position) => _position = position;
+    protected internal override void RestorePosition(long position)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _position = position;
+    }
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !_disposed)
         {
+            _disposed = true;
             _owner?.Dispose();
         }
     }

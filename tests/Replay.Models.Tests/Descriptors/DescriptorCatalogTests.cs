@@ -69,6 +69,7 @@ public class DescriptorCatalogTests
         var catalog = new DescriptorCatalog();
         catalog.Add(new TestExportGroupDescriptor());
         catalog.Add(new TestClassNetCacheDescriptor());
+        catalog.AddSubobjectClassPath("Component", "/Script/Test.Component");
 
         catalog.Clear();
 
@@ -76,6 +77,7 @@ public class DescriptorCatalogTests
         {
             Assert.That(catalog.ExportGroupDescriptors, Is.Empty);
             Assert.That(catalog.ClassNetCacheDescriptors, Is.Empty);
+            Assert.That(catalog.SubobjectClassPaths, Is.Empty);
         });
     }
 

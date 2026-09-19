@@ -1,6 +1,6 @@
 namespace Replay.Unreal.Packets;
 
-public sealed class RawPacketStats
+internal sealed class RawPacketStats
 {
     public int PacketCount { get; private set; }
     public long TotalPacketBytes { get; private set; }

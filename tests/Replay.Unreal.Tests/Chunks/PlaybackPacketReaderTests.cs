@@ -74,22 +74,22 @@ public class PlaybackPacketReaderTests
     }
 
     [Test]
-    public void Read_NegativePacketSize_ThrowsInvalidReplayInfoException()
+    public void Read_NegativePacketSize_ThrowsInvalidReplayDataException()
     {
         var context = CreateContext();
         var archive = new FBinaryArchive(BuildFrameWithPacketSize(-1));
 
-        Assert.Throws<InvalidReplayInfoException>(() =>
+        Assert.Throws<InvalidReplayDataException>(() =>
             new PlaybackPacketReader(context, archive).Read());
     }
 
     [Test]
-    public void Read_OversizedPacket_ThrowsInvalidReplayInfoException()
+    public void Read_OversizedPacket_ThrowsInvalidReplayDataException()
     {
         var context = CreateContext();
         var archive = new FBinaryArchive(BuildFrameWithPacketSize((Constants.MaxPacketSizeInBits / 8) + 1));
 
-        Assert.Throws<InvalidReplayInfoException>(() =>
+        Assert.Throws<InvalidReplayDataException>(() =>
             new PlaybackPacketReader(context, archive).Read());
     }
 

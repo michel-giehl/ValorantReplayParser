@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
+using Replay.Models.Errors;
 using Replay.Unreal.Channels;
 
 namespace Replay.Unreal.Bunches.Payload.Stages;
@@ -31,19 +32,10 @@ internal sealed class ActorChannelOpenBunchStage : IBunchPayloadStage
         }
         catch (ArchiveReadException exception)
         {
-            context.ReaderContext.LoggerFactory?
-                .CreateLogger<ActorChannelOpenBunchStage>()
-                .LogError(
-                    exception,
-                    "Failed to open actor channel from packet {PacketId} on channel {ChannelIndex} at payload position {PayloadPosition} of {PayloadLength} bits.",
-                    context.Header.PacketId,
-                    context.Header.ChIndex,
-                    context.Payload.Position,
-                    context.Payload.Length);
-            context.Stats.MalformedPayloadCount++;
-            context.Stats.MalformedActorOpenCount++;
-            context.Payload.SkipRemaining();
-            return BunchStageResult.Stop;
+            throw new InvalidReplayDataException(
+                $"Malformed actor-channel open in packet {context.Header.PacketId} on channel {context.Header.ChIndex} " +
+                $"at payload position {context.Payload.Position} of {context.Payload.Length} bits: {exception.Message}",
+                exception);
         }
     }
 

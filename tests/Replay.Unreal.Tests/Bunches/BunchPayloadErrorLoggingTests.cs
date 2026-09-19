@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
+using Replay.Models.Errors;
 using Replay.Models.Net;
 using Replay.Unreal.Bunches;
 using Replay.Unreal.Bunches.Payload;
@@ -13,7 +14,7 @@ namespace Replay.Unreal.Tests.Bunches;
 public class BunchPayloadErrorLoggingTests
 {
     [Test]
-    public void MustBeMappedGuidsFailure_LogsArchiveException()
+    public void MustBeMappedGuidsFailure_ThrowsContextualDataExceptionWithoutErrorLog()
     {
         var loggerFactory = new CapturingLoggerFactory();
         var readerContext = CreateReaderContext(loggerFactory);
@@ -23,14 +24,15 @@ public class BunchPayloadErrorLoggingTests
             new RawBunchHeader { PacketId = 12, ChIndex = 3, bHasMustBeMappedGUIDs = true },
             payload);
 
-        var result = new MustBeMappedGuidsBunchStage().Process(ref context);
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
+            new MustBeMappedGuidsBunchStage().Process(ref context));
 
-        AssertErrorLog(loggerFactory, result, "must-be-mapped GUIDs", packetId: 12, channelIndex: 3);
-        Assert.That(readerContext.BunchPayloadStats.MalformedMustBeMappedGuidCount, Is.EqualTo(1));
+        AssertContextualFailure(loggerFactory, exception!, "must-be-mapped GUIDs", packetId: 12, channelIndex: 3);
+        Assert.That(readerContext.BunchPayloadStats.MalformedMustBeMappedGuidCount, Is.Zero);
     }
 
     [Test]
-    public void ActorChannelOpenFailure_LogsArchiveException()
+    public void ActorChannelOpenFailure_ThrowsContextualDataExceptionWithoutErrorLog()
     {
         var loggerFactory = new CapturingLoggerFactory();
         var readerContext = CreateReaderContext(loggerFactory);
@@ -43,14 +45,14 @@ public class BunchPayloadErrorLoggingTests
             new ThrowingNewActorSerializer(),
             new NoOpActorChannelLifecycleService());
 
-        var result = stage.Process(ref context);
+        var exception = Assert.Throws<InvalidReplayDataException>(() => stage.Process(ref context));
 
-        AssertErrorLog(loggerFactory, result, "open actor channel", packetId: 21, channelIndex: 5);
-        Assert.That(readerContext.BunchPayloadStats.MalformedActorOpenCount, Is.EqualTo(1));
+        AssertContextualFailure(loggerFactory, exception!, "actor-channel open", packetId: 21, channelIndex: 5);
+        Assert.That(readerContext.BunchPayloadStats.MalformedActorOpenCount, Is.Zero);
     }
 
     [Test]
-    public void ContentBlocksFailure_LogsArchiveException()
+    public void ContentBlocksFailure_ThrowsContextualDataExceptionWithoutErrorLog()
     {
         var loggerFactory = new CapturingLoggerFactory();
         var readerContext = CreateReaderContext(loggerFactory);
@@ -64,37 +66,31 @@ public class BunchPayloadErrorLoggingTests
         };
         var framer = new ContentBlockFramer(new PackageMapReader(readerContext.NetGuidCache), readerContext);
 
-        var result = new ContentBlocksBunchStage(framer).Process(ref context);
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
+            new ContentBlocksBunchStage(framer).Process(ref context));
 
-        AssertErrorLog(loggerFactory, result, "parse content blocks", packetId: 34, channelIndex: 8);
-        Assert.That(readerContext.BunchPayloadStats.MalformedPayloadExceptionCount, Is.EqualTo(1));
+        AssertContextualFailure(loggerFactory, exception!, "content blocks", packetId: 34, channelIndex: 8);
+        Assert.That(readerContext.BunchPayloadStats.MalformedPayloadExceptionCount, Is.Zero);
     }
 
     private static ReplayReaderContext CreateReaderContext(ILoggerFactory loggerFactory) =>
         new(new FBinaryArchive(ReadOnlyMemory<byte>.Empty), loggerFactory: loggerFactory);
 
-    private static void AssertErrorLog(
+    private static void AssertContextualFailure(
         CapturingLoggerFactory loggerFactory,
-        BunchStageResult result,
+        InvalidReplayDataException exception,
         string operation,
         int packetId,
         uint channelIndex)
     {
         Assert.Multiple(() =>
         {
-            Assert.That(result.ShouldContinue, Is.False);
-            Assert.That(loggerFactory.Entries, Has.Count.EqualTo(1));
-        });
-
-        var entry = loggerFactory.Entries.Single();
-        Assert.Multiple(() =>
-        {
-            Assert.That(entry.Level, Is.EqualTo(LogLevel.Error));
-            Assert.That(entry.Exception, Is.TypeOf<ArchiveReadException>());
-            Assert.That(entry.Message, Does.Contain(operation));
-            Assert.That(entry.Message, Does.Contain($"packet {packetId}"));
-            Assert.That(entry.Message, Does.Contain($"channel {channelIndex}"));
-            Assert.That(entry.Message, Does.Contain("payload position"));
+            Assert.That(loggerFactory.Entries, Is.Empty);
+            Assert.That(exception.InnerException, Is.TypeOf<ArchiveReadException>());
+            Assert.That(exception.Message, Does.Contain(operation));
+            Assert.That(exception.Message, Does.Contain($"packet {packetId}"));
+            Assert.That(exception.Message, Does.Contain($"channel {channelIndex}"));
+            Assert.That(exception.Message, Does.Contain("payload position"));
         });
     }
 

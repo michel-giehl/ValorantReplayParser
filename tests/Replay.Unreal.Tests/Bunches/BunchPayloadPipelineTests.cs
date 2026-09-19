@@ -110,7 +110,7 @@ public class BunchPayloadPipelineTests
             w.WriteBit(true);
         });
 
-        Assert.Throws<InvalidReplayInfoException>(() =>
+        Assert.Throws<InvalidReplayDataException>(() =>
             reader.ReadPacket(packet, 0, context.BunchPayloadPipeline.HandleBunchPayload));
     }
 
@@ -744,10 +744,17 @@ public class BunchPayloadPipelineTests
             w.WriteIntPacked(1000);
         });
 
-        reader.ReadPacket(packet, 0, context.BunchPayloadPipeline.HandleBunchPayload);
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
+            reader.ReadPacket(packet, 0, context.BunchPayloadPipeline.HandleBunchPayload));
 
         var stats = context.BunchPayloadStats;
-        Assert.That(stats.MalformedPayloadCount, Is.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.InnerException, Is.TypeOf<ArchiveReadException>());
+            Assert.That(exception.Message, Does.Contain("packet 0"));
+            Assert.That(exception.Message, Does.Contain("channel 10"));
+            Assert.That(stats.MalformedPayloadCount, Is.Zero);
+        });
     }
 
     [Test]
@@ -768,12 +775,14 @@ public class BunchPayloadPipelineTests
             w.WriteIntPacked(1000);
         });
 
-        reader.ReadPacket(packet, 0, context.BunchPayloadPipeline.HandleBunchPayload);
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
+            reader.ReadPacket(packet, 0, context.BunchPayloadPipeline.HandleBunchPayload));
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.EqualTo(1));
-            Assert.That(context.BunchPayloadStats.MalformedContentBlockCount, Is.EqualTo(1));
+            Assert.That(exception!.InnerException, Is.TypeOf<ArchiveReadException>());
+            Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
+            Assert.That(context.BunchPayloadStats.MalformedContentBlockCount, Is.Zero);
             Assert.That(eventSink.Events, Is.Empty);
         });
     }
@@ -851,32 +860,52 @@ public class BunchPayloadPipelineTests
     }
 
     [Test]
-    public void Partial_NonFinalNonBytePayload_DiscardsAccumulator()
+    public void Partial_NonByteAlignedBoundaries_StitchPayload()
     {
         var context = CreateContext();
-        AddOpenChannel(context, 12);
+        AddOpenChannel(context, 11);
         var reader = new RawPacketReader();
+        var payloadBuilder = new PacketBuilder();
+        payloadBuilder.BeginPayload();
+        payloadBuilder.WriteBit(true);
+        payloadBuilder.WriteBit(true);
+        payloadBuilder.WriteIntPacked(16);
+        payloadBuilder.WriteBits(6, 0x15);
+        payloadBuilder.WriteBits(10, 0x2A);
+        var completePayloadBits = payloadBuilder.PayloadBits;
 
         var p1 = BuildPacket(w =>
         {
-            WriteBunchHeaderBits(w, chIndex: 12, bReliable: true, bPartial: true, bPartialInitial: true, bPartialFinal: false);
+            WriteBunchHeaderBits(w, chIndex: 11, bReliable: true, bPartial: true, bPartialInitial: true, bPartialFinal: false);
             w.BeginPayload();
-            w.WriteBits(6, 0x15);
+            w.WriteBits(completePayloadBits.Take(3).ToList());
         });
         reader.ReadPacket(p1, 0, context.BunchPayloadPipeline.HandleBunchPayload);
 
         var p2 = BuildPacket(w =>
         {
-            WriteBunchHeaderBits(w, chIndex: 12, bReliable: true, bPartial: true, bPartialInitial: false, bPartialFinal: true);
+            WriteBunchHeaderBits(w, chIndex: 11, bReliable: true, bPartial: true, bPartialInitial: false, bPartialFinal: false);
+            w.BeginPayload();
+            w.WriteBits(completePayloadBits.Skip(3).Take(7).ToList());
         });
         reader.ReadPacket(p2, 1, context.BunchPayloadPipeline.HandleBunchPayload);
 
-        var stats = context.BunchPayloadStats;
+        var p3 = BuildPacket(w =>
+        {
+            WriteBunchHeaderBits(w, chIndex: 11, bReliable: true, bPartial: true, bPartialInitial: false, bPartialFinal: true);
+            w.BeginPayload();
+            w.WriteBits(completePayloadBits.Skip(10).ToList());
+        });
+        reader.ReadPacket(p3, 2, context.BunchPayloadPipeline.HandleBunchPayload);
+
         Assert.Multiple(() =>
         {
-            Assert.That(stats.PartialErrorCount, Is.EqualTo(2));
-            Assert.That(stats.CompletedPartialBunchCount, Is.EqualTo(0));
-            Assert.That(stats.ContentBlockCount, Is.EqualTo(0));
+            Assert.That(context.BunchPayloadStats.PartialFragmentCount, Is.EqualTo(3));
+            Assert.That(context.BunchPayloadStats.CompletedPartialBunchCount, Is.EqualTo(1));
+            Assert.That(context.BunchPayloadStats.ContentBlockCount, Is.EqualTo(1));
+            Assert.That(context.BunchPayloadStats.ActorContentBlockCount, Is.EqualTo(1));
+            Assert.That(context.BunchPayloadStats.ContentPayloadBitsSkipped, Is.EqualTo(16));
+            Assert.That(context.BunchPayloadStats.PartialErrorCount, Is.Zero);
         });
     }
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
+using Replay.Models.Diagnostics;
 using Replay.Models.Events;
 using Replay.Models.Replay;
 using Replay.Unreal.Bunches;
@@ -12,7 +13,7 @@ using Replay.Unreal.Parsing;
 
 namespace Replay.Unreal.Readers;
 
-public class ReplayReaderContext
+internal sealed class ReplayReaderContext : IDisposable
 {
     public ReplayReaderContext(
         FBinaryArchive archive,
@@ -20,13 +21,15 @@ public class ReplayReaderContext
         DescriptorCatalog? descriptorCatalog = null,
         ParseProfile? parseProfile = null,
         ILoggerFactory? loggerFactory = null,
-        NetGuidCache? netGuidCache = null)
+        NetGuidCache? netGuidCache = null,
+        ReplayDiagnosticCollector? diagnostics = null)
     {
         Archive = archive;
         BunchPayloadStats = new BunchPayloadStats();
         EventSink = eventSink ?? NullReplayEventSink.Instance;
         ParseProfile = parseProfile ?? ParseProfile.Default;
         LoggerFactory = loggerFactory;
+        Diagnostics = diagnostics ?? new ReplayDiagnosticCollector();
         NetGuidCache = netGuidCache ?? new NetGuidCache();
         ExportBindingRegistry = new ExportBindingRegistry(descriptorCatalog, ParseProfile);
         BunchPayloadPipeline = new BunchPayloadPipeline(this);
@@ -51,4 +54,11 @@ public class ReplayReaderContext
     public ExportBindingRegistry ExportBindingRegistry { get; }
     public ParseProfile ParseProfile { get; set; }
     public ILoggerFactory? LoggerFactory { get; }
+    internal ReplayDiagnosticCollector Diagnostics { get; }
+    internal ReplayReadStatus ReadStatus => Diagnostics.Status;
+    internal IReadOnlyList<ReplayDiagnostic> ReadDiagnostics => Diagnostics.Diagnostics;
+    internal long TotalDiagnosticCount => Diagnostics.TotalDiagnosticCount;
+    internal long SuppressedDiagnosticCount => Diagnostics.SuppressedDiagnosticCount;
+
+    public void Dispose() => BunchPayloadPipeline.Dispose();
 }

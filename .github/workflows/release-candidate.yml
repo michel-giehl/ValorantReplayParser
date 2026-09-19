@@ -1,0 +1,73 @@
+name: Release Candidate Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Prerelease SemVer version to validate
+        required: true
+        type: string
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate requested source version
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          $preReleaseIdentifier = '(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)'
+          $semVerPattern = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-' + $preReleaseIdentifier + '(?:\.' + $preReleaseIdentifier + ')*(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$'
+          if ($env:RELEASE_VERSION -notmatch $semVerPattern) {
+            throw "'$env:RELEASE_VERSION' is not a prerelease SemVer version."
+          }
+
+          [xml] $packageProps = Get-Content build/LibraryPackage.props -Raw
+          $sourceVersionElement = @($packageProps.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+          $sourceVersion = if ($null -eq $sourceVersionElement) { $null } else { $sourceVersionElement.InnerText }
+          if ([string]::IsNullOrWhiteSpace($sourceVersion) -or $env:RELEASE_VERSION -ne $sourceVersion) {
+            throw "Requested version '$env:RELEASE_VERSION' must equal the package source version '$sourceVersion'."
+          }
+
+  validate:
+    name: Validate ${{ inputs.version }} on ${{ matrix.os }}
+    needs: validate-version
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET SDK from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore solution
+        run: dotnet restore ValorantReplayParser.sln -p:Configuration=Release
+      - name: Build solution
+        run: dotnet build ValorantReplayParser.sln --configuration Release --no-restore
+      - name: Test all projects
+        run: dotnet test ValorantReplayParser.sln --configuration Release --no-build --no-restore --results-directory artifacts/test-results --logger trx
+        env:
+          SNAPSHOOTER_STRICT_MODE: true
+      - name: Validate NuGet packages with an isolated consumer
+        shell: pwsh
+        run: pwsh -File build/Test-Packages.ps1 -Version $env:RELEASE_VERSION
+      - name: Upload release-candidate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ inputs.version }}-${{ github.sha }}-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+            artifacts/test-results/*.trx
+            artifacts/test-results/**/*.trx

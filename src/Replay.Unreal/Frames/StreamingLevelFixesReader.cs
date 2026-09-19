@@ -4,7 +4,7 @@ using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Frames;
 
-public class StreamingLevelFixesReader
+internal sealed class StreamingLevelFixesReader
 {
     private readonly ReplayReaderContext _context;
     private readonly FBinaryArchive _archive;

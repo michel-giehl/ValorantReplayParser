@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using Replay.Encoding.Archives;
 using Replay.Encoding.Compression;
+using Replay.Models.Descriptors;
+using Replay.Models.Diagnostics;
 using Replay.Models.Errors;
 using Replay.Models.Protocol;
 using Replay.Models.Replay;
@@ -28,9 +30,105 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.ReplayInfo.HeaderChunkIndex, Is.EqualTo(0));
-            Assert.That(context.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
-            Assert.That(context.ReplayVersion.Branch, Is.EqualTo("++Ares-Core+release-12.10"));
+            Assert.That(context.Metadata.ReplayInfo.HeaderChunkIndex, Is.EqualTo(0));
+            Assert.That(context.Metadata.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
+            Assert.That(context.Metadata.ReplayVersion.Branch, Is.EqualTo("++Ares-Core+release-12.10"));
+        });
+    }
+
+    [Test]
+    public void Read_Stream_LeavesBorrowedStreamOpenAndResultUsableAfterDisposal()
+    {
+        var stream = new MemoryStream(BuildReplayInfo(chunks: [HeaderChunk(BuildHeader())]));
+        var result = new ValorantReplayReader().Read(stream);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(stream.CanRead, Is.True);
+            Assert.That(stream.Position, Is.EqualTo(stream.Length));
+            Assert.That(result.Metadata.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
+            Assert.That(result.Status, Is.EqualTo(ReplayReadStatus.Completed));
+        });
+
+        stream.Dispose();
+
+        Assert.That(result.Metadata.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
+        Assert.That(result.Metadata.ReplayInfo.Chunks, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void Read_ReaderCanBeReusedSequentially()
+    {
+        var replayBytes = BuildReplayInfo(chunks: [HeaderChunk(BuildHeader())]);
+        var reader = new ValorantReplayReader();
+
+        var firstResult = reader.Read(new FBinaryArchive(replayBytes));
+        var secondResult = reader.Read(new FBinaryArchive(replayBytes));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstResult.Metadata.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
+            Assert.That(secondResult.Metadata.ReplayHeader.Guid, Is.EqualTo(HeaderGuid));
+            Assert.That(firstResult.Status, Is.EqualTo(ReplayReadStatus.Completed));
+            Assert.That(secondResult.Status, Is.EqualTo(ReplayReadStatus.Completed));
+        });
+    }
+
+    [Test]
+    public void SnapshotParseProfile_PreservesSelectionSetComparers()
+    {
+        var profile = new ParseProfile
+        {
+            IncludedPaths = new HashSet<string>(["/Game/Test.Path"], StringComparer.OrdinalIgnoreCase),
+            ExcludedPaths = new HashSet<string>(["/Game/Other.Path"], StringComparer.OrdinalIgnoreCase),
+            IncludedFields = new HashSet<string>(["SomeField"], StringComparer.OrdinalIgnoreCase),
+        };
+
+        var snapshot = ValorantReplayReader.SnapshotParseProfile(profile);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(snapshot.IncludedPaths!.Contains("/game/test.path"), Is.True);
+            Assert.That(snapshot.ExcludedPaths!.Contains("/game/other.path"), Is.True);
+            Assert.That(snapshot.IncludedFields!.Contains("somefield"), Is.True);
+        });
+    }
+
+    [Test]
+    public void Read_ReentrantReadIsRejectedAndGuardResetsAfterFailure()
+    {
+        var decompressor = new CallbackOodleDecompressor([0xAA]);
+        var reader = new ValorantReplayReader(decompressor, new NoOpReplayDataChunkHandler());
+        var nestedReplay = BuildReplayInfo(chunks: [HeaderChunk(BuildHeader())]);
+        using var reentrantReadStream = new MemoryStream(nestedReplay);
+        using var reentrantMetadataStream = new MemoryStream(nestedReplay);
+        InvalidOperationException? reentrantReadException = null;
+        InvalidOperationException? reentrantMetadataException = null;
+        decompressor.OnDecompress = () =>
+        {
+            reentrantReadException = Assert.Throws<InvalidOperationException>(() => reader.Read(reentrantReadStream));
+            reentrantMetadataException = Assert.Throws<InvalidOperationException>(() => reader.ReadMetadata(reentrantMetadataStream));
+            throw reentrantReadException!;
+        };
+        var replayBytes = BuildReplayInfo(
+            compressed: true,
+            chunks:
+            [
+                HeaderChunk(BuildHeader()),
+                ReplayDataChunk(0, 10, BuildOodlePayload(1, [0x10])),
+            ]);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => reader.Read(new FBinaryArchive(replayBytes)));
+        var result = reader.Read(new FBinaryArchive(replayBytes));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain("concurrent or reentrant"));
+            Assert.That(reentrantReadException!.Message, Does.Contain("concurrent or reentrant"));
+            Assert.That(reentrantMetadataException!.Message, Does.Contain("concurrent or reentrant"));
+            Assert.That(reentrantReadStream.Position, Is.Zero);
+            Assert.That(reentrantMetadataStream.Position, Is.Zero);
+            Assert.That(result.Metadata.ReplayInfo.DataChunks, Has.Count.EqualTo(1));
         });
     }
 
@@ -82,7 +180,7 @@ public class ValorantReplayReaderTests
         ]));
 
         var exception = Assert.Throws<InvalidReplayInfoException>(() =>
-            new ValorantReplayReader(replayDataChunkHandler: handler).Read(archive));
+            new ValorantReplayReader(new FakeOodleDecompressor(), chunkHandler: handler).Read(archive));
 
         Assert.Multiple(() =>
         {
@@ -121,13 +219,13 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.ReplayInfo.DataChunks, Has.Count.EqualTo(1));
+            Assert.That(context.Metadata.ReplayInfo.DataChunks, Has.Count.EqualTo(1));
             Assert.That(replayDataHandler.Payloads, Is.EqualTo(new[] { new byte[] { 0xAA, 0xBB } }));
         });
     }
 
     [Test]
-    public void Read_EncryptedReplayData_ThrowsInvalidReplayInfoException()
+    public void Read_EncryptedReplayData_ThrowsInvalidReplayDataException()
     {
         var archive = new FBinaryArchive(BuildReplayInfo(
             compressed: true,
@@ -139,7 +237,7 @@ public class ValorantReplayReaderTests
                 ReplayDataChunk(0, 10, BuildOodlePayload(1, [0x10])),
             ]));
 
-        var exception = Assert.Throws<InvalidReplayInfoException>(() =>
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
             new ValorantReplayReader(new FakeOodleDecompressor([0xAA])).Read(archive));
 
         Assert.That(exception!.Message, Does.Contain("Encrypted VALORANT replay-data chunks are not supported"));
@@ -158,7 +256,7 @@ public class ValorantReplayReaderTests
     }
 
     [Test]
-    public void Read_ReplayDataMetadataCannotReadPastDeclaredChunkSize_ThrowsInvalidReplayInfoException()
+    public void Read_ReplayDataMetadataCannotReadPastDeclaredChunkSize_ThrowsInvalidReplayDataException()
     {
         var archive = new FBinaryArchive(BuildReplayInfo(chunks:
         [
@@ -166,7 +264,7 @@ public class ValorantReplayReaderTests
             RawChunk(ReplayChunkType.ReplayData, 15, new byte[15]),
         ]));
 
-        Assert.Throws<InvalidReplayInfoException>(() =>
+        Assert.Throws<InvalidReplayDataException>(() =>
             new ValorantReplayReader(new FakeOodleDecompressor()).Read(archive));
     }
 
@@ -180,16 +278,16 @@ public class ValorantReplayReaderTests
             ReplayDataChunk(10, 20, [0x03, 0x04, 0x05], memorySizeInBytes: 3),
         ]));
 
-        var context = new ValorantReplayReader(replayDataChunkHandler: new NoOpReplayDataChunkHandler()).Read(archive);
+        var context = new ValorantReplayReader(new FakeOodleDecompressor(), new NoOpReplayDataChunkHandler()).Read(archive);
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.ReplayInfo.DataChunks, Has.Count.EqualTo(2));
-            Assert.That(context.ReplayInfo.DataChunks[0].Time1, Is.EqualTo(1u));
-            Assert.That(context.ReplayInfo.DataChunks[0].Time2, Is.EqualTo(10u));
-            Assert.That(context.ReplayInfo.DataChunks[1].Time1, Is.EqualTo(10u));
-            Assert.That(context.ReplayInfo.DataChunks[1].Time2, Is.EqualTo(20u));
-            Assert.That(context.ReplayInfo.TotalDataSizeInBytes, Is.EqualTo(5));
+            Assert.That(context.Metadata.ReplayInfo.DataChunks, Has.Count.EqualTo(2));
+            Assert.That(context.Metadata.ReplayInfo.DataChunks[0].Time1, Is.EqualTo(1u));
+            Assert.That(context.Metadata.ReplayInfo.DataChunks[0].Time2, Is.EqualTo(10u));
+            Assert.That(context.Metadata.ReplayInfo.DataChunks[1].Time1, Is.EqualTo(10u));
+            Assert.That(context.Metadata.ReplayInfo.DataChunks[1].Time2, Is.EqualTo(20u));
+            Assert.That(context.Metadata.ReplayInfo.TotalDataSizeInBytes, Is.EqualTo(5));
         });
     }
 
@@ -202,10 +300,10 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.ReplayInfo.Chunks, Has.Count.EqualTo(2));
-            Assert.That(context.ReplayInfo.HeaderChunkIndex, Is.EqualTo(1));
-            Assert.That(context.ReplayInfo.Chunks[1].DataOffset,
-                Is.GreaterThan(context.ReplayInfo.Chunks[0].DataOffset));
+            Assert.That(context.Metadata.ReplayInfo.Chunks, Has.Count.EqualTo(2));
+            Assert.That(context.Metadata.ReplayInfo.HeaderChunkIndex, Is.EqualTo(1));
+            Assert.That(context.Metadata.ReplayInfo.Chunks[1].DataOffset,
+                Is.GreaterThan(context.Metadata.ReplayInfo.Chunks[0].DataOffset));
         });
     }
 
@@ -493,6 +591,20 @@ public class ValorantReplayReaderTests
         public ReadOnlyMemory<byte> Decompress(ReadOnlySpan<byte> compressed, int decompressedSize)
         {
             var output = _outputs.Dequeue();
+            Assert.That(output.Length, Is.EqualTo(decompressedSize));
+            return output;
+        }
+    }
+
+    private sealed class CallbackOodleDecompressor(byte[] output) : IOodleDecompressor
+    {
+        public Action? OnDecompress { get; set; }
+
+        public ReadOnlyMemory<byte> Decompress(ReadOnlySpan<byte> compressed, int decompressedSize)
+        {
+            var callback = OnDecompress;
+            OnDecompress = null;
+            callback?.Invoke();
             Assert.That(output.Length, Is.EqualTo(decompressedSize));
             return output;
         }

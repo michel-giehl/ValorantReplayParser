@@ -22,6 +22,7 @@ internal sealed class ContentBlockFramer
     private readonly ExportBindingRegistry _bindingRegistry;
     private readonly IPropertyPayloadDecoder? _propertyPayloadDecoder;
     private readonly ILoggerFactory? _loggerFactory;
+    private readonly ReplayDiagnosticCollector? _diagnostics;
 
     public ContentBlockFramer(
         PackageMapReader packageMapReader,
@@ -52,7 +53,8 @@ internal sealed class ContentBlockFramer
             new FieldPayloadParser(),
             context.ExportBindingRegistry,
             propertyPayloadDecoder,
-            context.LoggerFactory)
+            context.LoggerFactory,
+            context.Diagnostics)
     {
     }
 
@@ -63,16 +65,18 @@ internal sealed class ContentBlockFramer
         FieldPayloadParser fieldPayloadParser,
         ExportBindingRegistry? bindingRegistry,
         IPropertyPayloadDecoder? propertyPayloadDecoder,
-        ILoggerFactory? loggerFactory)
+        ILoggerFactory? loggerFactory,
+        ReplayDiagnosticCollector? diagnostics = null)
     {
         _headerReader = new ContentBlockHeaderReader(packageMapReader);
-        _pathResolver = new ContentBlockPathResolver(netGuidCache);
         _netGuidCache = netGuidCache;
         _eventSink = eventSink;
         _fieldPayloadParser = fieldPayloadParser;
         _bindingRegistry = bindingRegistry ?? new ExportBindingRegistry();
+        _pathResolver = new ContentBlockPathResolver(netGuidCache, _bindingRegistry);
         _propertyPayloadDecoder = propertyPayloadDecoder;
         _loggerFactory = loggerFactory;
+        _diagnostics = diagnostics;
     }
 
     public void FrameContentBlocks(
@@ -94,10 +98,7 @@ internal sealed class ContentBlockFramer
                 continue;
             }
 
-            if (!TryReadContentPayloadBitCount(payload, stats, out var contentPayloadBitCount))
-            {
-                return;
-            }
+            var contentPayloadBitCount = ReadContentPayloadBitCount(payload);
 
             if (header.HasRepLayout)
             {
@@ -147,22 +148,21 @@ internal sealed class ContentBlockFramer
         }
     }
 
-    private static bool TryReadContentPayloadBitCount(
-        FBitArchive payload,
-        BunchPayloadStats stats,
-        out int bitCount)
+    private static int ReadContentPayloadBitCount(FBitArchive payload)
     {
         var encodedBitCount = payload.ReadIntPacked();
         if (encodedBitCount > int.MaxValue || encodedBitCount > payload.BitsRemaining)
         {
-            stats.MalformedPayloadCount++;
-            stats.MalformedContentBlockCount++;
-            bitCount = 0;
-            return false;
+            throw new ArchiveReadException(
+                ArchiveErrorCode.InvalidBitCount,
+                nameof(ReadContentPayloadBitCount),
+                payload.Position,
+                payload.Length,
+                encodedBitCount,
+                $"Content payload declares {encodedBitCount} bits with {payload.BitsRemaining} remaining.");
         }
 
-        bitCount = (int)encodedBitCount;
-        return true;
+        return (int)encodedBitCount;
     }
 
     private void HandleDeletedContentBlock(
@@ -243,7 +243,7 @@ internal sealed class ContentBlockFramer
         }
 
         using var decodedPayload = DecodeContentPayload(payload, payloadBits, channel, replayVersionBranch);
-        var context = CreateDecodeContext(exportGroupPath, channel, header, timeSeconds, packetId);
+        var context = CreateDecodeContext(exportGroupPath, channel, header, timeSeconds, packetId, stats);
         var beforeRepLayout = decodedPayload.BitsRemaining;
         var result = _fieldPayloadParser.ParseRepLayoutProperties(decodedPayload, boundGroup, ref context);
         var parsedBits = checked((int)(beforeRepLayout - decodedPayload.BitsRemaining));
@@ -323,7 +323,7 @@ internal sealed class ContentBlockFramer
         }
 
         using var decodedPayload = DecodeContentPayload(payload, payloadBits, channel, replayVersionBranch);
-        var context = CreateDecodeContext(classPath, channel, header, timeSeconds, packetId);
+        var context = CreateDecodeContext(classPath, channel, header, timeSeconds, packetId, stats);
         var beforeClassNetCache = decodedPayload.BitsRemaining;
         var invocations = _fieldPayloadParser.ParseClassNetCachePayload(decodedPayload, boundCache, ref context);
         var parsedBits = checked((int)(beforeClassNetCache - decodedPayload.BitsRemaining));
@@ -376,7 +376,8 @@ internal sealed class ContentBlockFramer
         ActorChannelState channel,
         ContentBlockHeader header,
         float timeSeconds,
-        int packetId) => new()
+        int packetId,
+        BunchPayloadStats stats) => new()
     {
         NetGuidCache = _netGuidCache,
         LoggerFactory = _loggerFactory,
@@ -387,6 +388,7 @@ internal sealed class ContentBlockFramer
         ActorNetGuid = channel.ActorNetGuid,
         ObjectNetGuid = GetObjectNetGuid(header, channel),
         ExportGroupPath = exportGroupPath,
+        Diagnostics = _diagnostics,
     };
 
     private void EmitExportGroupReceived(

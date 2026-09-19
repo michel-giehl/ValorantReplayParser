@@ -7,7 +7,7 @@ using Replay.Unreal.Bunches;
 
 namespace Replay.Unreal.PackageMap;
 
-public class PackageMapReader
+internal sealed class PackageMapReader
 {
     private readonly NetGuidObjectReader _objectReader;
 
@@ -21,14 +21,14 @@ public class PackageMapReader
         var bHasRepLayoutExport = payload.ReadBit();
         if (bHasRepLayoutExport)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 "Package-map export with bHasRepLayoutExport is not supported in this parser version.");
         }
 
         var numGUIDs = payload.ReadInt32();
         if (numGUIDs < 0 || numGUIDs > Constants.MaxGuidCount)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 $"Package-map export GUID count {numGUIDs} exceeds maximum {Constants.MaxGuidCount}.");
         }
 

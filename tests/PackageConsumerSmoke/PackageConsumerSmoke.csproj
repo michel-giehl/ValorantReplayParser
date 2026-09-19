@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ValorantReplayParser" Version="$(PackageUnderTestVersion)" />
+  </ItemGroup>
+
+  <Target Name="RequirePackageUnderTestVersion" BeforeTargets="CollectPackageReferences;Restore;Build;Pack">
+    <Error Condition="'$(PackageUnderTestVersion)' == ''"
+           Text="PackageUnderTestVersion is required. Pass -p:PackageUnderTestVersion=&lt;version&gt;." />
+  </Target>
+</Project>

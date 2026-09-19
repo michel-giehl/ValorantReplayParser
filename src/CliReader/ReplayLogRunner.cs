@@ -26,20 +26,21 @@ internal sealed class ReplayLogRunner
         using var archive = new FBinaryArchive(file);
 
         var actorEventLogger = new ActorEventLogger(_loggerFactory.CreateLogger<ActorEventLogger>());
-        var context = ValorantReplayReader.CreateDefault(
+        var result = ValorantReplayReader.CreateDefault(
             _loggerFactory,
             actorEventLogger,
             ParseProfile.Default).Read(archive);
+        var metadata = result.Metadata;
 
         Console.WriteLine($"Took: {stopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"Read replay {context.ReplayInfo.FriendlyName}");
-        Console.WriteLine($"Version {context.ReplayVersion.Branch}");
-        Console.WriteLine($"Chunks {context.ReplayInfo.Chunks.Count}");
-        Console.WriteLine($"Timestamp {context.ReplayInfo.Timestamp}");
-        Console.WriteLine($"Duration {TimeSpan.FromMilliseconds(context.ReplayInfo.LengthInMs)}");
+        Console.WriteLine($"Read replay {metadata.ReplayInfo.FriendlyName}");
+        Console.WriteLine($"Version {metadata.ReplayVersion.Branch}");
+        Console.WriteLine($"Chunks {metadata.ReplayInfo.Chunks.Count}");
+        Console.WriteLine($"Timestamp {metadata.ReplayInfo.Timestamp}");
+        Console.WriteLine($"Duration {TimeSpan.FromMilliseconds(metadata.ReplayInfo.LengthInMs)}");
         Console.WriteLine($"File Size {file.Length / 1_000_000} MB");
         Console.WriteLine(
-            $"Packet Stats: Bunch Count={context.PacketStats.BunchCount}\tPacket Count={context.PacketStats.PacketCount}\tMalformedPacketCount={context.PacketStats.MalformedPacketCount}\tPartialErrorCount={context.PacketStats.PartialErrorCount}\tTTL Bytes={context.PacketStats.TotalPacketBytes / 1_000_000} MB");
+            $"Packet Stats: Bunch Count={result.PacketStats.BunchCount}\tPacket Count={result.PacketStats.PacketCount}\tMalformedPacketCount={result.PacketStats.MalformedPacketCount}\tPartialErrorCount={result.PacketStats.PartialErrorCount}\tTTL Bytes={result.PacketStats.TotalPacketBytes / 1_000_000} MB");
         actorEventLogger.LogSummary();
     }
 }

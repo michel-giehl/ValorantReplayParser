@@ -7,12 +7,21 @@ internal sealed class DescriptorCatalogIndex
     private static readonly StringComparer PathComparer = StringComparer.Ordinal;
 
     private readonly Dictionary<string, ExportGroupDescriptor> _exportDescriptorsByPath = new(PathComparer);
+    private readonly Dictionary<string, ExportGroupDescriptor> _exportDescriptorAliasesByPath = new(PathComparer);
     private readonly Dictionary<string, ExportGroupKind> _exportKindsByDefaultObjectName = new(PathComparer);
     private readonly Dictionary<string, ClassNetCacheDescriptor> _cacheDescriptorsByPath = new(PathComparer);
+    private readonly Dictionary<string, string> _subobjectClassPaths = new(PathComparer);
+    private IReplayPathAliasProvider? _pathAliasProvider;
 
     public void SetCatalog(DescriptorCatalog descriptorCatalog)
     {
         Clear();
+        _pathAliasProvider = descriptorCatalog.PathAliasProvider;
+
+        foreach (var (objectName, classPath) in descriptorCatalog.SubobjectClassPaths)
+        {
+            _subobjectClassPaths.Add(objectName, classPath);
+        }
 
         foreach (var descriptor in descriptorCatalog.ExportGroupDescriptors)
         {
@@ -29,15 +38,23 @@ internal sealed class DescriptorCatalogIndex
     public void Clear()
     {
         _exportDescriptorsByPath.Clear();
+        _exportDescriptorAliasesByPath.Clear();
         _exportKindsByDefaultObjectName.Clear();
         _cacheDescriptorsByPath.Clear();
+        _subobjectClassPaths.Clear();
+        _pathAliasProvider = null;
     }
 
+    public string? GetSubobjectClassPath(string objectName) =>
+        _subobjectClassPaths.GetValueOrDefault(objectName);
+
+    public IReplayPathAliasProvider? PathAliasProvider => _pathAliasProvider;
+
     public bool TryGetExportDescriptor(string path, out ExportGroupDescriptor descriptor) =>
-        TryGetByLookup(_exportDescriptorsByPath, path, ReplayPath.LookupKeys, out descriptor!);
+        TryGetExportByLookup(ReplayPath.LookupKeys(path, _pathAliasProvider), out descriptor!);
 
     public bool TryGetClassNetCacheDescriptor(string path, out ClassNetCacheDescriptor descriptor) =>
-        TryGetByLookup(_cacheDescriptorsByPath, path, ReplayPath.ClassNetCacheLookupKeys, out descriptor!);
+        TryGetByLookup(_cacheDescriptorsByPath, ReplayPath.ClassNetCacheLookupKeys(path, _pathAliasProvider), out descriptor!);
 
     public ExportGroupKind GetExportGroupKind(string path) =>
         TryGetExportDescriptor(path, out var descriptor)
@@ -60,24 +77,18 @@ internal sealed class DescriptorCatalogIndex
 
     private void IndexExportDescriptor(ExportGroupDescriptor descriptor)
     {
-        foreach (var key in ReplayPath.LookupKeys(descriptor.Path))
-        {
-            _exportDescriptorsByPath[key] = descriptor;
-        }
+        _exportDescriptorsByPath[descriptor.Path] = descriptor;
 
         if (ReplayPath.GetDefaultObjectName(descriptor.Path) is { } defaultObjectName)
         {
-            _exportDescriptorsByPath[defaultObjectName] = descriptor;
+            _exportDescriptorAliasesByPath[defaultObjectName] = descriptor;
             _exportKindsByDefaultObjectName[defaultObjectName] = descriptor.Kind;
         }
     }
 
     private void IndexClassNetCacheDescriptor(ClassNetCacheDescriptor descriptor)
     {
-        foreach (var key in ReplayPath.ClassNetCacheLookupKeys(descriptor.Path))
-        {
-            _cacheDescriptorsByPath[key] = descriptor;
-        }
+        _cacheDescriptorsByPath[descriptor.Path] = descriptor;
     }
 
     private void IndexRpcParameterDescriptors(ClassNetCacheDescriptor descriptor)
@@ -113,11 +124,10 @@ internal sealed class DescriptorCatalogIndex
 
     private static bool TryGetByLookup<TValue>(
         Dictionary<string, TValue> valuesByPath,
-        string path,
-        Func<string, IEnumerable<string>> lookupKeys,
+        IEnumerable<string> keys,
         out TValue value)
     {
-        foreach (var key in lookupKeys(path))
+        foreach (var key in keys)
         {
             if (valuesByPath.TryGetValue(key, out value!))
             {
@@ -126,6 +136,23 @@ internal sealed class DescriptorCatalogIndex
         }
 
         value = default!;
+        return false;
+    }
+
+    private bool TryGetExportByLookup(
+        IEnumerable<string> keys,
+        out ExportGroupDescriptor descriptor)
+    {
+        foreach (var key in keys)
+        {
+            if (_exportDescriptorsByPath.TryGetValue(key, out descriptor!) ||
+                _exportDescriptorAliasesByPath.TryGetValue(key, out descriptor!))
+            {
+                return true;
+            }
+        }
+
+        descriptor = default!;
         return false;
     }
 }

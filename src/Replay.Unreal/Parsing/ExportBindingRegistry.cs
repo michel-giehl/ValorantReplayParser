@@ -9,6 +9,7 @@ public sealed class ExportBindingRegistry
     private readonly BoundExportStore _store = new();
     private readonly ParseProfile _parseProfile;
     private ReplayExportBinder _binder;
+    private long _catalogRevision;
 
     public ExportBindingRegistry(
         DescriptorCatalog? descriptorCatalog = null,
@@ -26,7 +27,9 @@ public sealed class ExportBindingRegistry
     {
         Clear();
         _catalogIndex.SetCatalog(descriptorCatalog);
+        _store.SetPathAliasProvider(_catalogIndex.PathAliasProvider);
         _binder = new ReplayExportBinder(_catalogIndex, _store, _parseProfile);
+        _catalogRevision = checked(_catalogRevision + 1);
     }
 
     public void OnExportGroupAdded(NetFieldExportGroup replayGroup) =>
@@ -54,6 +57,13 @@ public sealed class ExportBindingRegistry
     }
 
     public BoundExportGroup? GetBoundGroup(string path) => _store.GetBoundGroup(path);
+
+    internal string? GetSubobjectClassPath(string objectName) =>
+        _catalogIndex.GetSubobjectClassPath(objectName);
+
+    internal string? GetAlternatePath(string path) => _catalogIndex.PathAliasProvider?.GetAlternatePath(path);
+
+    internal long CatalogRevision => _catalogRevision;
 
     public BoundExportGroup? GetBoundGroupByIndex(uint pathNameIndex) => _store.GetBoundGroupByIndex(pathNameIndex);
 

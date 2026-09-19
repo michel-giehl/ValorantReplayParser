@@ -5,7 +5,12 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>Replay.Encoding</RootNamespace>
+        <IsPackable>true</IsPackable>
+        <PackageId>ValorantReplayParser.Encoding</PackageId>
+        <Description>Wire decoding primitives, Unreal archives, and VALORANT payload transforms.</Description>
     </PropertyGroup>
+
+    <Import Project="$(MSBuildThisFileDirectory)..\..\build\LibraryPackage.props" />
 
     <ItemGroup>
       <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />

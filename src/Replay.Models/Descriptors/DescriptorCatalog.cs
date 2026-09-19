@@ -4,6 +4,18 @@ public sealed class DescriptorCatalog
 {
     private readonly List<ExportGroupDescriptor> _exportGroupDescriptors = [];
     private readonly List<ClassNetCacheDescriptor> _classNetCacheDescriptors = [];
+    private readonly Dictionary<string, string> _subobjectClassPaths = new(StringComparer.Ordinal);
+
+    public IReadOnlyDictionary<string, string> SubobjectClassPaths => _subobjectClassPaths;
+
+    public IReplayPathAliasProvider? PathAliasProvider { get; init; }
+
+    public void AddSubobjectClassPath(string objectName, string classPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(objectName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(classPath);
+        _subobjectClassPaths.Add(objectName, classPath);
+    }
 
     public IReadOnlyList<ExportGroupDescriptor> ExportGroupDescriptors => _exportGroupDescriptors;
 
@@ -31,5 +43,6 @@ public sealed class DescriptorCatalog
     {
         _exportGroupDescriptors.Clear();
         _classNetCacheDescriptors.Clear();
+        _subobjectClassPaths.Clear();
     }
 }

@@ -5,7 +5,7 @@ using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Chunks;
 
-public sealed class NoOpReplayDataChunkHandler : IReplayDataChunkHandler
+internal sealed class NoOpReplayDataChunkHandler : IReplayDataChunkHandler
 {
     public void Handle(ReplayReaderContext context, FBinaryArchive replayDataArchive)
     {

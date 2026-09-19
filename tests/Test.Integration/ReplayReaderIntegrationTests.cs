@@ -1,14 +1,13 @@
 using Replay.Encoding.Archives;
-using Replay.Encoding.Compression;
 using Replay.Models.Errors;
+using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Models.Replay;
-using Replay.Unreal.Chunks;
 using Replay.Unreal.Header;
 using Replay.Unreal.Readers;
 using Replay.Valorant;
-using Replay.Valorant.Descriptors;
 using Snapshooter.NUnit;
+using System.Runtime.ExceptionServices;
 
 namespace Test.Integration;
 
@@ -93,35 +92,47 @@ public class ReplayReaderIntegrationTests
     {
         var replayBytes = TestHelper.ReadReplayBytes("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf");
         var eventSink = new CapturingReplayEventSink();
-        var context = new ValorantReplayReader(
-            new OozSharpOodleDecompressor(),
-            eventSink: eventSink,
-            descriptorCatalog: ValorantDescriptors.CreateCatalog()).Read(new FBinaryArchive(replayBytes));
+        var result = new ValorantReplayReader(eventSink: eventSink).Read(new FBinaryArchive(replayBytes));
 
         var spawnedEvents = eventSink.Events.OfType<ActorSpawned>().ToArray();
         var closedEvents = eventSink.Events.OfType<ActorClosed>().ToArray();
         var exportGroupEvents = eventSink.Events.OfType<ExportGroupReceived>().ToArray();
         Assert.Multiple(() =>
         {
-            Assert.That(context.ChannelStates, Is.Not.Empty);
-            Assert.That(context.ActorChannelOpens, Is.Not.Empty);
-            Assert.That(context.BunchPayloadStats.ActorChannelOpenCount, Is.GreaterThan(0));
-            Assert.That(context.BunchPayloadStats.ContentBlockCount, Is.GreaterThan(0));
+            Assert.That(result.BunchPayloadStats.ActorChannelOpenCount, Is.GreaterThan(0));
+            Assert.That(result.BunchPayloadStats.ContentBlockCount, Is.GreaterThan(0));
+            Assert.That(result.ExportGroups, Is.Not.Empty);
             Assert.That(spawnedEvents, Is.Not.Empty);
             Assert.That(closedEvents, Is.Not.Empty);
             Assert.That(exportGroupEvents, Is.Not.Empty);
             Assert.That(spawnedEvents.All(replayEvent => replayEvent.TimeSeconds >= 0f), Is.True);
             Assert.That(spawnedEvents.All(replayEvent =>
-                replayEvent.TimeSeconds <= context.ReplayInfo.LengthInMs / 1000f + 1f), Is.True);
+                replayEvent.TimeSeconds <= result.Metadata.ReplayInfo.LengthInMs / 1000f + 1f), Is.True);
         });
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Read_ConsumerSinkExceptionIdentityIsPreserved(bool archiveReadException)
+    {
+        Exception expectedException = archiveReadException
+            ? new ArchiveReadException(ArchiveErrorCode.InvalidCount, "consumer sink", 0, 1, 1)
+            : new InvalidOperationException("consumer sink failed");
+        var sink = new ThrowingReplayEventSink(expectedException);
+        var reader = new ValorantReplayReader(eventSink: sink);
+        var archive = new FBinaryArchive(TestHelper.ReadReplayBytes("5c673443-5bdc-4576-b416-aab3f62471a5.12_11.vrf"));
+
+        var thrown = Assert.Catch(() => reader.Read(archive));
+
+        Assert.That(thrown, Is.SameAs(expectedException));
     }
 
     private static void ReadReplayInfoMatchesSnapshot(string replayFileName)
     {
         var replayBytes = TestHelper.ReadReplayBytes(replayFileName);
-        var context = ReadReplayMetadata(replayBytes);
+        var metadata = ReadReplayMetadata(replayBytes);
 
-        Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, context));
+        Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, metadata));
     }
 
     private static void ReadReplayReportsUnsupportedVersion(string replayFileName, string branch)
@@ -150,29 +161,30 @@ public class ReplayReaderIntegrationTests
     private static void DecompressReplayDataMaterializesExpectedSize(string replayFileName)
     {
         var replayBytes = TestHelper.ReadReplayBytes(replayFileName);
-        var replayDataHandler = new CountingReplayDataChunkHandler();
         var archive = new FBinaryArchive(replayBytes);
 
-        var context = new ValorantReplayReader(new OozSharpOodleDecompressor(), replayDataHandler).Read(archive);
+        var result = new ValorantReplayReader(parseProfile: ParseProfile.Minimal).Read(archive);
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.ReplayInfo.Compressed, Is.True);
-            Assert.That(replayDataHandler.TotalPayloadBytes, Is.EqualTo(context.ReplayInfo.TotalDataSizeInBytes));
+            Assert.That(result.Metadata.ReplayInfo.Compressed, Is.True);
+            Assert.That(result.PacketStats.PacketCount, Is.GreaterThan(0));
+            Assert.That(result.Metadata.ReplayInfo.DataChunks.Sum(chunk => chunk.MemorySizeInBytes),
+                Is.EqualTo(result.Metadata.ReplayInfo.TotalDataSizeInBytes));
         });
     }
 
     private static void ReadRawPacketsRecordsStats(string replayFileName, int expectedPartialErrors, int expectedMalformedPayloads)
     {
         var replayBytes = TestHelper.ReadReplayBytes(replayFileName);
-        var context = ReadReplay(replayBytes);
-        var stats = context.PacketStats;
-        var payloadStats = context.BunchPayloadStats;
+        var result = ReadReplay(replayBytes);
+        var stats = result.PacketStats;
+        var payloadStats = result.BunchPayloadStats;
 
         Assert.Multiple(() =>
         {
-            Assert.That(context.NetGuidCache.ExportGroupsByPath, Is.Not.Empty);
-            Assert.That(context.NetGuidCache.PathByNetGuid, Is.Not.Empty);
+            Assert.That(result.ExportGroups, Is.Not.Empty);
+            Assert.That(result.ExportGroups.Any(group => group.Fields.Count > 0), Is.True);
             Assert.That(stats.PacketCount, Is.GreaterThan(0));
             Assert.That(stats.TotalPacketBytes, Is.GreaterThan(0));
             Assert.That(stats.PacketsWithBunches, Is.GreaterThan(0));
@@ -181,7 +193,7 @@ public class ReplayReaderIntegrationTests
             Assert.That(stats.PartialErrorCount, Is.EqualTo(expectedPartialErrors));
             Assert.That(stats.MinTimeSeconds, Is.GreaterThanOrEqualTo(0f));
             Assert.That(stats.MaxTimeSeconds,
-                Is.LessThanOrEqualTo(context.ReplayInfo.LengthInMs / 1000f + 1f));
+                Is.LessThanOrEqualTo(result.Metadata.ReplayInfo.LengthInMs / 1000f + 1f));
             Assert.That(payloadStats.PayloadBunchCount, Is.GreaterThan(0));
             Assert.That(payloadStats.ContentBlockCount, Is.GreaterThan(0));
             Assert.That(payloadStats.PartialErrorCount, Is.EqualTo(expectedPartialErrors));
@@ -190,34 +202,31 @@ public class ReplayReaderIntegrationTests
         });
     }
 
-    private static ReplayReaderContext ReadReplay(byte[] replayBytes)
+    private static ValorantReplayReadResult ReadReplay(byte[] replayBytes)
     {
         var archive = new FBinaryArchive(replayBytes);
-        return ValorantReplayReader.CreateMinimal().Read(archive);
+        return new ValorantReplayReader(parseProfile: ParseProfile.Minimal).Read(archive);
     }
 
 
-    private static ReplayReaderContext ReadReplayMetadata(byte[] replayBytes)
+    private static ValorantReplayMetadata ReadReplayMetadata(byte[] replayBytes)
     {
         var archive = new FBinaryArchive(replayBytes);
-        return new ValorantReplayReader(
-            new OozSharpOodleDecompressor(),
-            new NoOpReplayDataChunkHandler(),
-            descriptorCatalog: ValorantDescriptors.CreateCatalog()).Read(archive);
+        return new ValorantReplayReader(parseProfile: ParseProfile.Minimal).Read(archive).Metadata;
     }
 
 
 
     private static byte[] ReadHeaderPayload(byte[] replayBytes)
     {
-        var context = ReadReplayMetadata(replayBytes);
+        var metadata = ReadReplayMetadata(replayBytes);
 
-        if (context.ReplayInfo.HeaderChunkIndex == ReplayInfo.NoChunkIndex)
+        if (metadata.ReplayInfo.HeaderChunkIndex == ReplayInfo.NoChunkIndex)
         {
             throw new InvalidOperationException("Replay info did not contain a header chunk.");
         }
 
-        var headerChunk = context.ReplayInfo.Chunks[context.ReplayInfo.HeaderChunkIndex];
+        var headerChunk = metadata.ReplayInfo.Chunks[metadata.ReplayInfo.HeaderChunkIndex];
         return replayBytes
             .AsSpan(checked((int)headerChunk.DataOffset), headerChunk.SizeInBytes)
             .ToArray();
@@ -225,10 +234,10 @@ public class ReplayReaderIntegrationTests
 
     private static object CreateReplayInfoSnapshot(
         string replayFileName,
-        ReplayReaderContext context)
+        ValorantReplayMetadata metadata)
     {
-        var info = context.ReplayInfo;
-        var metadata = context.ReplayInfoSerializationMetadata;
+        var info = metadata.ReplayInfo;
+        var serializationMetadata = metadata.ReplayInfoSerializationMetadata;
 
         return new
         {
@@ -251,9 +260,9 @@ public class ReplayReaderIntegrationTests
             },
             SerializationMetadata = new
             {
-                metadata.FileVersion,
-                metadata.FileFriendlyName,
-                FileCustomVersions = metadata.FileCustomVersions.Versions
+                serializationMetadata.FileVersion,
+                serializationMetadata.FileFriendlyName,
+                FileCustomVersions = serializationMetadata.FileCustomVersions.Versions
                     .Select(version => new
                     {
                         Key = version.Key.ToString("D"),
@@ -365,21 +374,16 @@ public class ReplayReaderIntegrationTests
         };
     }
 
-    private sealed class CountingReplayDataChunkHandler : IReplayDataChunkHandler
-    {
-        public long TotalPayloadBytes { get; private set; }
-
-        public void Handle(ReplayReaderContext context, FBinaryArchive replayDataArchive)
-        {
-            TotalPayloadBytes += replayDataArchive.Length;
-        }
-    }
-
     private sealed class CapturingReplayEventSink : IReplayEventSink
     {
         public List<ReplayEvent> Events { get; } = [];
 
         public void Emit(ReplayEvent replayEvent) => Events.Add(replayEvent);
+    }
+
+    private sealed class ThrowingReplayEventSink(Exception exception) : IReplayEventSink
+    {
+        public void Emit(ReplayEvent replayEvent) => ExceptionDispatchInfo.Capture(exception).Throw();
     }
 
 }

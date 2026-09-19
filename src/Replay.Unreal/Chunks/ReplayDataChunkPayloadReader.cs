@@ -42,12 +42,12 @@ public sealed class ReplayDataChunkPayloadReader
     {
         if (info.Encrypted)
         {
-            throw new InvalidReplayInfoException("Encrypted VALORANT replay-data chunks are not supported.");
+            throw new InvalidReplayDataException("Encrypted VALORANT replay-data chunks are not supported.");
         }
 
         if (dataChunk.MemorySizeInBytes is < 0 or > MaxChunkSize)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 $"Replay-data memory size {dataChunk.MemorySizeInBytes} is invalid.");
         }
 
@@ -55,7 +55,7 @@ public sealed class ReplayDataChunkPayloadReader
         {
             if (dataChunk.SizeInBytes != dataChunk.MemorySizeInBytes)
             {
-                throw new InvalidReplayInfoException(
+                throw new InvalidReplayDataException(
                     $"Uncompressed replay-data chunk size {dataChunk.SizeInBytes} does not match memory size {dataChunk.MemorySizeInBytes}.");
             }
 
@@ -64,12 +64,12 @@ public sealed class ReplayDataChunkPayloadReader
 
         if (_oodleDecompressor is null)
         {
-            throw new InvalidReplayInfoException("Replay data is compressed but no Oodle decompressor is configured.");
+            throw new InvalidReplayDataException("Replay data is compressed but no Oodle decompressor is configured.");
         }
 
         if (dataChunk.SizeInBytes < 8)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 $"Compressed replay-data chunk size {dataChunk.SizeInBytes} is too small for an Oodle archive header.");
         }
 
@@ -77,14 +77,14 @@ public sealed class ReplayDataChunkPayloadReader
         var compressedSize = chunkArchive.ReadInt32();
         if (decompressedSize != dataChunk.MemorySizeInBytes)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 $"Oodle archive decompressed size {decompressedSize} does not match replay-data memory size {dataChunk.MemorySizeInBytes}.");
         }
 
         var expectedCompressedSize = dataChunk.SizeInBytes - 8;
         if (compressedSize != expectedCompressedSize)
         {
-            throw new InvalidReplayInfoException(
+            throw new InvalidReplayDataException(
                 $"Oodle archive compressed size {compressedSize} does not match replay-data payload size {expectedCompressedSize}.");
         }
 

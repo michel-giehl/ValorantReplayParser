@@ -61,7 +61,7 @@ public class ExportDataReader
             {
                 if (!_netGuidCache.TryGetExportGroup(pathNameIndex, out var existingGroup))
                 {
-                    throw new InvalidReplayInfoException(
+                    throw new InvalidReplayDataException(
                         $"Net-field export references unknown path index {pathNameIndex}.");
                 }
 
@@ -161,7 +161,7 @@ public class ExportDataReader
             var size = _archive.ReadInt32();
             if (size < 0)
             {
-                throw new InvalidReplayInfoException($"Export GUID payload size {size} is negative.");
+                throw new InvalidReplayDataException($"Export GUID payload size {size} is negative.");
             }
 
             var payloadArchive = new FBinaryArchive(_archive.ReadBytes(size));

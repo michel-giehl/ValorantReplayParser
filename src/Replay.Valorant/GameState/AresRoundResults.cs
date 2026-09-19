@@ -1,5 +1,6 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Diagnostics;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors;
 
@@ -183,6 +184,7 @@ internal sealed class CompatibleAresRoundResultsDecoder : IFieldDecoder
 
     public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive)
     {
+        string? fallbackReason = null;
         using (var checkpoint = archive.CreateCheckpoint())
         {
             try
@@ -191,13 +193,22 @@ internal sealed class CompatibleAresRoundResultsDecoder : IFieldDecoder
                 checkpoint.Commit();
                 return value;
             }
-            catch (UnsupportedRoundResultsLayoutException)
+            catch (UnsupportedRoundResultsLayoutException exception)
             {
+                fallbackReason = exception.Message;
             }
         }
 
         var bitCount = checked((int)archive.BitsRemaining);
         archive.SkipRemaining();
+        context.Diagnostics?.Add(new ReplayDiagnostic(
+            ReplayDiagnosticCode.RawPayloadFallback,
+            $"Field '{context.FieldName}' fell back to raw payload: {fallbackReason ?? "unsupported field layout"}",
+            context.CurrentPacketId,
+            context.ChannelIndex,
+            context.CurrentTimeSeconds,
+            context.ExportGroupPath,
+            context.FieldName));
         return DecodedFieldValue.FromObject(new ValorantRawPayload("TArray<FAresRoundResult>", bitCount));
     }
 }

@@ -40,7 +40,17 @@ public static class ValorantDescriptors
 {
     public static DescriptorCatalog CreateCatalog()
     {
-        var catalog = new DescriptorCatalog();
+        var catalog = new DescriptorCatalog
+        {
+            PathAliasProvider = ValorantPathAliasProvider.Instance,
+        };
+
+        // Stable subobjects can be serialized by instance name without a class GUID.
+        catalog.AddSubobjectClassPath("ReplayEffect", "/Script/ShooterGame.ReplayEffectComponent");
+        catalog.AddSubobjectClassPath("EffectManager", "/Script/ShooterGame.EffectManagerComponent");
+        catalog.AddSubobjectClassPath("BlindManagerComponent", "/Script/ShooterGame.BlindManagerComponent");
+        catalog.AddSubobjectClassPath("LocationalEffectManager", "/Script/ShooterGame.LocationalEffectManagerComponent");
+        catalog.AddSubobjectClassPath("DamageHandlerComponent", "/Script/ShooterGame.DamageableComponent");
 
         catalog.Add(AggrobotDescriptors.CreateDescriptors());
         catalog.Add(BountyHunterDescriptors.CreateDescriptors());
