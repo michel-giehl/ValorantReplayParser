@@ -123,6 +123,7 @@ public static class ValorantDescriptors
         catalog.Add(new EffectManagerComponentClassNetCacheDescriptor());
         catalog.Add(new BlindManagerComponentDescriptor());
         catalog.Add(new DamageableComponentClassNetCacheDescriptor());
+        catalog.Add(new OwnerExclusivePlayerInfoDescriptor());
         catalog.Add(AgentClassNetCacheDescriptors.Create(
             catalog.ExportGroupDescriptors.Where(descriptor => descriptor.Categories.HasFlag(ExportCategory.Agent))));
 
