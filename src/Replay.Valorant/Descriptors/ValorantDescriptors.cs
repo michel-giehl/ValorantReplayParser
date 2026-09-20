@@ -51,6 +51,7 @@ public static class ValorantDescriptors
         catalog.AddSubobjectClassPath("BlindManagerComponent", "/Script/ShooterGame.BlindManagerComponent");
         catalog.AddSubobjectClassPath("LocationalEffectManager", "/Script/ShooterGame.LocationalEffectManagerComponent");
         catalog.AddSubobjectClassPath("DamageHandlerComponent", "/Script/ShooterGame.DamageableComponent");
+        PrecalculatedProjectilePathDescriptors.AddTo(catalog);
 
         catalog.Add(AggrobotDescriptors.CreateDescriptors());
         catalog.Add(BountyHunterDescriptors.CreateDescriptors());

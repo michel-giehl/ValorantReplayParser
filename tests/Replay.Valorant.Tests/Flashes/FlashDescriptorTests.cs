@@ -83,6 +83,32 @@ public class FlashDescriptorTests
     }
 
     [Test]
+    public void CreateCatalog_RegistersPrecalculatedProjectilePath()
+    {
+        var catalog = ValorantDescriptors.CreateCatalog();
+        var component = catalog.ExportGroupDescriptors.Single(candidate =>
+            candidate.Path == PrecalculatedProjectilePathDescriptors.ComponentPath);
+        var setPath = catalog.ClassNetCacheDescriptors
+            .Single(cache => cache.Path == PrecalculatedProjectilePathDescriptors.ComponentPath + "_ClassNetCache")
+            .FunctionFields.Single(function =>
+                function.Name == PrecalculatedProjectilePathDescriptors.FunctionName);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(catalog.SubobjectClassPaths["PrecalculatedProjectileMovement"],
+                Is.EqualTo(PrecalculatedProjectilePathDescriptors.ComponentPath));
+            Assert.That(component.Kind, Is.EqualTo(ExportGroupKind.Component));
+            Assert.That(setPath.Handle, Is.EqualTo(0));
+            Assert.That(setPath.ParameterDescriptor,
+                Is.TypeOf<PrecalculatedProjectileSetPathParameters>());
+            AssertFieldHandles((ExportGroupDescriptor)setPath.ParameterDescriptor!,
+                ("NetworkedProjectilePath", 0));
+            AssertFieldHandles(new PrecalculatedProjectilePathPoint(),
+                ("ElapsedSeconds", 1), ("Location", 2), ("Velocity", 3));
+        });
+    }
+
+    [Test]
     public void CreateCatalog_RegistersBlindManagerActiveBlindLayout()
     {
         var manager = ValorantDescriptors.CreateCatalog().ExportGroupDescriptors
