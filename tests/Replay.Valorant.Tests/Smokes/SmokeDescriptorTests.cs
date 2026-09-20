@@ -1,10 +1,12 @@
 using Replay.Models.Descriptors;
 using Replay.Valorant.Descriptors;
 using Replay.Valorant.Descriptors.Agents.Iris;
+using Replay.Valorant.Descriptors.Agents.Pandemic.SmokeScreen;
 using Replay.Valorant.Descriptors.Agents.Rift;
 using Replay.Valorant.Descriptors.Agents.Sarge;
 using Replay.Valorant.Descriptors.Agents.Smonk;
 using Replay.Valorant.Descriptors.Agents.Wushu;
+using Replay.Unreal.Parsing;
 
 namespace Replay.Valorant.Tests.Smokes;
 
@@ -90,6 +92,16 @@ public class SmokeDescriptorTests
             AssertFunction(catalog, SargeSmokePaths.Ability, "MulticastOnItemMovedToPersistentData", 0);
             AssertFunction(catalog, IrisSmokePaths.Ability, "MulticastOnItemMovedToPersistentData", 0);
         });
+    }
+
+    [Test]
+    public void PandemicSmokeScreenProjectile_UsesByteCompressedMovementRotation()
+    {
+        var descriptor = ValorantDescriptors.CreateCatalog().ExportGroupDescriptors
+            .Single(candidate => candidate.Path == new ProjectileSmokeScreenDescriptor().Path);
+        var movement = descriptor.Fields.Single(field => field.PropertyName == "ReplicatedMovement");
+
+        Assert.That(movement.Decoder, Is.SameAs(PrimitiveDecoders.RepMovementByte));
     }
 
     private static void AssertAgentOwns(IEnumerable<ExportGroupDescriptor> descriptors, params string[] paths)
