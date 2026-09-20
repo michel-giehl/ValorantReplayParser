@@ -171,7 +171,7 @@ internal sealed class CompatibleAresPlayerRoundInfoDecoder : IFieldDecoder
         }
 
         var bitCount = checked((int)archive.BitsRemaining);
-        archive.SkipRemaining();
+        var data = archive.ReadBits(bitCount);
         context.Diagnostics?.Add(new ReplayDiagnostic(
             ReplayDiagnosticCode.RawPayloadFallback,
             $"Field '{context.FieldName}' fell back to raw payload: {fallbackReason ?? "unsupported field layout"}",
@@ -180,7 +180,7 @@ internal sealed class CompatibleAresPlayerRoundInfoDecoder : IFieldDecoder
             context.CurrentTimeSeconds,
             context.ExportGroupPath,
             context.FieldName));
-        return DecodedFieldValue.FromObject(new ValorantRawPayload("TArray<FAresPlayerRoundInfo>", bitCount));
+        return DecodedFieldValue.FromObject(new ValorantRawPayload("TArray<FAresPlayerRoundInfo>", bitCount, data));
     }
 }
 

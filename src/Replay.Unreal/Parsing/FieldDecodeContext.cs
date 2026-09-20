@@ -3,6 +3,7 @@ using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 using Replay.Unreal.Readers;
 
 namespace Replay.Unreal.Parsing;
@@ -17,6 +18,7 @@ public sealed class FieldDecodeContext
     public uint ChannelIndex { get; init; }
     public NetworkGuid ActorNetGuid { get; init; }
     public NetworkGuid ObjectNetGuid { get; init; }
+    public ReplayReleaseVersion? ReplayReleaseVersion { get; init; }
     public string? ExportGroupPath { get; set; }
     public string? FieldName { get; set; }
     public ExportCategory Categories { get; set; }

@@ -1,4 +1,5 @@
 using System.Reflection;
+using Replay.Models.Replay;
 
 namespace Replay.Models.Descriptors;
 
@@ -30,6 +31,8 @@ public sealed class FieldDescriptorBuilder
 
     private IFieldDecoderDescriptor? Decoder { get; set; }
 
+    private VersionedDefinition<IFieldDecoderDescriptor>? DecoderDefinition { get; set; }
+
     public FieldDescriptorBuilder WithCategories(ExportCategory categories)
     {
         Categories = categories;
@@ -38,7 +41,17 @@ public sealed class FieldDescriptorBuilder
 
     public FieldDescriptorBuilder Decode(IFieldDecoderDescriptor decoder)
     {
-        Decoder = decoder;
+        Decoder = decoder ?? throw new ArgumentNullException(nameof(decoder));
+        DecoderDefinition = null;
+        return this;
+    }
+
+    public FieldDescriptorBuilder Decode<TDecoder>(VersionedDefinition<TDecoder> decoderDefinition)
+        where TDecoder : IFieldDecoderDescriptor
+    {
+        ArgumentNullException.ThrowIfNull(decoderDefinition);
+        DecoderDefinition = decoderDefinition.Select(static decoder => (IFieldDecoderDescriptor)decoder);
+        Decoder = DecoderDefinition.Baseline;
         return this;
     }
 
@@ -50,5 +63,6 @@ public sealed class FieldDescriptorBuilder
         Handle = Handle,
         Categories = Categories,
         Decoder = Decoder,
+        DecoderDefinition = DecoderDefinition,
     };
 }

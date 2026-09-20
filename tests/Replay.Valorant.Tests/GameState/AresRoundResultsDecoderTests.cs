@@ -1,5 +1,8 @@
 using Replay.Encoding.Archives;
+using Replay.Models.Diagnostics;
+using Replay.Models.Replay;
 using Replay.Unreal.Parsing;
+using Replay.Unreal.Readers;
 using Replay.Valorant.Descriptors;
 using Replay.Valorant.GameState;
 
@@ -22,7 +25,7 @@ public class AresRoundResultsDecoderTests
         });
         var context = new FieldDecodeContext();
 
-        var value = Decoder().Decode(ref context, archive);
+        var value = Decoder(new ReplayReleaseVersion(13, 4)).Decode(ref context, archive);
         var results = (AresRoundResult[])value.ObjectValue!;
 
         Assert.Multiple(() =>
@@ -71,6 +74,37 @@ public class AresRoundResultsDecoderTests
     }
 
     [Test]
+    public void Decode_DecodesRelease1305HandleLayout()
+    {
+        var archive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(20);
+            writer.WriteIntPacked(8);
+            WriteField(writer, 82, payload => payload.WriteFName("Red"));
+            WriteField(writer, 83, payload => payload.WriteBits((byte)AresTeamRole.Attacker, 3));
+            WriteField(writer, 84, payload => payload.WriteBits((byte)AresRoundOutcome.Detonate, 4));
+            WriteField(writer, 85, payload => payload.WriteBits(0xA5, 8));
+            writer.WriteIntPacked(0);
+            writer.WriteIntPacked(0);
+        });
+        var release = new ReplayReleaseVersion(13, 5);
+        var context = new FieldDecodeContext { ReplayReleaseVersion = release };
+
+        var value = Decoder(release).Decode(ref context, archive);
+        var result = ((AresRoundResult[])value.ObjectValue!).Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(new AresRoundResult(
+                7,
+                "Red",
+                AresTeamRole.Attacker,
+                AresRoundOutcome.Detonate)));
+            Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
     public void Decode_RejectsRoundCountAboveBound()
     {
         var archive = CreateArchive(writer => writer.WriteIntPacked(129));
@@ -104,27 +138,76 @@ public class AresRoundResultsDecoderTests
     }
 
     [Test]
-    public void Decode_PreservesRawPayloadForOlderHandleLayout()
+    public void Decode_Release1305MalformedKnownFieldRemainsFatal()
     {
         var archive = CreateArchive(writer =>
         {
             writer.WriteIntPacked(1);
             writer.WriteIntPacked(1);
-            WriteField(writer, 0, payload => payload.WriteBit(true));
+            WriteField(writer, 82, payload =>
+            {
+                payload.WriteFName("Red");
+                payload.WriteBit(true);
+            });
             writer.WriteIntPacked(0);
             writer.WriteIntPacked(0);
         });
-        var bitCount = archive.BitLength;
-        var context = new FieldDecodeContext();
+        var diagnostics = new ReplayDiagnosticCollector();
+        var release = new ReplayReleaseVersion(13, 5);
+        var context = new FieldDecodeContext
+        {
+            Diagnostics = diagnostics,
+            ReplayReleaseVersion = release,
+        };
 
-        var value = Decoder().Decode(ref context, archive);
+        var exception = Assert.Throws<ArchiveReadException>(() =>
+            Decoder(release).Decode(ref context, archive));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.UnexpectedTrailingData));
+            Assert.That(diagnostics.TotalDiagnosticCount, Is.Zero);
+        });
+    }
+
+    [Test]
+    public void Decode_UnknownHandleAfterKnownField_RollsBackAndPreservesExactRawPayload()
+    {
+        var writer = new BitWriter();
+        writer.WriteIntPacked(1);
+        writer.WriteIntPacked(1);
+        WriteField(writer, 82, payload => payload.WriteFName("Blue"));
+        WriteField(writer, 99, payload => payload.WriteBit(true));
+        writer.WriteIntPacked(0);
+        writer.WriteIntPacked(0);
+        var expectedData = writer.ToArray();
+        var archive = new BitArchiveReader(expectedData, writer.BitCount);
+        var bitCount = archive.BitLength;
+        var diagnostics = new ReplayDiagnosticCollector();
+        var release = new ReplayReleaseVersion(13, 5);
+        var context = new FieldDecodeContext
+        {
+            Diagnostics = diagnostics,
+            ReplayReleaseVersion = release,
+            FieldName = "RoundResults",
+        };
+
+        var value = Decoder(release).Decode(ref context, archive);
         var raw = (ValorantRawPayload)value.ObjectValue!;
+        var diagnostic = diagnostics.Diagnostics.Single();
 
         Assert.Multiple(() =>
         {
             Assert.That(raw.TypeName, Is.EqualTo("TArray<FAresRoundResult>"));
             Assert.That(raw.BitCount, Is.EqualTo(bitCount));
+            Assert.That(raw.Data.ToArray(), Is.EqualTo(expectedData));
+            Assert.That(raw.BitCount % 8, Is.Not.Zero);
             Assert.That(archive.AtEnd, Is.True);
+            Assert.That(diagnostics.TotalDiagnosticCount, Is.EqualTo(1));
+            Assert.That(diagnostic.Code, Is.EqualTo(ReplayDiagnosticCode.RawPayloadFallback));
+            Assert.That(diagnostic.Message, Does.Contain("release 13.05"));
+            Assert.That(diagnostic.Message, Does.Contain("layout '13.05'"));
+            Assert.That(diagnostic.Message, Does.Contain("field handle 99"));
         });
     }
 
@@ -135,6 +218,16 @@ public class AresRoundResultsDecoderTests
             .Fields
             .Single(field => field.ExportName == "RoundResults")
             .Decoder!;
+
+    private static IFieldDecoder Decoder(ReplayReleaseVersion release)
+    {
+        var field = ValorantDescriptors.CreateCatalog()
+            .ExportGroupDescriptors
+            .Single(descriptor => descriptor.Path == "/Game/GameModes/Bomb/BombGameState.BombGameState_C")
+            .Fields
+            .Single(field => field.ExportName == "RoundResults");
+        return (IFieldDecoder)field.DecoderDefinition!.Resolve(release);
+    }
 
     private static BitArchiveReader CreateArchive(Action<BitWriter> write)
     {

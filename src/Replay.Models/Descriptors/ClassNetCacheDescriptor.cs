@@ -1,5 +1,7 @@
 namespace Replay.Models.Descriptors;
 
+using global::Replay.Models.Replay;
+
 public class ClassNetCacheDescriptor
 {
     private readonly string? _path;
@@ -59,6 +61,19 @@ public abstract class ClassNetCacheDescriptor<TDescriptor> : ClassNetCacheDescri
         return builder;
     }
 
+    protected RpcDescriptorBuilder AddFunction<TParameters>(
+        string name,
+        string functionExportPath,
+        VersionedDefinition<TParameters> parameterDescriptors,
+        ExportCategory categories = ExportCategory.None)
+        where TParameters : ExportGroupDescriptor
+    {
+        var builder = new RpcDescriptorBuilder(name, functionExportPath, null, categories)
+            .WithParameters(parameterDescriptors);
+        _functionFields.Add(builder, GetType().Name, "Class-net-cache functions");
+        return builder;
+    }
+
     protected RpcDescriptorBuilder AddFunctionHandle(
         uint handle,
         string name,
@@ -78,6 +93,20 @@ public abstract class ClassNetCacheDescriptor<TDescriptor> : ClassNetCacheDescri
         where TParameters : ExportGroupDescriptor, new()
     {
         var builder = new RpcDescriptorBuilder(name, functionExportPath, handle, categories, new TParameters());
+        _functionFields.Add(builder, GetType().Name, "Class-net-cache functions");
+        return builder;
+    }
+
+    protected RpcDescriptorBuilder AddFunctionHandle<TParameters>(
+        uint handle,
+        string name,
+        string functionExportPath,
+        VersionedDefinition<TParameters> parameterDescriptors,
+        ExportCategory categories = ExportCategory.None)
+        where TParameters : ExportGroupDescriptor
+    {
+        var builder = new RpcDescriptorBuilder(name, functionExportPath, handle, categories)
+            .WithParameters(parameterDescriptors);
         _functionFields.Add(builder, GetType().Name, "Class-net-cache functions");
         return builder;
     }

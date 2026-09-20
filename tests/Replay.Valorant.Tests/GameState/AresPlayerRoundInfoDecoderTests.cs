@@ -69,14 +69,14 @@ public class AresPlayerRoundInfoDecoderTests
     [Test]
     public void Decode_UnknownLayoutFallsBackAndReportsDiagnostic()
     {
-        var archive = CreateArchive(writer =>
-        {
-            writer.WriteIntPacked(1);
-            writer.WriteIntPacked(1);
-            WriteField(writer, 99, payload => payload.WriteBit(true));
-            writer.WriteIntPacked(0);
-            writer.WriteIntPacked(0);
-        });
+        var writer = new BitWriter();
+        writer.WriteIntPacked(1);
+        writer.WriteIntPacked(1);
+        WriteField(writer, 99, payload => payload.WriteBit(true));
+        writer.WriteIntPacked(0);
+        writer.WriteIntPacked(0);
+        var expectedData = writer.ToArray();
+        var archive = new BitArchiveReader(expectedData, writer.BitCount);
         var bitCount = archive.BitLength;
         var diagnostics = new ReplayDiagnosticCollector();
         var context = new FieldDecodeContext
@@ -97,6 +97,7 @@ public class AresPlayerRoundInfoDecoderTests
         {
             Assert.That(raw.TypeName, Is.EqualTo("TArray<FAresPlayerRoundInfo>"));
             Assert.That(raw.BitCount, Is.EqualTo(bitCount));
+            Assert.That(raw.Data.ToArray(), Is.EqualTo(expectedData));
             Assert.That(archive.AtEnd, Is.True);
             Assert.That(diagnostics.Status, Is.EqualTo(ReplayReadStatus.CompletedWithWarnings));
             Assert.That(diagnostics.TotalDiagnosticCount, Is.EqualTo(1));

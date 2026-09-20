@@ -1,5 +1,6 @@
 using Replay.Models.Descriptors;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 
 namespace Replay.Unreal.Parsing;
 
@@ -8,15 +9,18 @@ public sealed class ExportBindingRegistry
     private readonly DescriptorCatalogIndex _catalogIndex = new();
     private readonly BoundExportStore _store = new();
     private readonly ParseProfile _parseProfile;
+    private readonly ReplayReleaseVersion? _releaseVersion;
     private ReplayExportBinder _binder;
     private long _catalogRevision;
 
     public ExportBindingRegistry(
         DescriptorCatalog? descriptorCatalog = null,
-        ParseProfile? parseProfile = null)
+        ParseProfile? parseProfile = null,
+        ReplayReleaseVersion? releaseVersion = null)
     {
         _parseProfile = parseProfile ?? ParseProfile.Default;
-        _binder = new ReplayExportBinder(_catalogIndex, _store, _parseProfile);
+        _releaseVersion = releaseVersion;
+        _binder = new ReplayExportBinder(_catalogIndex, _store, _parseProfile, releaseVersion);
         if (descriptorCatalog is not null)
         {
             SetCatalog(descriptorCatalog);
@@ -26,9 +30,9 @@ public sealed class ExportBindingRegistry
     public void SetCatalog(DescriptorCatalog descriptorCatalog)
     {
         Clear();
-        _catalogIndex.SetCatalog(descriptorCatalog);
+        _catalogIndex.SetCatalog(descriptorCatalog, _releaseVersion);
         _store.SetPathAliasProvider(_catalogIndex.PathAliasProvider);
-        _binder = new ReplayExportBinder(_catalogIndex, _store, _parseProfile);
+        _binder = new ReplayExportBinder(_catalogIndex, _store, _parseProfile, _releaseVersion);
         _catalogRevision = checked(_catalogRevision + 1);
     }
 
@@ -64,6 +68,8 @@ public sealed class ExportBindingRegistry
     internal string? GetAlternatePath(string path) => _catalogIndex.PathAliasProvider?.GetAlternatePath(path);
 
     internal long CatalogRevision => _catalogRevision;
+
+    public ReplayReleaseVersion? ReleaseVersion => _releaseVersion;
 
     public BoundExportGroup? GetBoundGroupByIndex(uint pathNameIndex) => _store.GetBoundGroupByIndex(pathNameIndex);
 

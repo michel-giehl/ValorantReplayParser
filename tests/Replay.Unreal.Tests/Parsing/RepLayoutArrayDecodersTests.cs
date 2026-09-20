@@ -1,5 +1,6 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 using Replay.Unreal.Parsing;
 
 namespace Replay.Unreal.Tests.Parsing;
@@ -102,6 +103,47 @@ public class RepLayoutArrayDecodersTests
                 .Decode(ref context, archive));
     }
 
+    [Test]
+    public void DynamicArray_ResolvesVersionedElementDescriptorForEachDecodeSession()
+    {
+        var descriptors = new VersionedDefinition<TestArrayElement>(new TestArrayElement(handle: 2))
+            .From(new ReplayReleaseVersion(13, 5), new TestArrayElement(handle: 3));
+        var decoder = RepLayoutArrayDecoders.DynamicArray(descriptors);
+        var currentArchive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(1);
+            writer.WriteIntPacked(1);
+            WriteField(writer, 3, field => field.WriteSingle(2.5f));
+            writer.WriteIntPacked(0);
+            writer.WriteIntPacked(0);
+        });
+        var legacyArchive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(1);
+            writer.WriteIntPacked(1);
+            WriteField(writer, 2, field => field.WriteSingle(1.5f));
+            writer.WriteIntPacked(0);
+            writer.WriteIntPacked(0);
+        });
+        var currentContext = new FieldDecodeContext
+        {
+            ReplayReleaseVersion = new ReplayReleaseVersion(13, 5),
+        };
+        var legacyContext = new FieldDecodeContext
+        {
+            ReplayReleaseVersion = new ReplayReleaseVersion(13, 1),
+        };
+
+        var current = (TestArrayElement[])decoder.Decode(ref currentContext, currentArchive).ObjectValue!;
+        var legacy = (TestArrayElement[])decoder.Decode(ref legacyContext, legacyArchive).ObjectValue!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(current.Single().FloatValue, Is.EqualTo(2.5f));
+            Assert.That(legacy.Single().FloatValue, Is.EqualTo(1.5f));
+        });
+    }
+
     private static void WriteField(BitWriter writer, uint handle, Action<BitWriter> writePayload)
     {
         var payload = new BitWriter();
@@ -121,11 +163,23 @@ public class RepLayoutArrayDecodersTests
 
     private sealed class TestArrayElement : ExportGroupDescriptor<TestArrayElement>
     {
+        private readonly uint _handle;
+
+        public TestArrayElement()
+            : this(2)
+        {
+        }
+
+        public TestArrayElement(uint handle)
+        {
+            _handle = handle;
+        }
+
         public float? FloatValue { get; set; }
 
         protected override void Configure()
         {
-            AddPropertyHandle(2, x => x.FloatValue).Float();
+            AddPropertyHandle(_handle, x => x.FloatValue).Float();
         }
     }
 

@@ -22,7 +22,8 @@ internal sealed class ReplayReaderContext : IDisposable
         ParseProfile? parseProfile = null,
         ILoggerFactory? loggerFactory = null,
         NetGuidCache? netGuidCache = null,
-        ReplayDiagnosticCollector? diagnostics = null)
+        ReplayDiagnosticCollector? diagnostics = null,
+        ReplayReleaseVersion? replayReleaseVersion = null)
     {
         Archive = archive;
         BunchPayloadStats = new BunchPayloadStats();
@@ -31,7 +32,8 @@ internal sealed class ReplayReaderContext : IDisposable
         LoggerFactory = loggerFactory;
         Diagnostics = diagnostics ?? new ReplayDiagnosticCollector();
         NetGuidCache = netGuidCache ?? new NetGuidCache();
-        ExportBindingRegistry = new ExportBindingRegistry(descriptorCatalog, ParseProfile);
+        ReplayReleaseVersion = replayReleaseVersion;
+        ExportBindingRegistry = new ExportBindingRegistry(descriptorCatalog, ParseProfile, replayReleaseVersion);
         BunchPayloadPipeline = new BunchPayloadPipeline(this);
     }
 
@@ -40,6 +42,7 @@ internal sealed class ReplayReaderContext : IDisposable
     public ReplayInfoSerializationMetadata ReplayInfoSerializationMetadata { get; set; } = new();
     public ReplayHeader ReplayHeader { get; set; } = new();
     public ReplayVersion ReplayVersion { get; set; } = new() { Branch = string.Empty };
+    public ReplayReleaseVersion? ReplayReleaseVersion { get; }
     public UEVersion UEVersion { get; set; } = new();
     public FBinaryArchive ReplayDataStream { get; set; } = new(ReadOnlyMemory<byte>.Empty);
     public NetGuidCache NetGuidCache { get; }

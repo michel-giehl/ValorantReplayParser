@@ -1,5 +1,6 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 
 namespace Replay.Unreal.Parsing;
 
@@ -7,10 +8,38 @@ public static class RepLayoutArrayDecoders
 {
     public static IFieldDecoder DynamicArray<TElement>()
         where TElement : ExportGroupDescriptor<TElement>, new() =>
-        new DynamicArrayDecoder<TElement>(new TElement());
+        new DescriptorDynamicArrayDecoder<TElement>(
+            new VersionedDefinition<ExportGroupDescriptor>(new TElement()));
+
+    public static IFieldDecoder DynamicArray<TElement>(VersionedDefinition<TElement> elementDescriptors)
+        where TElement : ExportGroupDescriptor
+    {
+        ArgumentNullException.ThrowIfNull(elementDescriptors);
+        var expectedPath = elementDescriptors.Baseline.Path;
+        return new DescriptorDynamicArrayDecoder<TElement>(
+            elementDescriptors.Select(descriptor => descriptor.Path == expectedPath
+                ? (ExportGroupDescriptor)descriptor
+                : throw new ArgumentException(
+                    $"Versioned array element descriptors must use the same path. Expected '{expectedPath}', got '{descriptor.Path}'.",
+                    nameof(elementDescriptors))));
+    }
 
     public static IFieldDecoder DynamicArray<TElement>(IFieldDecoder elementDecoder) =>
         new DynamicArrayDecoder<TElement>(elementDecoder ?? throw new ArgumentNullException(nameof(elementDecoder)));
+
+    private sealed class DescriptorDynamicArrayDecoder<TElement>(
+        VersionedDefinition<ExportGroupDescriptor> elementDescriptors)
+        : IFieldDecoder, IReplayReleaseAwareFieldDecoder
+    {
+        public IFieldDecoder Resolve(ReplayReleaseVersion? releaseVersion)
+        {
+            var descriptor = elementDescriptors.Resolve(releaseVersion, "nested array element descriptor");
+            return new DynamicArrayDecoder<TElement>(descriptor, releaseVersion);
+        }
+
+        public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive) =>
+            Resolve(context.ReplayReleaseVersion).Decode(ref context, archive);
+    }
 
     private sealed class DynamicArrayDecoder<TElement> : IFieldDecoder
     {
@@ -18,10 +47,12 @@ public static class RepLayoutArrayDecoders
         private readonly IFieldDecoder? _elementDecoder;
         private readonly FieldBinding[] _fieldsByHandle;
 
-        public DynamicArrayDecoder(ExportGroupDescriptor descriptor)
+        public DynamicArrayDecoder(
+            ExportGroupDescriptor descriptor,
+            ReplayReleaseVersion? releaseVersion)
         {
             _descriptor = descriptor;
-            _fieldsByHandle = CreateBindings(descriptor);
+            _fieldsByHandle = CreateBindings(descriptor, releaseVersion);
         }
 
         public DynamicArrayDecoder(IFieldDecoder elementDecoder)
@@ -172,7 +203,9 @@ public static class RepLayoutArrayDecoders
             }
         }
 
-        private static FieldBinding[] CreateBindings(ExportGroupDescriptor descriptor)
+        private static FieldBinding[] CreateBindings(
+            ExportGroupDescriptor descriptor,
+            ReplayReleaseVersion? releaseVersion)
         {
             var maxHandle = descriptor.Fields
                 .Where(field => field.Handle.HasValue)
@@ -188,9 +221,15 @@ public static class RepLayoutArrayDecoders
                     continue;
                 }
 
-                var decoder = field.Decoder as IFieldDecoder
+                var decoderDescriptor = field.DecoderDefinition?.Resolve(releaseVersion, "nested array field decoder")
+                                        ?? field.Decoder;
+                var decoder = decoderDescriptor as IFieldDecoder
                               ?? throw new InvalidOperationException(
                                   $"Array element field '{field.PropertyName ?? field.ExportName ?? field.Handle.ToString()}' uses an incompatible decoder type.");
+                if (decoder is IReplayReleaseAwareFieldDecoder releaseAware)
+                {
+                    decoder = releaseAware.Resolve(releaseVersion);
+                }
 
                 var categories = field.Categories == ExportCategory.None
                     ? descriptor.Categories
