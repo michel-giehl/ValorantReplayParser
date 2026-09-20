@@ -1,6 +1,7 @@
 # ValorantReplayParser
 
 ![Build](https://github.com/michel-giehl/ValorantReplayParser/actions/workflows/build.yml/badge.svg?branch=main) ![Test](https://github.com/michel-giehl/ValorantReplayParser/actions/workflows/integration.yml/badge.svg?branch=main) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=michel-giehl_ValorantReplayParser&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=michel-giehl_ValorantReplayParser)
+<a href="https://discord.gg/QSRSfcege7"><img src="https://discordapp.com/api/guilds/764106279752826930/widget.png?style=banner2"/></a>
 
 `ValorantReplayParser` reads VALORANT replay files (`.vrf`) and emits typed gameplay events and replay metadata. It is a narrow, VALORANT-specific parser, not a general Unreal Engine replay parser.
 
@@ -182,6 +183,9 @@ Show the full command or subcommand help:
 dotnet run --project "src\CliReader\CliReader.csproj" -- --help
 dotnet run --project "src\CliReader\CliReader.csproj" -- export --help
 ```
+
+## Useful libraries
+- [VRFKit](https://github.com/yakisoba0728/vrfkit) — Rust library for parsing .vrf files.
 
 ## Special thanks
 
