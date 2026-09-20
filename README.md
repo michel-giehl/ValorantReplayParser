@@ -104,6 +104,8 @@ The full reader requires replay version `5.3.2`, game network protocol version `
 
 An unregistered branch or a mismatch in the replay, protocol, or Unreal versions is unsupported. The reader fails early rather than trying a guessed compatibility path. These version checks establish compatibility with the parser's known container and transform layout, not complete gameplay-semantic coverage.
 
+Within those explicitly supported branches, descriptors and custom decoders may register release boundaries. A boundary applies from that VALORANT release forward until another boundary replaces it. This is intended for known semantic changes such as shifted field handles; it does not make an unknown branch or wire format supported.
+
 `WasDecoded` on emitted export-group and RPC events indicates that the applicable decoder path ran; it is not a completeness guarantee. For decoded descriptor payloads, `HasDecoded(propertyName)` indicates whether that specific property was decoded and assigned. A `RawPayloadFallback` diagnostic means an explicitly speculative typed decoder rolled back and preserved the bounded payload as raw data.
 
 ## Custom descriptor catalogs
@@ -114,13 +116,21 @@ The `descriptorCatalog` constructor argument replaces the built-in descriptor ca
 using Replay.Valorant;
 using Replay.Valorant.Descriptors;
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 
 var catalog = ValorantDescriptors.CreateCatalog();
 catalog.Add(new ExportGroupDescriptor("/Game/Custom/Example", ExportCategory.Debug));
+
+var legacy = new ExportGroupDescriptor("/Game/Custom/Versioned", ExportCategory.Debug);
+var release1305 = new ExportGroupDescriptor("/Game/Custom/Versioned", ExportCategory.Debug);
+catalog.Add(
+    new VersionedDefinition<ExportGroupDescriptor>(legacy)
+        .From(new ReplayReleaseVersion(13, 5), release1305));
+
 var reader = new ValorantReplayReader(descriptorCatalog: catalog);
 ```
 
-Replace the example descriptor with your descriptor implementation and field definitions.
+Replace the example descriptors with your implementations and field definitions. `FieldDescriptorBuilder.Decode` and `RpcDescriptorBuilder.Decode` also accept `VersionedDefinition` values for layouts where only the decoder changes. Class-net-cache variants use the corresponding `DescriptorCatalog.Add` overload. Low-level `ExportBindingRegistry` callers must supply a `ReplayReleaseVersion` when a selected definition contains release boundaries; `ValorantReplayReader` derives it from the replay branch automatically.
 
 Starting from `CreateCatalog()` also preserves VALORANT's stable-subobject class paths and path-alias provider. Passing a new empty `DescriptorCatalog` intentionally replaces those defaults too.
 

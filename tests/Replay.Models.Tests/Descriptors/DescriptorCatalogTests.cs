@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 
 namespace Replay.Models.Tests.Descriptors;
 
@@ -24,6 +25,27 @@ public class DescriptorCatalogTests
 
         Assert.That(catalog.ClassNetCacheDescriptors, Has.Count.EqualTo(1));
         Assert.That(catalog.ClassNetCacheDescriptors[0].Path, Is.EqualTo("/Game/Test.Test_C_ClassNetCache"));
+    }
+
+    [Test]
+    public void AddVersionedDescriptors_PreservesBaselineCatalogViewAndDefinitions()
+    {
+        var exportDefinition = new VersionedDefinition<TestExportGroupDescriptor>(new TestExportGroupDescriptor())
+            .From(new ReplayReleaseVersion(13, 5), new TestExportGroupDescriptor());
+        var cacheDefinition = new VersionedDefinition<TestClassNetCacheDescriptor>(new TestClassNetCacheDescriptor())
+            .From(new ReplayReleaseVersion(13, 5), new TestClassNetCacheDescriptor());
+        var catalog = new DescriptorCatalog();
+
+        catalog.AddExportGroup(exportDefinition);
+        catalog.AddClassNetCache(cacheDefinition);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(catalog.ExportGroupDescriptors, Has.Count.EqualTo(1));
+            Assert.That(catalog.ClassNetCacheDescriptors, Has.Count.EqualTo(1));
+            Assert.That(catalog.ExportGroupDefinitions.Single().HasVersionBoundaries, Is.True);
+            Assert.That(catalog.ClassNetCacheDefinitions.Single().HasVersionBoundaries, Is.True);
+        });
     }
 
     [Test]

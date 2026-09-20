@@ -4,6 +4,7 @@ using Replay.Encoding.Net;
 using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 using Replay.Unreal.Bunches.Payload;
 using Replay.Unreal.Channels;
 using Replay.Unreal.PackageMap;
@@ -23,6 +24,7 @@ internal sealed class ContentBlockFramer
     private readonly IPropertyPayloadDecoder? _propertyPayloadDecoder;
     private readonly ILoggerFactory? _loggerFactory;
     private readonly ReplayDiagnosticCollector? _diagnostics;
+    private readonly ReplayReleaseVersion? _replayReleaseVersion;
 
     public ContentBlockFramer(
         PackageMapReader packageMapReader,
@@ -54,7 +56,8 @@ internal sealed class ContentBlockFramer
             context.ExportBindingRegistry,
             propertyPayloadDecoder,
             context.LoggerFactory,
-            context.Diagnostics)
+            context.Diagnostics,
+            context.ReplayReleaseVersion)
     {
     }
 
@@ -66,7 +69,8 @@ internal sealed class ContentBlockFramer
         ExportBindingRegistry? bindingRegistry,
         IPropertyPayloadDecoder? propertyPayloadDecoder,
         ILoggerFactory? loggerFactory,
-        ReplayDiagnosticCollector? diagnostics = null)
+        ReplayDiagnosticCollector? diagnostics = null,
+        ReplayReleaseVersion? replayReleaseVersion = null)
     {
         _headerReader = new ContentBlockHeaderReader(packageMapReader);
         _netGuidCache = netGuidCache;
@@ -77,6 +81,7 @@ internal sealed class ContentBlockFramer
         _propertyPayloadDecoder = propertyPayloadDecoder;
         _loggerFactory = loggerFactory;
         _diagnostics = diagnostics;
+        _replayReleaseVersion = replayReleaseVersion ?? _bindingRegistry.ReleaseVersion;
     }
 
     public void FrameContentBlocks(
@@ -378,18 +383,19 @@ internal sealed class ContentBlockFramer
         float timeSeconds,
         int packetId,
         BunchPayloadStats stats) => new()
-    {
-        NetGuidCache = _netGuidCache,
-        LoggerFactory = _loggerFactory,
-        EventSink = _eventSink,
-        CurrentPacketId = packetId,
-        CurrentTimeSeconds = timeSeconds,
-        ChannelIndex = channel.ChannelIndex,
-        ActorNetGuid = channel.ActorNetGuid,
-        ObjectNetGuid = GetObjectNetGuid(header, channel),
-        ExportGroupPath = exportGroupPath,
-        Diagnostics = _diagnostics,
-    };
+        {
+            NetGuidCache = _netGuidCache,
+            LoggerFactory = _loggerFactory,
+            EventSink = _eventSink,
+            CurrentPacketId = packetId,
+            CurrentTimeSeconds = timeSeconds,
+            ChannelIndex = channel.ChannelIndex,
+            ActorNetGuid = channel.ActorNetGuid,
+            ObjectNetGuid = GetObjectNetGuid(header, channel),
+            ReplayReleaseVersion = _replayReleaseVersion,
+            ExportGroupPath = exportGroupPath,
+            Diagnostics = _diagnostics,
+        };
 
     private void EmitExportGroupReceived(
         float timeSeconds,

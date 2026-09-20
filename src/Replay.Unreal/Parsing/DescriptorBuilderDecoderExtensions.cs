@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 using Replay.Models.Unreal;
 
 namespace Replay.Unreal.Parsing;
@@ -82,6 +83,12 @@ public static class DescriptorBuilderDecoderExtensions
     public static FieldDescriptorBuilder RepLayoutDynamicArray<TElement>(this FieldDescriptorBuilder builder)
         where TElement : ExportGroupDescriptor<TElement>, new() =>
         builder.Decode(RepLayoutArrayDecoders.DynamicArray<TElement>());
+
+    public static FieldDescriptorBuilder RepLayoutDynamicArray<TElement>(
+        this FieldDescriptorBuilder builder,
+        VersionedDefinition<TElement> elementDescriptors)
+        where TElement : ExportGroupDescriptor =>
+        builder.Decode(RepLayoutArrayDecoders.DynamicArray(elementDescriptors));
 
     public static FieldDescriptorBuilder RepLayoutDynamicArray<TElement>(
         this FieldDescriptorBuilder builder,

@@ -249,6 +249,7 @@ public sealed class ValorantReplayReader
         var preamble = dispatcher.ReadPreamble(archive);
         var metadata = CreateMetadata(preamble);
         EnsureFullParseSupported(metadata);
+        var replayReleaseVersion = ValorantReleaseVersionParser.ParseRequired(metadata.ReplayVersion.Branch);
 
         var netGuidCache = new NetGuidCache();
         var consumerSink = new ConsumerEventSink(_eventSink);
@@ -262,7 +263,8 @@ public sealed class ValorantReplayReader
             _descriptorCatalog,
             SnapshotParseProfile(_parseProfile),
             _loggerFactory,
-            netGuidCache);
+            netGuidCache,
+            replayReleaseVersion: replayReleaseVersion);
         context.ReplayInfo = metadata.ReplayInfo;
         context.ReplayInfoSerializationMetadata = metadata.ReplayInfoSerializationMetadata;
         context.ReplayHeader = metadata.ReplayHeader;

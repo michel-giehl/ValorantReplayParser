@@ -1,6 +1,9 @@
 using Replay.Models.Errors;
 using Replay.Models.Diagnostics;
+using Replay.Models.Descriptors;
 using Replay.Models.Events;
+using Replay.Models.Replay;
+using Replay.Unreal.Parsing;
 using Replay.Valorant;
 
 namespace PackageConsumerSmoke;
@@ -24,6 +27,8 @@ internal static class Program
 
     private static void Run(string[] args)
     {
+        VerifyVersionedDescriptorApi();
+
         if (args.Length != 1)
         {
             throw new ArgumentException("Pass the path to a supported .vrf replay as the only argument.");
@@ -94,6 +99,23 @@ internal static class Program
         {
             // Invalid container data must use the documented parse exception contract.
         }
+    }
+
+    private static void VerifyVersionedDescriptorApi()
+    {
+        var release1305 = new ReplayReleaseVersion(13, 5);
+        var legacy = new ExportGroupDescriptor("/Game/Smoke.Versioned_C");
+        var current = new ExportGroupDescriptor("/Game/Smoke.Versioned_C");
+        var definition = new VersionedDefinition<ExportGroupDescriptor>(legacy)
+            .From(release1305, current);
+        var catalog = new DescriptorCatalog();
+        catalog.Add(definition);
+        var registry = new ExportBindingRegistry(catalog, releaseVersion: release1305);
+
+        Require(definition.Resolve(release1305) == current,
+            "VersionedDefinition did not select the matching release boundary.");
+        Require(registry.ReleaseVersion == release1305,
+            "ExportBindingRegistry did not retain the explicit replay release.");
     }
 
     private static bool IsTypedGameplayEvent(ReplayEvent replayEvent) =>

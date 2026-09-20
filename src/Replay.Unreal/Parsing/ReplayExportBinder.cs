@@ -1,5 +1,6 @@
 using Replay.Models.Descriptors;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 
 namespace Replay.Unreal.Parsing;
 
@@ -8,15 +9,18 @@ internal sealed class ReplayExportBinder
     private readonly DescriptorCatalogIndex _catalogIndex;
     private readonly BoundExportStore _store;
     private readonly ParseProfile _parseProfile;
+    private readonly ReplayReleaseVersion? _releaseVersion;
 
     public ReplayExportBinder(
         DescriptorCatalogIndex catalogIndex,
         BoundExportStore store,
-        ParseProfile parseProfile)
+        ParseProfile parseProfile,
+        ReplayReleaseVersion? releaseVersion = null)
     {
         _catalogIndex = catalogIndex;
         _store = store;
         _parseProfile = parseProfile;
+        _releaseVersion = releaseVersion;
     }
 
     public BoundExportGroup BindExportGroup(
@@ -175,7 +179,7 @@ internal sealed class ReplayExportBinder
 
     private BoundExportGroup? BindInlineParameterDescriptor(RpcDescriptor rpcDesc)
     {
-        var descriptor = rpcDesc.ParameterDescriptor
+        var descriptor = _catalogIndex.ResolveParameterDescriptor(rpcDesc)
                          ?? CreateInlineParameterDescriptor(rpcDesc);
         if (descriptor is null)
         {
@@ -291,26 +295,33 @@ internal sealed class ReplayExportBinder
         return null;
     }
 
-    private static IFieldDecoder? ResolveFieldDecoder(FieldDescriptor fieldDesc)
+    private IFieldDecoder? ResolveFieldDecoder(FieldDescriptor fieldDesc)
     {
-        if (fieldDesc.Decoder is null)
+        var decoderDescriptor = fieldDesc.DecoderDefinition?.Resolve(_releaseVersion, "field decoder")
+                                ?? fieldDesc.Decoder;
+        if (decoderDescriptor is null)
         {
             return null;
         }
 
-        return fieldDesc.Decoder as IFieldDecoder
-               ?? throw new InvalidOperationException(
+        var decoder = decoderDescriptor as IFieldDecoder
+                      ?? throw new InvalidOperationException(
                    $"Field descriptor '{fieldDesc.PropertyName ?? fieldDesc.ExportName ?? fieldDesc.Handle?.ToString() ?? "<unnamed>"}' uses an incompatible decoder type.");
+        return decoder is IReplayReleaseAwareFieldDecoder releaseAware
+            ? releaseAware.Resolve(_releaseVersion)
+            : decoder;
     }
 
-    private static IRpcDecoder? ResolveRpcDecoder(RpcDescriptor rpcDesc)
+    private IRpcDecoder? ResolveRpcDecoder(RpcDescriptor rpcDesc)
     {
-        if (rpcDesc.Decoder is null)
+        var decoderDescriptor = rpcDesc.DecoderDefinition?.Resolve(_releaseVersion, "RPC decoder")
+                                ?? rpcDesc.Decoder;
+        if (decoderDescriptor is null)
         {
             return null;
         }
 
-        return rpcDesc.Decoder as IRpcDecoder
+        return decoderDescriptor as IRpcDecoder
                ?? throw new InvalidOperationException(
                    $"RPC descriptor '{rpcDesc.Name}' uses an incompatible decoder type.");
     }

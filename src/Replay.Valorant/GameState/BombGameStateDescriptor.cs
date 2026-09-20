@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors;
 
@@ -42,7 +43,12 @@ public sealed class BombGameStateDescriptor : ExportGroupDescriptor<BombGameStat
         AddProperty(x => x.AuthGameplayEndTimestamp).Float();
         AddProperty(x => x.NetServerMaxTickRate).Int32();
         AddProperty(x => x.MatchID).FString();
-        AddProperty(x => x.RoundResults).Decode(new CompatibleAresRoundResultsDecoder());
+        AddProperty(x => x.RoundResults).Decode(
+            new VersionedDefinition<IFieldDecoderDescriptor>(
+                    new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1301))
+                .From(
+                    new ReplayReleaseVersion(13, 5),
+                    new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1305)));
         AddProperty(x => x.Phase).EnumByte();
         AddProperty(x => x.RoundParticipantsInfos)
             .Decode(ValorantPayloadDecoders.RawPayload("TArray<FRoundParticipantsInfo>"));

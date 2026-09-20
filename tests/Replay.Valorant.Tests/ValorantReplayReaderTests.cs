@@ -75,6 +75,35 @@ public class ValorantReplayReaderTests
     }
 
     [Test]
+    public void Read_ReaderReuseResolvesReleasePerReadWithoutLeakingPriorSelection()
+    {
+        var handler = new ReleaseCapturingReplayDataChunkHandler();
+        var reader = new ValorantReplayReader(new FakeOodleDecompressor(), handler);
+
+        foreach (var branch in new[]
+                 {
+                     "++Ares-Core+release-13.01",
+                     "++Ares-Core+release-13.05",
+                     "++Ares-Core+release-13.01",
+                 })
+        {
+            var replay = BuildReplayInfo(chunks:
+            [
+                HeaderChunk(BuildHeader(branch)),
+                ReplayDataChunk(0, 1, [0xAA], memorySizeInBytes: 1),
+            ]);
+            _ = reader.Read(new FBinaryArchive(replay));
+        }
+
+        Assert.That(handler.Releases, Is.EqualTo(new[]
+        {
+            new ReplayReleaseVersion(13, 1),
+            new ReplayReleaseVersion(13, 5),
+            new ReplayReleaseVersion(13, 1),
+        }));
+    }
+
+    [Test]
     public void SnapshotParseProfile_PreservesSelectionSetComparers()
     {
         var profile = new ParseProfile
@@ -617,6 +646,17 @@ public class ValorantReplayReaderTests
         public void Handle(ReplayReaderContext context, FBinaryArchive replayDataArchive)
         {
             Payloads.Add(replayDataArchive.ReadBytes((int)replayDataArchive.Remaining).ToArray());
+        }
+    }
+
+    private sealed class ReleaseCapturingReplayDataChunkHandler : IReplayDataChunkHandler
+    {
+        public List<ReplayReleaseVersion> Releases { get; } = [];
+
+        public void Handle(ReplayReaderContext context, FBinaryArchive replayDataArchive)
+        {
+            Releases.Add(context.ReplayReleaseVersion!.Value);
+            replayDataArchive.Skip(replayDataArchive.Remaining);
         }
     }
 }

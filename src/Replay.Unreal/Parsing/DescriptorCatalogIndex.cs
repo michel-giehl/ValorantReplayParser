@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 
 namespace Replay.Unreal.Parsing;
 
@@ -12,10 +13,14 @@ internal sealed class DescriptorCatalogIndex
     private readonly Dictionary<string, ClassNetCacheDescriptor> _cacheDescriptorsByPath = new(PathComparer);
     private readonly Dictionary<string, string> _subobjectClassPaths = new(PathComparer);
     private IReplayPathAliasProvider? _pathAliasProvider;
+    private ReplayReleaseVersion? _releaseVersion;
 
-    public void SetCatalog(DescriptorCatalog descriptorCatalog)
+    public void SetCatalog(
+        DescriptorCatalog descriptorCatalog,
+        ReplayReleaseVersion? releaseVersion = null)
     {
         Clear();
+        _releaseVersion = releaseVersion;
         _pathAliasProvider = descriptorCatalog.PathAliasProvider;
 
         foreach (var (objectName, classPath) in descriptorCatalog.SubobjectClassPaths)
@@ -23,13 +28,14 @@ internal sealed class DescriptorCatalogIndex
             _subobjectClassPaths.Add(objectName, classPath);
         }
 
-        foreach (var descriptor in descriptorCatalog.ExportGroupDescriptors)
+        foreach (var definition in descriptorCatalog.ExportGroupDefinitions)
         {
-            IndexExportDescriptor(descriptor);
+            IndexExportDescriptor(definition.Resolve(releaseVersion, "export-group descriptor"));
         }
 
-        foreach (var descriptor in descriptorCatalog.ClassNetCacheDescriptors)
+        foreach (var definition in descriptorCatalog.ClassNetCacheDefinitions)
         {
+            var descriptor = definition.Resolve(releaseVersion, "class-net-cache descriptor");
             IndexClassNetCacheDescriptor(descriptor);
             IndexRpcParameterDescriptors(descriptor);
         }
@@ -43,6 +49,7 @@ internal sealed class DescriptorCatalogIndex
         _cacheDescriptorsByPath.Clear();
         _subobjectClassPaths.Clear();
         _pathAliasProvider = null;
+        _releaseVersion = null;
     }
 
     public string? GetSubobjectClassPath(string objectName) =>
@@ -65,7 +72,10 @@ internal sealed class DescriptorCatalogIndex
     {
         if (descriptor.BaseDescriptor is not null)
         {
-            CollectFields(descriptor.BaseDescriptor, fields);
+            var baseDescriptor = TryGetExportDescriptor(descriptor.BaseDescriptor.Path, out var selectedBase)
+                ? selectedBase
+                : descriptor.BaseDescriptor;
+            CollectFields(baseDescriptor, fields);
         }
         else if (descriptor.BasePath is not null && TryGetExportDescriptor(descriptor.BasePath, out var baseDescriptor))
         {
@@ -100,9 +110,10 @@ internal sealed class DescriptorCatalogIndex
                 continue;
             }
 
-            if (rpcDescriptor.ParameterDescriptor is not null)
+            var parameterDescriptor = ResolveParameterDescriptor(rpcDescriptor);
+            if (parameterDescriptor is not null)
             {
-                IndexExportDescriptor(rpcDescriptor.ParameterDescriptor);
+                IndexExportDescriptor(parameterDescriptor);
                 continue;
             }
 
@@ -121,6 +132,10 @@ internal sealed class DescriptorCatalogIndex
             IndexExportDescriptor(descriptorFromRpc);
         }
     }
+
+    public ExportGroupDescriptor? ResolveParameterDescriptor(RpcDescriptor descriptor) =>
+        descriptor.ParameterDescriptorDefinition?.Resolve(_releaseVersion, "RPC parameter descriptor")
+        ?? descriptor.ParameterDescriptor;
 
     private static bool TryGetByLookup<TValue>(
         Dictionary<string, TValue> valuesByPath,

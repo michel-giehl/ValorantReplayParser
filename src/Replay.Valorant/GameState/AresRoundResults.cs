@@ -39,10 +39,12 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
     internal const int MaxRoundCount = 128;
     private const int MaxFieldsPerUpdate = 4;
     private const int MaxFieldPayloadBits = 64 * 1024;
-    private const uint WinningTeamHandle = 93;
-    private const uint WinningTeamRoleHandle = 94;
-    private const uint RoundResultHandle = 95;
-    private const uint EliminatedTeamsHandle = 96;
+    private readonly AresRoundResultHandles _handles;
+
+    public AresRoundResultsDecoder(AresRoundResultHandles handles)
+    {
+        _handles = handles;
+    }
 
     public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive)
     {
@@ -62,7 +64,7 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
         throw InvalidCount(archive, count, $"RoundResults declared {count} rounds; maximum is {MaxRoundCount}.");
     }
 
-    private static AresRoundResult[] ReadUpdates(FBitArchive archive, int roundCount)
+    private AresRoundResult[] ReadUpdates(FBitArchive archive, int roundCount)
     {
         var results = new List<AresRoundResult>();
         while (ReadUpdateIndex(archive, roundCount) is { } roundNumber)
@@ -84,7 +86,7 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
         throw InvalidCount(archive, encodedIndex, $"RoundResults update index {roundNumber} exceeds count {roundCount}.");
     }
 
-    private static AresRoundResult ReadUpdate(FBitArchive archive, int roundNumber)
+    private AresRoundResult ReadUpdate(FBitArchive archive, int roundNumber)
     {
         string? winningTeam = null;
         AresTeamRole? winningTeamRole = null;
@@ -105,7 +107,7 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
         throw TooManyFields(archive);
     }
 
-    private static void ReadField(
+    private void ReadField(
         FBitArchive archive,
         uint handle,
         ref string? winningTeam,
@@ -113,22 +115,25 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
         ref AresRoundOutcome? roundResult)
     {
         var field = ReadFieldPayload(archive);
-        switch (handle)
+        if (handle == _handles.WinningTeam)
         {
-            case WinningTeamHandle:
-                winningTeam = field.ReadFName();
-                break;
-            case WinningTeamRoleHandle:
-                winningTeamRole = (AresTeamRole)ReadEnum(field);
-                break;
-            case RoundResultHandle:
-                roundResult = (AresRoundOutcome)ReadEnum(field);
-                break;
-            case EliminatedTeamsHandle:
-                field.SkipRemaining();
-                break;
-            default:
-                throw new UnsupportedRoundResultsLayoutException(handle);
+            winningTeam = field.ReadFName();
+        }
+        else if (handle == _handles.WinningTeamRole)
+        {
+            winningTeamRole = (AresTeamRole)ReadEnum(field);
+        }
+        else if (handle == _handles.RoundResult)
+        {
+            roundResult = (AresRoundOutcome)ReadEnum(field);
+        }
+        else if (handle == _handles.EliminatedTeams)
+        {
+            field.SkipRemaining();
+        }
+        else
+        {
+            throw new UnsupportedRoundResultsLayoutException(handle);
         }
 
         field.EnsureFullyConsumed($"FAresRoundResult field {handle}");
@@ -180,7 +185,14 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
 
 internal sealed class CompatibleAresRoundResultsDecoder : IFieldDecoder
 {
-    private readonly AresRoundResultsDecoder _release1301 = new();
+    private readonly AresRoundResultHandles _handles;
+    private readonly AresRoundResultsDecoder _decoder;
+
+    public CompatibleAresRoundResultsDecoder(AresRoundResultHandles handles)
+    {
+        _handles = handles;
+        _decoder = new AresRoundResultsDecoder(handles);
+    }
 
     public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive)
     {
@@ -189,7 +201,7 @@ internal sealed class CompatibleAresRoundResultsDecoder : IFieldDecoder
         {
             try
             {
-                var value = _release1301.Decode(ref context, archive);
+                var value = _decoder.Decode(ref context, archive);
                 checkpoint.Commit();
                 return value;
             }
@@ -200,18 +212,34 @@ internal sealed class CompatibleAresRoundResultsDecoder : IFieldDecoder
         }
 
         var bitCount = checked((int)archive.BitsRemaining);
-        archive.SkipRemaining();
+        var data = archive.ReadBits(bitCount);
+        var release = context.ReplayReleaseVersion?.ToString() ?? "unspecified";
         context.Diagnostics?.Add(new ReplayDiagnostic(
             ReplayDiagnosticCode.RawPayloadFallback,
-            $"Field '{context.FieldName}' fell back to raw payload: {fallbackReason ?? "unsupported field layout"}",
+            $"Field '{context.FieldName}' fell back to raw payload for VALORANT release {release} " +
+            $"using RoundResults layout '{_handles.LayoutName}': {fallbackReason ?? "unsupported field layout"}",
             context.CurrentPacketId,
             context.ChannelIndex,
             context.CurrentTimeSeconds,
             context.ExportGroupPath,
             context.FieldName));
-        return DecodedFieldValue.FromObject(new ValorantRawPayload("TArray<FAresRoundResult>", bitCount));
+        return DecodedFieldValue.FromObject(new ValorantRawPayload("TArray<FAresRoundResult>", bitCount, data));
     }
 }
 
+internal readonly record struct AresRoundResultHandles(
+    string LayoutName,
+    uint WinningTeam,
+    uint WinningTeamRole,
+    uint RoundResult,
+    uint EliminatedTeams)
+{
+    public static AresRoundResultHandles Release1301 { get; } = new("13.01", 93, 94, 95, 96);
+    public static AresRoundResultHandles Release1305 { get; } = new("13.05", 82, 83, 84, 85);
+}
+
 internal sealed class UnsupportedRoundResultsLayoutException(uint handle)
-    : Exception($"Unknown FAresRoundResult field handle {handle}.");
+    : Exception($"Unknown FAresRoundResult field handle {handle}.")
+{
+    public uint Handle { get; } = handle;
+}
