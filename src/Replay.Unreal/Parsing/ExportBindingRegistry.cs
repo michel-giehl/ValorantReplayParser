@@ -53,7 +53,7 @@ public sealed class ExportBindingRegistry
             return;
         }
 
-        if (_catalogIndex.TryGetClassNetCacheDescriptor(path, out var cacheDescriptor))
+        if (_catalogIndex.TryGetClassNetCacheExportDescriptor(path, out var cacheDescriptor))
         {
             var bound = _binder.BindClassNetCache(replayGroup, cacheDescriptor);
             _store.IndexBoundClassNetCache(path, bound);

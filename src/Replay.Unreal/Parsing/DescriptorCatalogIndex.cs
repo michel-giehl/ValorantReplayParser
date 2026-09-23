@@ -60,6 +60,11 @@ internal sealed class DescriptorCatalogIndex
     public bool TryGetExportDescriptor(string path, out ExportGroupDescriptor descriptor) =>
         TryGetExportByLookup(ReplayPath.LookupKeys(path, _pathAliasProvider), out descriptor!);
 
+    // Export-table binding must not alias a property table to its class's RPC table.
+    // Suffixless class-path lookup is only appropriate when resolving an RPC payload.
+    public bool TryGetClassNetCacheExportDescriptor(string path, out ClassNetCacheDescriptor descriptor) =>
+        TryGetByLookup(_cacheDescriptorsByPath, ReplayPath.LookupKeys(path, _pathAliasProvider), out descriptor!);
+
     public bool TryGetClassNetCacheDescriptor(string path, out ClassNetCacheDescriptor descriptor) =>
         TryGetByLookup(_cacheDescriptorsByPath, ReplayPath.ClassNetCacheLookupKeys(path, _pathAliasProvider), out descriptor!);
 
