@@ -455,8 +455,12 @@ internal sealed class ValorantNearsightEventEnricher : IReplayEventSink
         {
             SetCharacterPlayerState(playerState.PossessedCharacter, playerStateNetGuid);
         }
-        else if (playerState.HasDecoded(nameof(BombPlayerStateDescriptor.SpawnedCharacter)))
+        // Possession establishes ownership, not an agent body: cameras and drones
+        // also appear as PossessedCharacter. Process SpawnedCharacter independently.
+        if (playerState.HasDecoded(nameof(BombPlayerStateDescriptor.SpawnedCharacter)) &&
+            playerState.SpawnedCharacter != 0)
         {
+            _playerCharacters.Add(playerState.SpawnedCharacter);
             SetCharacterPlayerState(playerState.SpawnedCharacter, playerStateNetGuid);
         }
     }
@@ -468,7 +472,6 @@ internal sealed class ValorantNearsightEventEnricher : IReplayEventSink
             return;
         }
 
-        _playerCharacters.Add(characterNetGuid);
         _playerStateByCharacter[characterNetGuid] = playerStateNetGuid;
     }
 

@@ -176,13 +176,17 @@ public class FlashLifecycleIntegrationTests
                 explosion.Evidence == ValorantFlashExplosionEvidence.StopProjectileRpc), Is.EqualTo(6));
             Assert.That(paths, Has.Length.EqualTo(73));
             Assert.That(paths.All(path => castsByFlash.ContainsKey(path.FlashActorNetGuid)), Is.True);
-            Assert.That(hits, Has.Length.EqualTo(21));
+            Assert.That(hits, Has.Length.EqualTo(20));
             Assert.That(hits.All(hit => hit.DurationSource == ValorantFlashDurationSource.BlindManagerInitialDuration),
                 Is.True);
             Assert.That(hits.All(hit => hit.FlashActorNetGuid is { } flash &&
                                       castsByFlash.ContainsKey(flash)), Is.True);
             Assert.That(hits.Count(hit => hit.FlashKind == ValorantFlashKind.VyseArcRose), Is.EqualTo(14));
-            Assert.That(hits.Count(hit => hit.FlashKind == ValorantFlashKind.YoruBlindside), Is.EqualTo(7));
+            Assert.That(hits.Count(hit => hit.FlashKind == ValorantFlashKind.YoruBlindside), Is.EqualTo(6));
+            // Actor 826 is Yoru's decoy, whose BlindManager also receives the flash.
+            Assert.That(rawBlindDurations.Keys.Any(key => key.ActorNetGuid == 826), Is.True);
+            Assert.That(hits.Any(hit => hit.TargetCharacterNetGuid == 826), Is.False);
+            Assert.That(hits.All(hit => hit.TargetCharacterNetGuid is 146 or 458), Is.True);
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
             Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(2));

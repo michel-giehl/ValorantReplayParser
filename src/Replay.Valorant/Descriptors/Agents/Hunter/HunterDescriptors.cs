@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Valorant.Reveals.Descriptors;
 
 namespace Replay.Valorant.Descriptors.Agents.Hunter;
 
@@ -12,6 +13,9 @@ public static class HunterDescriptors
         return
         [
             new HunterAgentDescriptor(),
+            new SovaRevealProjectileDescriptor(),
+            new SovaRevealDeviceDescriptor(),
+            new SovaRevealPulseDescriptor(),
         ];
     }
 }

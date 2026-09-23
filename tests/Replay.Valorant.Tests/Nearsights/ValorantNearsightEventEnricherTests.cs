@@ -12,6 +12,50 @@ namespace Replay.Valorant.Tests.Nearsights;
 
 public class ValorantNearsightEventEnricherTests
 {
+    [TestCase(412u)] // Cypher camera.
+    [TestCase(798u)] // Gekko ult.
+    [TestCase(1170u)] // Skye dog.
+    [TestCase(1534u)] // Sova drone.
+    [TestCase(1884u)] // Tejo drone.
+    public void Emit_PossessedAbilityNearsight_OnlyCountsActualAgentAndItsInterval(uint device)
+    {
+        var sink = new CapturingReplayEventSink();
+        var enricher = new ValorantNearsightEventEnricher(sink, new NetGuidCache());
+        var identity = new BombPlayerStateDescriptor
+        {
+            Subject = "target", SpawnedCharacter = 20, PossessedCharacter = device,
+        };
+        identity.MarkDecoded(nameof(identity.Subject));
+        identity.MarkDecoded(nameof(identity.SpawnedCharacter));
+        identity.MarkDecoded(nameof(identity.PossessedCharacter));
+        enricher.Emit(Export(0, 1, 30, identity));
+        enricher.Emit(Spawn(1, 100, NearsightPaths.OmenProjectile));
+        enricher.Emit(Export(1, 2, 100, Projectile(20, owner: 60)));
+        enricher.Emit(EffectStarted(1.1f, 3, device, 100, 11, 2));
+        enricher.Emit(EffectStarted(1.2f, 4, 20, 100, 12, 2));
+        var released = new BombPlayerStateDescriptor { PossessedCharacter = 20 };
+        released.MarkDecoded(nameof(released.PossessedCharacter));
+        enricher.Emit(Export(1.3f, 5, 30, released));
+        enricher.Emit(EffectStarted(1.4f, 6, device, 100, 13, 2));
+        enricher.Emit(EffectStopped(3.1f, 7, device, 11, 3.1f));
+        enricher.Emit(EffectStopped(3.2f, 8, 20, 12, 3.2f));
+        enricher.Emit(EffectStopped(3.4f, 9, device, 13, 3.4f));
+
+        var hits = sink.Events.OfType<ValorantNearsightPlayerHit>().ToArray();
+        var intervals = sink.Events.OfType<ValorantNearsightPlayerEffectEnded>().ToArray();
+        Assert.That(hits, Has.Length.EqualTo(1));
+        Assert.That(intervals, Has.Length.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(hits[0].TargetCharacterNetGuid, Is.EqualTo(20));
+            Assert.That(hits[0].TargetSubject, Is.EqualTo("target"));
+            Assert.That(intervals[0].TargetCharacterNetGuid, Is.EqualTo(20));
+            Assert.That(intervals[0].ObservedDurationSeconds, Is.EqualTo(2).Within(0.0001f));
+            Assert.That(sink.Events.OfType<ValorantNearsightCast>().Single().CasterSubject, Is.EqualTo("target"));
+        });
+    }
+
+
     [Test]
     public void Emit_OmenTargetEffect_EmitsCastPathHitAndObservedInterval()
     {
@@ -99,9 +143,11 @@ public class ValorantNearsightEventEnricherTests
     {
         var playerState = new BombPlayerStateDescriptor
         {
+            SpawnedCharacter = characterNetGuid,
             PossessedCharacter = characterNetGuid,
             Subject = subject,
         };
+        playerState.MarkDecoded(nameof(BombPlayerStateDescriptor.SpawnedCharacter));
         playerState.MarkDecoded(nameof(BombPlayerStateDescriptor.PossessedCharacter));
         playerState.MarkDecoded(nameof(BombPlayerStateDescriptor.Subject));
         enricher.Emit(Export(0, 1, playerStateNetGuid, playerState));

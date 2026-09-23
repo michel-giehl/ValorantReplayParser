@@ -47,6 +47,78 @@ public class ValorantFlashEventEnricherTests
         });
     }
 
+    // Possessable pawn IDs from 29d55558-4d67-4f60-a028-7c9bf03e4fae:
+    // Cypher camera, Gekko ult, Skye dog, Sova drone, Tejo drone.
+    [TestCase(412u, true)]
+    [TestCase(798u, true)]
+    [TestCase(1170u, true)]
+    [TestCase(1534u, true)]
+    [TestCase(1884u, true)]
+    [TestCase(412u, false)]
+    public void Emit_PossessedAbilityBlind_OnlyCountsActualAgent(uint device, bool blindManager)
+    {
+        var sink = new CapturingReplayEventSink();
+        var enricher = new ValorantFlashEventEnricher(sink, new NetGuidCache());
+        var identity = new BombPlayerStateDescriptor
+        {
+            Subject = "target", SpawnedCharacter = 20, PossessedCharacter = device,
+        };
+        identity.MarkDecoded(nameof(identity.Subject));
+        identity.MarkDecoded(nameof(identity.SpawnedCharacter));
+        identity.MarkDecoded(nameof(identity.PossessedCharacter));
+        enricher.Emit(Export(0, 1, 30, identity));
+        SpawnAndExplodeKayo(enricher, 1, 100);
+
+        void Blind(uint target, float time, int packet, ulong effectId)
+        {
+            if (blindManager)
+            {
+                var manager = BlindManager((uint)effectId, effectId, 0);
+                manager.ActiveBlinds![0].CausingActor = 100;
+                manager.ActiveBlinds[0].InitialDuration = 1;
+                enricher.Emit(Export(time, packet, target, manager));
+            }
+            else
+            {
+                enricher.Emit(EffectRpc(time, packet, target, 100, 1, effectId));
+            }
+        }
+
+        Blind(device, 1.1f, 3, 11);
+        Blind(20, 1.2f, 4, 12); // Body hits still count while controlling the device.
+        var released = new BombPlayerStateDescriptor { PossessedCharacter = 20 };
+        released.MarkDecoded(nameof(released.PossessedCharacter));
+        enricher.Emit(Export(1.3f, 5, 30, released));
+        Blind(device, 1.4f, 6, 13); // Possession must not permanently turn a device into an agent.
+        enricher.Complete();
+
+        var hits = sink.Events.OfType<ValorantFlashPlayerHit>().ToArray();
+        Assert.That(hits, Has.Length.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(hits[0].TargetCharacterNetGuid, Is.EqualTo(20));
+            Assert.That(hits[0].TargetSubject, Is.EqualTo("target"));
+            Assert.That(sink.Events.OfType<ValorantFlashCast>().Single().CasterSubject, Is.EqualTo("target"));
+        });
+    }
+
+    [Test]
+    public void Emit_VyseBlindsOnlyNonAgent_PreservesExplosionWithoutPlayerHit()
+    {
+        var sink = new CapturingReplayEventSink();
+        var enricher = new ValorantFlashEventEnricher(sink, new NetGuidCache());
+        enricher.Emit(SpawnFlash(1, 100, FlashPaths.VyseFlashTrap));
+        var manager = BlindManager(1, 101, 0);
+        manager.ActiveBlinds![0].CausingActor = 100;
+        enricher.Emit(Export(2, 3, 412, manager));
+        Assert.Multiple(() =>
+        {
+            Assert.That(sink.Events.OfType<ValorantFlashPlayerHit>(), Is.Empty);
+            Assert.That(sink.Events.OfType<ValorantFlashExploded>().Single().FlashActorNetGuid, Is.EqualTo(100));
+        });
+    }
+
+
     [Test]
     public void Emit_BreachWithoutExitResult_PreservesMovementFallback()
     {
@@ -322,9 +394,11 @@ public class ValorantFlashEventEnricherTests
     {
         var playerState = new BombPlayerStateDescriptor
         {
+            SpawnedCharacter = characterNetGuid,
             PossessedCharacter = characterNetGuid,
             Subject = subject,
         };
+        playerState.MarkDecoded(nameof(BombPlayerStateDescriptor.SpawnedCharacter));
         playerState.MarkDecoded(nameof(BombPlayerStateDescriptor.PossessedCharacter));
         playerState.MarkDecoded(nameof(BombPlayerStateDescriptor.Subject));
         enricher.Emit(Export(0, 1, playerStateNetGuid, playerState));
