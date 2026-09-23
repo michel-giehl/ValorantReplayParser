@@ -56,6 +56,15 @@ public sealed class KayoUnderhandFlashProjectileDescriptor
 public sealed class BreachFlashProjectileDescriptor : FlashProjectileDescriptor<BreachFlashProjectileDescriptor>
 {
     public override string Path => FlashPaths.BreachProjectile;
+
+    public FVector? ExitLocation { get; set; }
+
+    protected override void Configure()
+    {
+        base.Configure();
+        AddPropertyHandle(16, "ExitResults", x => x.ExitLocation)
+            .Decode(new BreachFlashExitLocationDecoder());
+    }
 }
 
 public sealed class PhoenixLeftFlashProjectileDescriptor

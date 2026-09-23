@@ -145,6 +145,14 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
             return;
         }
 
+        if (projectile is BreachFlashProjectileDescriptor breach &&
+            breach.HasDecoded(nameof(BreachFlashProjectileDescriptor.ExitLocation)) &&
+            breach.ExitLocation is { } exit &&
+            double.IsFinite(exit.X) && double.IsFinite(exit.Y) && double.IsFinite(exit.Z))
+        {
+            state.BreachExitLocation = exit;
+        }
+
         if (projectile.HasDecoded(nameof(IFlashProjectilePayload.Owner)) && projectile.Owner is > 0)
         {
             state.OwnerNetGuid = projectile.Owner;
@@ -693,7 +701,9 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
         EnsureCastEmitted(state);
         state.Exploded = true;
         state.ExplosionTimeSeconds = timeSeconds;
-        state.LastLocation = location ?? state.LastLocation;
+        // StopProjectile can precede the final movement sample. Breach's wall-exit
+        // result is already replicated at spawn and remains authoritative.
+        state.LastLocation = state.BreachExitLocation ?? location ?? state.LastLocation;
         _inner.Emit(new ValorantFlashExploded(
             timeSeconds,
             packetId,
@@ -815,6 +825,7 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
         public uint? OwnerNetGuid { get; set; }
         public uint? InstigatorNetGuid { get; set; }
         public FVector? LastLocation { get; set; } = spawn.Location;
+        public FVector? BreachExitLocation { get; set; }
         public int NextSampleIndex { get; set; }
         public bool CastEmitted { get; set; }
         public bool Exploded { get; set; }

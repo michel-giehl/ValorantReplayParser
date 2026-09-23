@@ -11,6 +11,56 @@ namespace Replay.Valorant.Tests.Flashes;
 
 public class ValorantFlashEventEnricherTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Emit_BreachExitResult_SurvivesLaterMovementAndStopOrClose(bool closeWithoutStop)
+    {
+        var sink = new CapturingReplayEventSink();
+        var enricher = new ValorantFlashEventEnricher(sink, new NetGuidCache());
+        enricher.Emit(SpawnFlash(1, 100, FlashPaths.BreachProjectile));
+        var exit = new FVector(1481, -8750, 450) { ScaleFactor = 1 };
+        var initial = new BreachFlashProjectileDescriptor { ExitLocation = exit };
+        initial.MarkDecoded(nameof(initial.ExitLocation));
+        enricher.Emit(Export(1, 1, 100, initial));
+        var movement = new BreachFlashProjectileDescriptor
+        {
+            ReplicatedMovement = Movement(new FVector(14.90, -87.91, 4.51) { ScaleFactor = 100 }),
+        };
+        movement.MarkDecoded(nameof(movement.ReplicatedMovement));
+        enricher.Emit(Export(1.1f, 2, 100, movement));
+        if (!closeWithoutStop)
+            enricher.Emit(StopRpc(1.2f, 3, 100));
+        enricher.Emit(new ActorClosed(1.3f, 4, 100, 1, ChannelCloseReason.Destroyed));
+        enricher.Complete();
+
+        var explosion = sink.Events.OfType<ValorantFlashExploded>().Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(explosion.Location, Is.EqualTo(exit));
+            Assert.That(explosion.Evidence, Is.EqualTo(closeWithoutStop
+                ? ValorantFlashExplosionEvidence.ActorDestroyedFallback
+                : ValorantFlashExplosionEvidence.StopProjectileRpc));
+            Assert.That(sink.Events.OfType<ValorantFlashCast>().Single().Location,
+                Is.EqualTo(new FVector(0, 0, 0)));
+            Assert.That(sink.Events.OfType<ValorantFlashPathUpdated>().Last().Location,
+                Is.EqualTo(movement.ReplicatedMovement!.Value.Location));
+        });
+    }
+
+    [Test]
+    public void Emit_BreachWithoutExitResult_PreservesMovementFallback()
+    {
+        var sink = new CapturingReplayEventSink();
+        var enricher = new ValorantFlashEventEnricher(sink, new NetGuidCache());
+        enricher.Emit(SpawnFlash(1, 100, FlashPaths.BreachProjectile));
+        var location = new FVector(10, 20, 30);
+        var movement = new BreachFlashProjectileDescriptor { ReplicatedMovement = Movement(location) };
+        movement.MarkDecoded(nameof(movement.ReplicatedMovement));
+        enricher.Emit(Export(1.1f, 2, 100, movement));
+        enricher.Emit(StopRpc(1.2f, 3, 100));
+        Assert.That(sink.Events.OfType<ValorantFlashExploded>().Single().Location, Is.EqualTo(location));
+    }
+
     [Test]
     public void Emit_ProjectileMovementAndStopRpc_EmitsOrderedLifecycleExactlyOnce()
     {
