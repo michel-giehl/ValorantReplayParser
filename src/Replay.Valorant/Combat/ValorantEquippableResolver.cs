@@ -23,6 +23,7 @@ public static class ValorantEquippableResolver
         Define("/Game/Equippables/Guns/Shotguns/PumpShotgun/PumpShotgun.PumpShotgun_C", "Bucky", ValorantEquippableCategory.Shotgun),
         Define("/Game/Equippables/Guns/Shotguns/AutoShotgun/AutomaticShotgun.AutomaticShotgun_C", "Judge", ValorantEquippableCategory.Shotgun),
         Define("/Game/Equippables/Guns/Rifles/Burst/AssaultRifle_Burst.AssaultRifle_Burst_C", "Bulldog", ValorantEquippableCategory.Rifle),
+        Define("/Game/Equippables/Guns/Rifles/BattleRifle/BattleRifle.BattleRifle_C", "Warden", ValorantEquippableCategory.Rifle),
         Define("/Game/Equippables/Guns/SniperRifles/Dmr/DMR.DMR_C", "Guardian", ValorantEquippableCategory.Rifle),
         Define("/Game/Equippables/Guns/Rifles/Carbine/AssaultRifle_ACR.AssaultRifle_ACR_C", "Phantom", ValorantEquippableCategory.Rifle),
         Define("/Game/Equippables/Guns/Rifles/AK/AssaultRifle_AK.AssaultRifle_AK_C", "Vandal", ValorantEquippableCategory.Rifle),
