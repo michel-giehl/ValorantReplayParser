@@ -51,6 +51,7 @@ public static class ValorantDescriptors
         catalog.AddSubobjectClassPath("BlindManagerComponent", "/Script/ShooterGame.BlindManagerComponent");
         catalog.AddSubobjectClassPath("LocationalEffectManager", "/Script/ShooterGame.LocationalEffectManagerComponent");
         catalog.AddSubobjectClassPath("DamageHandlerComponent", "/Script/ShooterGame.DamageableComponent");
+        catalog.AddSubobjectClassPath("ForceModuleManager", "/Script/ShooterGame.ForceModuleManagerComponent");
         PrecalculatedProjectilePathDescriptors.AddTo(catalog);
 
         catalog.Add(AggrobotDescriptors.CreateDescriptors());
@@ -60,6 +61,8 @@ public static class ValorantDescriptors
         catalog.Add(CableDescriptors.CreateDescriptors());
         catalog.Add(CashewDescriptors.CreateDescriptors());
         catalog.Add(ClayDescriptors.CreateDescriptors());
+        catalog.Add(ClayDescriptors.CreateClassNetCacheDescriptors());
+        catalog.Add(new RazeProjectileEffectDescriptor());
         catalog.Add(DeadeyeDescriptors.CreateDescriptors());
         catalog.Add(GrenadierDescriptors.CreateDescriptors());
         catalog.Add(GrenadierDescriptors.CreateClassNetCacheDescriptors());

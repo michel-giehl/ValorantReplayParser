@@ -1,5 +1,6 @@
 using Replay.Models.Descriptors;
 using Replay.Valorant.Combat;
+using Replay.Valorant.Descriptors.Agents.Clay;
 
 namespace Replay.Valorant.Descriptors.Agents;
 
@@ -13,8 +14,21 @@ internal static class AgentClassNetCacheDescriptors
         return agentDescriptors
             .Select(agent => new ClassNetCacheDescriptor(
                 agent.Path + "_ClassNetCache",
-                [CreateKillRpc()]))
+                CreateFunctions(agent)))
             .ToArray();
+    }
+
+    private static IReadOnlyList<RpcDescriptor> CreateFunctions(ExportGroupDescriptor agent)
+    {
+        if (agent is not ClayAgentDescriptor) return [CreateKillRpc()];
+        var reset = new ClayResetRemoteMovementPredictionParameters();
+        return [CreateKillRpc(), new RpcDescriptor
+        {
+            Name = "ClientResetRemoteMovementPrediction",
+            FunctionExportPath = agent.Path + ":ClientResetRemoteMovementPrediction",
+            Handle = 6, Categories = ExportCategory.Agent,
+            ParameterDescriptor = reset, Fields = reset.Fields,
+        }];
     }
 
     private static RpcDescriptor CreateKillRpc()
