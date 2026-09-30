@@ -7,6 +7,14 @@ on:
         description: Prerelease SemVer version to validate
         required: true
         type: string
+      publish:
+        description: Publish validated packages to NuGet.org
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
   validate-version:
@@ -71,3 +79,80 @@ jobs:
             artifacts/packages/*.snupkg
             artifacts/test-results/*.trx
             artifacts/test-results/**/*.trx
+
+  publish:
+    name: Publish ${{ inputs.version }} to NuGet.org
+    needs: validate
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET SDK from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Download validated Ubuntu artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-candidate-${{ inputs.version }}-${{ github.sha }}-ubuntu-latest
+          path: artifacts/release-candidate
+      - name: Check publishing configuration and artifacts
+        id: packages
+        shell: pwsh
+        env:
+          NUGET_USER: ${{ vars.NUGET_USER }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_USER)) {
+            throw 'Set the NUGET_USER repository Actions variable to your NuGet profile username.'
+          }
+
+          $packageIds = @(
+            'ValorantReplayParser.Models'
+            'ValorantReplayParser.Encoding'
+            'ValorantReplayParser.Unreal'
+            'ValorantReplayParser'
+          )
+          $packageDirectory = 'artifacts/release-candidate/packages'
+          $packages = @($packageIds | ForEach-Object {
+            Join-Path $packageDirectory "$_.$env:RELEASE_VERSION.nupkg"
+          })
+
+          foreach ($package in $packages) {
+            $symbols = [System.IO.Path]::ChangeExtension($package, '.snupkg')
+            foreach ($file in @($package, $symbols)) {
+              if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+                throw "Missing validated package artifact: $file"
+              }
+            }
+          }
+          "paths=$(ConvertTo-Json -InputObject $packages -Compress)" >> $env:GITHUB_OUTPUT
+
+      - name: Authenticate with NuGet using OIDC
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Publish packages and symbols
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          PACKAGE_PATHS: ${{ steps.packages.outputs.paths }}
+        run: |
+          $packages = ConvertFrom-Json $env:PACKAGE_PATHS
+          foreach ($package in $packages) {
+            dotnet nuget push $package `
+              --api-key $env:NUGET_API_KEY `
+              --symbol-api-key $env:NUGET_API_KEY `
+              --source https://api.nuget.org/v3/index.json `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) {
+              throw "Publishing '$package' failed with exit code $LASTEXITCODE."
+            }
+          }
