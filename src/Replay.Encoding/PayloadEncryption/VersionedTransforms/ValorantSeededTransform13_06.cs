@@ -47,7 +47,7 @@ public sealed class ValorantSeededTransform13_06 : IPayloadTransform
                 value = SwapAdjacentBits(value) ^ ~(ulong)RotateRight(state, 7);
                 value = ReverseBits64WithoutFinal16BitSwap(SwapAdjacentBits(value));
                 value = SubstituteBytes(value, SubstituteTable64);
-                value = (ulong)RotateRight(state, 2) + ~value;
+                value = RotateRight(state, 2) + ~value;
                 value = SubstituteBytes(value, SubstituteTable64);
 
                 WriteUInt64(output, byteOffset, value);

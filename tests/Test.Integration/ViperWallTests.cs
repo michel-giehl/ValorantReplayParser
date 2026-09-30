@@ -47,7 +47,7 @@ public class ViperWallTests
         };
         var eventSink = new Sink(multicastAddSmokeScreenPointConsumer);
 
-        var context = ValorantReplayReader.CreateDefault(new NullLoggerFactory(), eventSink, parseNothingProfile).Read(archive);
+        ValorantReplayReader.CreateDefault(new NullLoggerFactory(), eventSink, parseNothingProfile).Read(archive);
 
         Assert.Multiple(() =>
         {
@@ -68,7 +68,7 @@ public class ViperWallTests
         };
         var eventSink = new Sink(multicastAddSmokeScreenPointConsumer);
 
-        var context = ValorantReplayReader.CreateDefault(new NullLoggerFactory(), eventSink, parseNothingProfile).Read(archive);
+        ValorantReplayReader.CreateDefault(new NullLoggerFactory(), eventSink, parseNothingProfile).Read(archive);
 
         Assert.Multiple(() =>
         {

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Replay.Encoding.Archives;
 using Replay.Models.Errors;
 

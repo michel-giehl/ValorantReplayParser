@@ -217,7 +217,7 @@ internal sealed class CompatibleAresRoundResultsDecoder : IFieldDecoder
         context.Diagnostics?.Add(new ReplayDiagnostic(
             ReplayDiagnosticCode.RawPayloadFallback,
             $"Field '{context.FieldName}' fell back to raw payload for VALORANT release {release} " +
-            $"using RoundResults layout '{_handles.LayoutName}': {fallbackReason ?? "unsupported field layout"}",
+            $"using RoundResults layout '{_handles.LayoutName}': {fallbackReason}",
             context.CurrentPacketId,
             context.ChannelIndex,
             context.CurrentTimeSeconds,

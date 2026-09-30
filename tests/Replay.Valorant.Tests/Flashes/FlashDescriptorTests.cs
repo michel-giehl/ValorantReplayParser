@@ -101,7 +101,7 @@ public class FlashDescriptorTests
             Assert.That(setPath.Handle, Is.EqualTo(0));
             Assert.That(setPath.ParameterDescriptor,
                 Is.TypeOf<PrecalculatedProjectileSetPathParameters>());
-            AssertFieldHandles((ExportGroupDescriptor)setPath.ParameterDescriptor!,
+            AssertFieldHandles(setPath.ParameterDescriptor!,
                 ("NetworkedProjectilePath", 0));
             AssertFieldHandles(new PrecalculatedProjectilePathPoint(),
                 ("ElapsedSeconds", 1), ("Location", 2), ("Velocity", 3));

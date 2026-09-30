@@ -248,7 +248,7 @@ internal sealed class ContentBlockFramer
         }
 
         using var decodedPayload = DecodeContentPayload(payload, payloadBits, channel, replayVersionBranch);
-        var context = CreateDecodeContext(exportGroupPath, channel, header, timeSeconds, packetId, stats);
+        var context = CreateDecodeContext(exportGroupPath, channel, header, timeSeconds, packetId);
         var beforeRepLayout = decodedPayload.BitsRemaining;
         var result = _fieldPayloadParser.ParseRepLayoutProperties(decodedPayload, boundGroup, ref context);
         var parsedBits = checked((int)(beforeRepLayout - decodedPayload.BitsRemaining));
@@ -328,7 +328,7 @@ internal sealed class ContentBlockFramer
         }
 
         using var decodedPayload = DecodeContentPayload(payload, payloadBits, channel, replayVersionBranch);
-        var context = CreateDecodeContext(classPath, channel, header, timeSeconds, packetId, stats);
+        var context = CreateDecodeContext(classPath, channel, header, timeSeconds, packetId);
         var beforeClassNetCache = decodedPayload.BitsRemaining;
         var invocations = _fieldPayloadParser.ParseClassNetCachePayload(decodedPayload, boundCache, ref context);
         var parsedBits = checked((int)(beforeClassNetCache - decodedPayload.BitsRemaining));
@@ -381,8 +381,7 @@ internal sealed class ContentBlockFramer
         ActorChannelState channel,
         ContentBlockHeader header,
         float timeSeconds,
-        int packetId,
-        BunchPayloadStats stats) => new()
+        int packetId) => new()
         {
             NetGuidCache = _netGuidCache,
             LoggerFactory = _loggerFactory,

@@ -67,7 +67,7 @@ public sealed class ForceModuleManagerComponentClassNetCacheDescriptor
 
     protected override void Configure()
     {
-        AddFunction<Replay.Valorant.Descriptors.Agents.Clay.RazeForceParameters>("NetMulticastApplyForceModule", "/Script/ShooterGame.ForceModuleManagerComponent:NetMulticastApplyForceModule", ExportCategory.Ability);
+        AddFunction<Clay.RazeForceParameters>("NetMulticastApplyForceModule", "/Script/ShooterGame.ForceModuleManagerComponent:NetMulticastApplyForceModule", ExportCategory.Ability);
         AddFunction<NetMulticastRemoveForceModuleParameters>(
             "NetMulticastRemoveForceModule",
             "/Script/ShooterGame.ForceModuleManagerComponent:NetMulticastRemoveForceModule",

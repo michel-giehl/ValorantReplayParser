@@ -4,7 +4,6 @@ using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Models.Replay;
 using Replay.Unreal.Header;
-using Replay.Unreal.Readers;
 using Replay.Valorant;
 using Snapshooter.NUnit;
 using System.Runtime.ExceptionServices;

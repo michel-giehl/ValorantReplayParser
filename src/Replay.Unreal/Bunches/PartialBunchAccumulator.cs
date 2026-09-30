@@ -313,7 +313,7 @@ internal sealed class PartialBunchAccumulator : IPartialBunchAccumulator
         long fragmentBitCount,
         RawBunchHeader header)
     {
-        var totalBitCount = checked((long)state.BitCount + fragmentBitCount);
+        var totalBitCount = checked(state.BitCount + fragmentBitCount);
         var requiredByteCountLong = RequiredByteCount(totalBitCount);
         var requiredByteCount = checked((int)requiredByteCountLong);
         var fragmentBitCountInt = checked((int)fragmentBitCount);

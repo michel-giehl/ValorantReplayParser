@@ -1,6 +1,6 @@
 namespace Replay.Models.Descriptors;
 
-using global::Replay.Models.Replay;
+using Replay;
 
 public sealed class RpcDescriptor
 {

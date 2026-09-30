@@ -104,17 +104,17 @@ internal sealed class ReplayExportManifestWriter
             writer.WriteStartObject();
             writer.WriteString("code", ReplayJsonNormalizer.ToSnakeCase(diagnostic.Code.ToString()));
             writer.WriteString("message", diagnostic.Message);
-            if (diagnostic.PacketId is int packetId)
+            if (diagnostic.PacketId is { } packetId)
             {
                 writer.WriteNumber("packet_id", packetId);
             }
 
-            if (diagnostic.ChannelIndex is uint channelIndex)
+            if (diagnostic.ChannelIndex is { } channelIndex)
             {
                 writer.WriteNumber("channel_index", channelIndex);
             }
 
-            if (diagnostic.TimeSeconds is float timeSeconds)
+            if (diagnostic.TimeSeconds is { } timeSeconds)
             {
                 writer.WriteNumber("time_seconds", timeSeconds);
             }

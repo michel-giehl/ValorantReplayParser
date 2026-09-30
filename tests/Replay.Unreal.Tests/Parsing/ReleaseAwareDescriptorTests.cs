@@ -9,7 +9,6 @@ namespace Replay.Unreal.Tests.Parsing;
 
 public class ReleaseAwareDescriptorTests
 {
-    private static readonly ReplayReleaseVersion Release1301 = new(13, 1);
     private static readonly ReplayReleaseVersion Release1305 = new(13, 5);
 
     [Test]

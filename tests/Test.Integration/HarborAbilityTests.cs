@@ -153,10 +153,9 @@ public class HarborAbilityTests
             Assert.That(eventSink.ActorListTransitions.Any(value =>
                 value.Actors is { BitCount: 56, Data.Length: 7 }), Is.True);
             Assert.That(eventSink.TransformTransitions.Any(value =>
-                value.Rotation is { BitCount: 192, Data.Length: 24 } &&
-                value.Translation is { Bits: 64 }), Is.True);
+                value is { Rotation: { BitCount: 192, Data.Length: 24 }, Translation.Bits: 64 }), Is.True);
             Assert.That(eventSink.WallStartLingers.All(value =>
-                value.LingerWallStopPosition == 12.470505714416504), Is.True);
+                Math.Abs((value.LingerWallStopPosition ?? 0) - 12.470505714416504) < 1e-5), Is.True);
         });
     }
 

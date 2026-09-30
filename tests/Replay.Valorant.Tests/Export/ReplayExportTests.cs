@@ -1,6 +1,5 @@
 using System.Text.Json;
 using CliReader.JsonExport;
-using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
 using Replay.Models.Diagnostics;
 using Replay.Models.Events;

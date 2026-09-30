@@ -37,10 +37,10 @@ public class NearsightLifecycleIntegrationTests
             Assert.That(activations, Has.Length.EqualTo(5));
             Assert.That(activations.All(activation => activation.Evidence == ValorantNearsightActivationEvidence.SourceActorSpawned), Is.True);
             Assert.That(hits, Has.Length.EqualTo(2));
-            Assert.That(hits.All(hit => hit.ConfiguredDurationSeconds == 2), Is.True);
+            Assert.That(hits.All(hit => Math.Abs((hit.ConfiguredDurationSeconds ?? 0) - 2) < 1e-5), Is.True);
             Assert.That(hits.All(hit => hit.TargetCharacterNetGuid == castsByActor[hit.NearsightActorNetGuid].CasterCharacterNetGuid), Is.True);
             Assert.That(ended, Has.Length.EqualTo(2));
-            Assert.That(ended.All(effect => effect.ObservedDurationSeconds == 2), Is.True);
+            Assert.That(ended.All(effect => Math.Abs(effect.ObservedDurationSeconds - 2) < 1e-5), Is.True);
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
             Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(2));

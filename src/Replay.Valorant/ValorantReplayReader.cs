@@ -4,15 +4,12 @@ using Replay.Encoding.Compression;
 using Replay.Encoding.Net;
 using Replay.Encoding.PayloadEncryption;
 using Replay.Models.Descriptors;
-using Replay.Models.Diagnostics;
 using Replay.Models.Errors;
 using Replay.Models.Events;
-using Replay.Models.Net;
 using Replay.Models.Replay;
 using Replay.Models.Results;
 using Replay.Unreal.Chunks;
 using Replay.Unreal.Readers;
-using System.Threading;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Descriptors;
 using Replay.Valorant.Flashes;
@@ -330,7 +327,7 @@ public sealed class ValorantReplayReader
             Array.AsReadOnly(groups));
     }
 
-    private static ReplayPacketStatistics Snapshot(Replay.Unreal.Packets.RawPacketStats stats) => new(
+    private static ReplayPacketStatistics Snapshot(Unreal.Packets.RawPacketStats stats) => new(
         stats.PacketCount,
         stats.TotalPacketBytes,
         stats.PacketsWithBunches,
@@ -340,7 +337,7 @@ public sealed class ValorantReplayReader
         stats.MinTimeSeconds,
         stats.MaxTimeSeconds);
 
-    private static ReplayBunchStatistics Snapshot(Replay.Unreal.Bunches.BunchPayloadStats stats) => new(
+    private static ReplayBunchStatistics Snapshot(Unreal.Bunches.BunchPayloadStats stats) => new(
         stats.PacketCount,
         stats.BunchCount,
         stats.PayloadBunchCount,

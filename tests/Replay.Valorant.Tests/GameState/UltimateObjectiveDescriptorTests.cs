@@ -1,5 +1,4 @@
 using Replay.Encoding.Archives;
-using Replay.Models.Descriptors;
 using Replay.Models.Net;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors;
