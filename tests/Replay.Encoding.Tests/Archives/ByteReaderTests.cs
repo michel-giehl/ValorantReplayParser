@@ -31,6 +31,45 @@ public class ByteReaderTests
     }
 
     [Test]
+    public void ReadIntPacked_DecodesUInt32Maximum()
+    {
+        var reader = new ByteArchiveReader([0xFF, 0xFF, 0xFF, 0xFF, 0x1E]);
+
+        Assert.That(reader.ReadIntPacked(), Is.EqualTo(uint.MaxValue));
+        Assert.That(reader.AtEnd, Is.True);
+    }
+
+    [TestCase(0x20)]
+    [TestCase(0x40)]
+    [TestCase(0x80)]
+    [TestCase(0xFE)]
+    public void ReadIntPacked_RejectsUInt32Overflow(byte lastByte)
+    {
+        var reader = new ByteArchiveReader([0x01, 0x01, 0x01, 0x01, lastByte]);
+
+        var exception = Assert.Throws<ArchiveReadException>(() => reader.ReadIntPacked());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.MalformedPackedInteger));
+            Assert.That(exception.Operation, Is.EqualTo(nameof(FArchive.ReadIntPacked)));
+            Assert.That(exception.Position, Is.EqualTo(5));
+            Assert.That(exception.Length, Is.EqualTo(5));
+        });
+    }
+
+    [Test]
+    public void ReadIntPacked_RejectsContinuationAfterFiveBytes()
+    {
+        var reader = new ByteArchiveReader([0x01, 0x01, 0x01, 0x01, 0x01, 0x00]);
+
+        var exception = Assert.Throws<ArchiveReadException>(() => reader.ReadIntPacked());
+
+        Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.MalformedPackedInteger));
+        Assert.That(reader.Position, Is.EqualTo(5));
+    }
+
+    [Test]
     public void BoundsFailure_ThrowsAndDoesNotAdvance()
     {
         var reader = new ByteArchiveReader([0x01]);

@@ -193,6 +193,45 @@ public class RawPacketReaderTests
     }
 
     [Test]
+    public void ReadPacket_PartialInitialAndFinal_CompletesBunch()
+    {
+        var reader = new RawPacketReader();
+        var packet = BuildPacket(writer => WriteReliablePartialBunch(writer, initial: true, final: true));
+        RawBunchHeader? captured = null;
+
+        var result = reader.ReadPacket(packet, 0, (ref header, _) => captured = header);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.PartialErrorCount, Is.Zero);
+            Assert.That(captured, Is.Not.Null);
+            Assert.That(captured!.Value.IsPartialCompleted, Is.True);
+            Assert.That(captured.Value.HasPartialError, Is.False);
+        });
+    }
+
+    [TestCase(true, 0)]
+    [TestCase(false, 1)]
+    public void ReadPacket_AfterCompletedSingleFragment_ValidatesNextPartial(bool nextIsInitial, int expectedErrors)
+    {
+        var reader = new RawPacketReader();
+        reader.ReadPacket(
+            BuildPacket(writer => WriteReliablePartialBunch(writer, initial: true, final: true)),
+            0,
+            static (ref _, _) => { });
+        var packet = BuildPacket(writer => WriteReliablePartialBunch(writer, nextIsInitial, final: true));
+        RawBunchHeader? captured = null;
+
+        var result = reader.ReadPacket(packet, 1, (ref header, _) => captured = header);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.PartialErrorCount, Is.EqualTo(expectedErrors));
+            Assert.That(captured!.Value.HasPartialError, Is.EqualTo(expectedErrors != 0));
+        });
+    }
+
+    [Test]
     public void ReadPacket_ReliabilityMismatchOnPartial_ReportsError()
     {
         var reader = new RawPacketReader();
@@ -290,6 +329,22 @@ public class RawPacketReaderTests
             Assert.That(result.BunchCount, Is.EqualTo(0));
             Assert.That(callbackCount, Is.EqualTo(0));
         });
+    }
+
+    private static void WriteReliablePartialBunch(PacketBuilder writer, bool initial, bool final)
+    {
+        writer.WriteBit(false); // control
+        writer.WriteBit(false); // replication paused
+        writer.WriteBit(true); // reliable
+        writer.WriteIntPacked(2); // channel index
+        writer.WriteBit(false); // package-map exports
+        writer.WriteBit(false); // must-be-mapped GUIDs
+        writer.WriteBit(true); // partial
+        writer.WriteBit(initial);
+        writer.WriteBit(final);
+        writer.WriteBit(false); // VALORANT bit
+        writer.WriteFName(1);
+        writer.WritePayloadSize(0);
     }
 
     private static byte[] BuildPacket(params Action<PacketBuilder>[] writeBunches)

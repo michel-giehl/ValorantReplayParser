@@ -34,6 +34,40 @@ public class FBinaryArchiveTests
         Assert.That(archive.AtEnd, Is.True);
     }
 
+    [TestCase(-1073741824)]
+    [TestCase(-2147483647)]
+    [TestCase(int.MinValue)]
+    public void ReadFString_RejectsOversizedUtf16LengthWithArchiveDetails(int serializedLength)
+    {
+        var bytes = new byte[sizeof(int)];
+        BinaryPrimitives.WriteInt32LittleEndian(bytes, serializedLength);
+        var archive = new FBinaryArchive(bytes);
+
+        var exception = Assert.Throws<ArchiveReadException>(() => archive.ReadFString());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.InvalidCount));
+            Assert.That(exception.Operation, Is.EqualTo(nameof(FArchive.ReadFString)));
+            Assert.That(exception.Position, Is.EqualTo(sizeof(int)));
+            Assert.That(exception.Length, Is.EqualTo(bytes.Length));
+            Assert.That(exception.Requested, Is.EqualTo(-(long)serializedLength * 2));
+        });
+    }
+
+    [Test]
+    public void ReadFString_Utf16LengthLimitCountsBytes()
+    {
+        var bytes = new byte[sizeof(int)];
+        BinaryPrimitives.WriteInt32LittleEndian(bytes, -5);
+        var archive = new FBinaryArchive(bytes);
+
+        var exception = Assert.Throws<ArchiveReadException>(() => archive.ReadFString(maxSerializedBytes: 9));
+
+        Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.InvalidCount));
+        Assert.That(exception.Requested, Is.EqualTo(10));
+    }
+
     [Test]
     public void ReadGuid_ReadsSixteenByteGuid()
     {

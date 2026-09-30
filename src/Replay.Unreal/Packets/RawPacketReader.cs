@@ -160,7 +160,9 @@ public sealed class RawPacketReader
                 ChSequence = bunch.ChSequence,
                 Reliable = bunch.bReliable,
                 CumulativePayloadBitCount = bunch.PayloadBitCount,
+                IsComplete = bunch.bPartialFinal,
             };
+            bunch.IsPartialCompleted = bunch.bPartialFinal;
             return;
         }
 

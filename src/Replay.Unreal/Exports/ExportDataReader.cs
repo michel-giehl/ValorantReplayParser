@@ -10,6 +10,8 @@ namespace Replay.Unreal.Exports;
 
 public class ExportDataReader
 {
+    private const int MaxNetFieldExports = 64 * 1024;
+
     private readonly FBinaryArchive _archive;
     private readonly NetGuidCache _netGuidCache;
     private readonly NetGuidObjectReader _objectReader;
@@ -117,6 +119,11 @@ public class ExportDataReader
     {
         var pathName = _archive.ReadFString();
         var numExports = _archive.ReadIntPacked();
+        if (numExports > MaxNetFieldExports)
+        {
+            throw new InvalidReplayDataException(
+                $"Net-field export group '{pathName}' declares {numExports} fields; maximum is {MaxNetFieldExports}.");
+        }
 
         return new NetFieldExportGroup
         {

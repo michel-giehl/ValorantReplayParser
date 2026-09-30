@@ -102,6 +102,17 @@ public abstract class FArchive : IDisposable
         for (var i = 0; i < 5; i++)
         {
             var nextByte = ReadByte();
+            if (i == 4 && (nextByte & 0xE0) != 0)
+            {
+                throw new ArchiveReadException(
+                    ArchiveErrorCode.MalformedPackedInteger,
+                    nameof(ReadIntPacked),
+                    Position,
+                    Length,
+                    5,
+                    "Packed integer exceeds UInt32 range.");
+            }
+
             value |= (uint)(nextByte >> 1) << shift;
 
             if ((nextByte & 1) == 0)
@@ -117,7 +128,7 @@ public abstract class FArchive : IDisposable
             nameof(ReadIntPacked),
             Position,
             Length,
-            0,
+            5,
             "Packed integer did not terminate within five bytes.");
     }
 
@@ -131,23 +142,8 @@ public abstract class FArchive : IDisposable
             return string.Empty;
         }
 
-        var encoding = System.Text.Encoding.UTF8;
-        int byteCount;
-        if (length < 0)
-        {
-            if (length == int.MinValue)
-            {
-                throw new ArchiveReadException(ArchiveErrorCode.InvalidCount, nameof(ReadFString), Position, Length,
-                    length);
-            }
-
-            encoding = System.Text.Encoding.Unicode;
-            byteCount = checked(-length * 2);
-        }
-        else
-        {
-            byteCount = length;
-        }
+        var encoding = length < 0 ? System.Text.Encoding.Unicode : System.Text.Encoding.UTF8;
+        var byteCount = length < 0 ? -(long)length * 2 : length;
 
         if (byteCount > maxSerializedBytes)
         {
@@ -155,7 +151,7 @@ public abstract class FArchive : IDisposable
                 byteCount, $"Serialized FString byte count {byteCount} is outside the valid range 1..{maxSerializedBytes}.");
         }
 
-        var bytes = ReadBytes(byteCount);
+        var bytes = ReadBytes((int)byteCount);
         return encoding.GetString(bytes.Span).TrimEnd('\0');
     }
 

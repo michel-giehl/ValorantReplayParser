@@ -6,6 +6,8 @@ namespace Replay.Unreal.Parsing;
 
 public static class RepLayoutArrayDecoders
 {
+    private const int MaxArrayElementCount = 64 * 1024;
+
     public static IFieldDecoder DynamicArray<TElement>()
         where TElement : ExportGroupDescriptor<TElement>, new() =>
         new DescriptorDynamicArrayDecoder<TElement>(
@@ -69,14 +71,15 @@ public static class RepLayoutArrayDecoders
             }
 
             var elementCount = archive.ReadIntPacked();
-            if (elementCount > int.MaxValue)
+            if (elementCount > MaxArrayElementCount)
             {
                 throw new ArchiveReadException(
                     ArchiveErrorCode.InvalidCount,
                     nameof(DynamicArrayDecoder<TElement>),
                     archive.Position,
                     archive.Length,
-                    elementCount);
+                    elementCount,
+                    $"Dynamic array declares {elementCount} elements; maximum is {MaxArrayElementCount}.");
             }
 
             var elements = new TElement[elementCount];
@@ -92,11 +95,7 @@ public static class RepLayoutArrayDecoders
                     }
 
                     var index = checked(encodedIndex - 1);
-                    if (index >= elementCount)
-                    {
-                        archive.SkipRemaining();
-                        break;
-                    }
+                    ValidateElementIndex(archive, index, elementCount);
 
                     elements[index] = DecodePrimitiveElement(primitiveDecoder, ref context, archive);
                 }
@@ -118,11 +117,7 @@ public static class RepLayoutArrayDecoders
                 }
 
                 var index = checked(encodedIndex - 1);
-                if (index >= elementCount)
-                {
-                    archive.SkipRemaining();
-                    break;
-                }
+                ValidateElementIndex(archive, index, elementCount);
 
                 var element = (TElement)_descriptor!.CreatePayloadInstance();
                 DecodeElement(element, ref context, archive);
@@ -130,6 +125,20 @@ public static class RepLayoutArrayDecoders
             }
 
             return DecodedFieldValue.FromObject(elements);
+        }
+
+        private static void ValidateElementIndex(FBitArchive archive, uint index, uint elementCount)
+        {
+            if (index >= elementCount)
+            {
+                throw new ArchiveReadException(
+                    ArchiveErrorCode.InvalidCount,
+                    nameof(DynamicArrayDecoder<TElement>),
+                    archive.Position,
+                    archive.Length,
+                    index,
+                    $"Dynamic array element index {index} is outside the declared count {elementCount}.");
+            }
         }
 
         private static TElement DecodePrimitiveElement(

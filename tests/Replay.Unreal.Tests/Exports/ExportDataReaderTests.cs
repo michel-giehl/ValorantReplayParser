@@ -28,6 +28,34 @@ public class ExportDataReaderTests
         });
     }
 
+    [TestCase(65537u)]
+    [TestCase(uint.MaxValue)]
+    public void ReadNetFieldExports_RejectsOversizedGroupBeforeRegistration(uint groupLength)
+    {
+        var cache = new NetGuidCache();
+        var bytes = BuildNetFieldExports(
+            writer => AddGroup(writer, 11, "/Game/Test.Test_C", groupLength, addField: false));
+
+        var exception = Assert.Throws<InvalidReplayDataException>(() =>
+            new ExportDataReader(new FBinaryArchive(bytes), cache).ReadNetFieldExports());
+
+        Assert.That(exception!.Message, Does.Contain(groupLength.ToString()));
+        Assert.That(cache.ExportGroupsByPath, Is.Empty);
+        Assert.That(cache.ExportGroupsByPathIndex, Is.Empty);
+    }
+
+    [Test]
+    public void ReadNetFieldExports_AcceptsGroupAtAllocationLimit()
+    {
+        var cache = new NetGuidCache();
+        var bytes = BuildNetFieldExports(
+            writer => AddGroup(writer, 11, "/Game/Test.Test_C", 65536, addField: false));
+
+        new ExportDataReader(new FBinaryArchive(bytes), cache).ReadNetFieldExports();
+
+        Assert.That(cache.GetExportGroup(11).NetFieldExports, Has.Length.EqualTo(65536));
+    }
+
     [Test]
     public void ReadNetFieldExports_StoresExportByHandle()
     {

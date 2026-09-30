@@ -88,6 +88,65 @@ public class RepLayoutArrayDecodersTests
         Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.InvalidCount));
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DynamicArray_RejectsOversizedElementCount(bool structured)
+    {
+        var archive = CreateArchive(writer => writer.WriteIntPacked(65537));
+        var context = new FieldDecodeContext();
+        var decoder = structured
+            ? RepLayoutArrayDecoders.DynamicArray<TestArrayElement>()
+            : RepLayoutArrayDecoders.DynamicArray<byte>(PrimitiveDecoders.Byte);
+
+        var exception = Assert.Throws<ArchiveReadException>(() => decoder.Decode(ref context, archive));
+
+        Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.InvalidCount));
+        Assert.That(exception.Requested, Is.EqualTo(65537));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DynamicArray_AcceptsElementCountAtAllocationLimit(bool structured)
+    {
+        var archive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(65536);
+            writer.WriteIntPacked(0);
+        });
+        var context = new FieldDecodeContext();
+        var decoder = structured
+            ? RepLayoutArrayDecoders.DynamicArray<TestArrayElement>()
+            : RepLayoutArrayDecoders.DynamicArray<byte>(PrimitiveDecoders.Byte);
+
+        var elements = (Array)decoder.Decode(ref context, archive).ObjectValue!;
+
+        Assert.That(elements, Has.Length.EqualTo(65536));
+        Assert.That(archive.AtEnd, Is.True);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DynamicArray_RejectsElementIndexOutsideDeclaredCount(bool structured)
+    {
+        var archive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(1);
+            writer.WriteIntPacked(2);
+            writer.WriteByte(0xA5);
+            writer.WriteIntPacked(0);
+        });
+        var context = new FieldDecodeContext();
+        var decoder = structured
+            ? RepLayoutArrayDecoders.DynamicArray<TestArrayElement>()
+            : RepLayoutArrayDecoders.DynamicArray<byte>(PrimitiveDecoders.Byte);
+
+        var exception = Assert.Throws<ArchiveReadException>(() => decoder.Decode(ref context, archive));
+
+        Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.InvalidCount));
+        Assert.That(exception.Requested, Is.EqualTo(1));
+        Assert.That(archive.Position, Is.EqualTo(16));
+    }
+
     [Test]
     public void DynamicArray_RejectsIncompatiblePrimitiveDecoderValue()
     {
