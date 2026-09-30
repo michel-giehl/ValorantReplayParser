@@ -52,6 +52,7 @@ public static class ValorantDescriptors
         catalog.AddSubobjectClassPath("LocationalEffectManager", "/Script/ShooterGame.LocationalEffectManagerComponent");
         catalog.AddSubobjectClassPath("DamageHandlerComponent", "/Script/ShooterGame.DamageableComponent");
         catalog.AddSubobjectClassPath("ForceModuleManager", "/Script/ShooterGame.ForceModuleManagerComponent");
+        catalog.AddSubobjectClassPath("Comp_BombEvents", "/Game/GameModes/Components/Comp_BombEvents.Comp_BombEvents_C");
         PrecalculatedProjectilePathDescriptors.AddTo(catalog);
 
         catalog.Add(AggrobotDescriptors.CreateDescriptors());
@@ -118,6 +119,8 @@ public static class ValorantDescriptors
         catalog.Add(new BaseReplayControllerDescriptor());
         catalog.Add(new BaseReplayControllerClassNetCacheDescriptor());
         catalog.Add(new BombGameStateClassNetCacheDescriptor());
+        catalog.Add(new BombObjectiveClassNetCacheDescriptor());
+        catalog.Add(new WingmanDescriptor());
         catalog.Add(new AresAbilitySystemComponentClassNetCacheDescriptor());
         catalog.Add(new ChildDamageSectionClassNetCacheDescriptor());
         catalog.Add(new AttachedDamageSectionClassNetCacheDescriptor());

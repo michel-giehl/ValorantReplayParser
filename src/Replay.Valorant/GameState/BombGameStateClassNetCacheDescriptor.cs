@@ -38,6 +38,10 @@ public sealed class BombGameStateClassNetCacheDescriptor : ClassNetCacheDescript
             "/Script/ShooterGame.ShooterGameState:MulticastReceivePlayerResurrectEvent",
             ExportCategory.GameState | ExportCategory.Gunplay);
 
+        AddFunction<OrbPickedUpRpcParameters>(
+            "OrbPickedUpRPC", "/Game/BaseGameState.BaseGameState_C:OrbPickedUpRPC",
+            ExportCategory.GameState);
+
         AddTemporaryDeathBase();
         AddTemporaryDeathPoint();
 
