@@ -73,6 +73,18 @@ Malformed replay structure, invalid required reads, unsupported full-parse versi
 
 Events are streamed to the sink and are provisional until `Read` returns successfully. If a later parse error occurs, events already emitted cannot be rolled back. Some semantic enrichers defer events until related replay data is available, so event timestamps are not guaranteed to increase globally in emission order. If the sink throws, parsing stops and the original sink exception is propagated.
 
+## Inventory and economy events
+
+The default reader emits high-level events alongside the decoded export groups and RPCs:
+
+- `ValorantInventoryChanged` contains a detached inventory snapshot: player/character GUIDs, subject, active state, selected equippable, and the 16 named slot types. Slot references and multi-item contents merge sparse updates. A null item list means unobserved contents; an empty list means a known empty slot. Omitted slots are unknown. Selected-equippable evidence distinguishes a replicated equippable change from a server correction; the recorded net timestamp is exposed without inferring when the client finished equipping.
+- `ValorantInventoryRemoved` reports inventory deletion or destruction of its character.
+- `ValorantItemPurchaseInfoChanged` exposes replicated purchase provenance: purchaseable, purchasing player, session flag, and transaction source.
+
+Inventory types are in `Replay.Valorant.Inventory`; raw economy descriptors are in `Replay.Valorant.Economy`. Select `ExportCategory.Inventory` or `ExportCategory.Economy` in a parse profile to retain the corresponding identity fields too. Null values mean unobserved data; explicit GUID zero clears a reference. Inventory snapshots resolve known weapons with the existing equippable resolver and retain unknown item GUIDs.
+
+Economy parsing emits decoded `ExportGroupReceived` and `RpcReceived` payloads: `MoneyManagementComponentDescriptor` exposes observed credits, `OwnerExclusivePlayerInfoDescriptor.RoundInfos` exposes raw round credit/loadout deltas, and gun request parameter descriptors expose recorded request fields. Use `HasDecoded` to distinguish observed properties from defaults. Identity joins, merged economy snapshots, credit deltas, and round buy classification belong to the analyser.
+
 ## Metadata-only reads and input ownership
 
 Use `ReadMetadata` to inspect replay metadata without parsing packet payloads. The example reuses the `reader` from the preceding sample:

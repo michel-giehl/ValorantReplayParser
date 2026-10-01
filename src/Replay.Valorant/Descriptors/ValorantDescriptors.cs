@@ -33,6 +33,8 @@ using Replay.Valorant.Descriptors.Agents.Wushu;
 using Replay.Valorant.Descriptors.Effects.Replay;
 using Replay.Valorant.Flashes.Descriptors;
 using Replay.Valorant.GameState;
+using Replay.Valorant.Inventory;
+using Replay.Valorant.Economy;
 
 namespace Replay.Valorant.Descriptors;
 
@@ -53,6 +55,10 @@ public static class ValorantDescriptors
         catalog.AddSubobjectClassPath("DamageHandlerComponent", "/Script/ShooterGame.DamageableComponent");
         catalog.AddSubobjectClassPath("ForceModuleManager", "/Script/ShooterGame.ForceModuleManagerComponent");
         catalog.AddSubobjectClassPath("Comp_BombEvents", "/Game/GameModes/Components/Comp_BombEvents.Comp_BombEvents_C");
+        catalog.AddSubobjectClassPath("InventoryComponent", "/Script/ShooterGame.AresInventory");
+        catalog.AddSubobjectClassPath("MoneyManagementComponent", "/Script/ShooterGame.MoneyManagementComponent");
+        catalog.AddSubobjectClassPath("GunRequestComponent", "/Script/ShooterGame.GunRequestComponent");
+        catalog.AddSubobjectClassPath("PurchasedItemComponent", "/Script/ShooterGame.PurchasedItemComponent");
         PrecalculatedProjectilePathDescriptors.AddTo(catalog);
 
         catalog.Add(AggrobotDescriptors.CreateDescriptors());
@@ -107,6 +113,11 @@ public static class ValorantDescriptors
         catalog.Add(new AresAttributeSetDescriptor());
         catalog.Add(new AmmoComponentDescriptor());
         catalog.Add(new AresInventoryDescriptor());
+        catalog.Add(new ItemSlotDescriptor());
+        catalog.Add(new MultiItemSlotDescriptor());
+        catalog.Add(new PurchasedItemComponentDescriptor());
+        catalog.Add(new MoneyManagementComponentDescriptor());
+        catalog.Add(new GunRequestComponentClassNetCacheDescriptor());
         catalog.Add(new AttachedDamageSectionComponentDescriptor());
         catalog.Add(new BombCombatReportComponentDescriptor());
         catalog.Add(new BombGameStateDescriptor());

@@ -7,7 +7,7 @@ namespace Replay.Valorant.GameState;
 public sealed class BombPlayerStateDescriptor : ExportGroupDescriptor<BombPlayerStateDescriptor>
 {
     public override string Path => "/Game/GameModes/Bomb/BombPlayerState.BombPlayerState_C";
-    public override ExportCategory Categories => ExportCategory.GameState | ExportCategory.Gunplay;
+    public override ExportCategory Categories => ExportCategory.GameState | ExportCategory.Gunplay | ExportCategory.Inventory | ExportCategory.Economy;
     public override ExportGroupKind Kind => ExportGroupKind.Actor;
 
     public int PlayerId { get; set; }
@@ -28,11 +28,11 @@ public sealed class BombPlayerStateDescriptor : ExportGroupDescriptor<BombPlayer
         AddProperty("PlayerID", x => x.PlayerId, ExportCategory.GameState).Int32();
         AddProperty(x => x.UniqueId, ExportCategory.GameState).Decode(ValorantPayloadDecoders.RawPayload("FUniqueNetIdRepl"));
         AddProperty(x => x.CompetitiveTier, ExportCategory.GameState).Int32();
-        AddProperty(x => x.Subject, ExportCategory.GameState).FString();
+        AddProperty(x => x.Subject, ExportCategory.GameState | ExportCategory.Inventory | ExportCategory.Economy).FString();
         AddProperty(x => x.SpectatedPlayer, ExportCategory.GameState).ObjectNetGuid();
-        AddProperty(x => x.PlayerInfo, ExportCategory.GameState).ObjectNetGuid();
-        AddProperty(x => x.SpawnedCharacter, ExportCategory.GameState | ExportCategory.Gunplay).ObjectNetGuid();
-        AddProperty(x => x.PossessedCharacter, ExportCategory.GameState | ExportCategory.Gunplay).ObjectNetGuid();
+        AddProperty(x => x.PlayerInfo, ExportCategory.GameState | ExportCategory.Economy).ObjectNetGuid();
+        AddProperty(x => x.SpawnedCharacter, ExportCategory.GameState | ExportCategory.Gunplay | ExportCategory.Inventory).ObjectNetGuid();
+        AddProperty(x => x.PossessedCharacter, ExportCategory.GameState | ExportCategory.Gunplay | ExportCategory.Inventory).ObjectNetGuid();
         AddProperty("bUltimateActive", x => x.UltimateActive, ExportCategory.GameState).Bool();
         AddProperty(x => x.NumUltimatePoints, ExportCategory.GameState).Int32();
         AddProperty(x => x.TotalAcquiredUltimatePoints, ExportCategory.GameState).Int32();

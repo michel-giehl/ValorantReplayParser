@@ -15,6 +15,7 @@ using Replay.Valorant.Descriptors;
 using Replay.Valorant.Flashes;
 using Replay.Valorant.Nearsights;
 using Replay.Valorant.Walls;
+using Replay.Valorant.Inventory;
 
 namespace Replay.Valorant;
 
@@ -253,7 +254,8 @@ public sealed class ValorantReplayReader
         var wallEventEnricher = new ValorantWallEventEnricher(consumerSink);
         var nearsightEventEnricher = new ValorantNearsightEventEnricher(wallEventEnricher, netGuidCache);
         var flashEventEnricher = new ValorantFlashEventEnricher(nearsightEventEnricher, netGuidCache);
-        var eventSink = new ValorantShotEventEnricher(flashEventEnricher, netGuidCache);
+        var inventoryEventEnricher = new ValorantInventoryEventEnricher(flashEventEnricher, netGuidCache);
+        var eventSink = new ValorantShotEventEnricher(inventoryEventEnricher, netGuidCache);
         var context = new ReplayReaderContext(
             archive,
             eventSink,

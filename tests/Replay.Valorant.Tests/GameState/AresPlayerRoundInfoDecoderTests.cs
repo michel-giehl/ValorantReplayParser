@@ -16,7 +16,7 @@ public class AresPlayerRoundInfoDecoderTests
         {
             writer.WriteIntPacked(3);
             writer.WriteIntPacked(2);
-            WriteField(writer, 40, payload => payload.WriteInt32(1));
+            WriteField(writer, 40, payload => payload.WriteInt32(17));
             WriteField(writer, 41, payload => payload.WriteInt32(800));
             WriteField(writer, 42, payload => payload.WriteInt32(3_900));
             WriteField(writer, 43, payload => payload.WriteInt32(1_200));
@@ -31,9 +31,43 @@ public class AresPlayerRoundInfoDecoderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(info, Is.EqualTo(new AresPlayerRoundInfo(1, 800, 3_900, 1_200, 4_500)));
+            Assert.That(info, Is.EqualTo(new AresPlayerRoundInfo(1, 17, 800, 3_900, 1_200, 4_500)));
             Assert.That(archive.AtEnd, Is.True);
         });
+    }
+
+    [Test]
+    public void Decode_PartialUpdatePreservesIndexAndMissingRoundNumber()
+    {
+        using var archive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(3);
+            writer.WriteIntPacked(2);
+            WriteField(writer, 43, payload => payload.WriteInt32(0));
+            writer.WriteIntPacked(0);
+            writer.WriteIntPacked(0);
+        });
+        var context = new FieldDecodeContext();
+
+        var value = Decoder().Decode(ref context, archive);
+
+        Assert.That(((AresPlayerRoundInfo[])value.ObjectValue!).Single(),
+            Is.EqualTo(new AresPlayerRoundInfo(1, null, null, null, 0, null)));
+    }
+
+    [Test]
+    public void Decode_RejectsUpdateOutsideDeclaredArray()
+    {
+        using var archive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(1);
+            writer.WriteIntPacked(2);
+        });
+        var context = new FieldDecodeContext();
+
+        var exception = Assert.Throws<ArchiveReadException>(() => Decoder().Decode(ref context, archive));
+
+        Assert.That(exception!.ErrorCode, Is.EqualTo(ArchiveErrorCode.InvalidCount));
     }
 
     [Test]
@@ -66,6 +100,25 @@ public class AresPlayerRoundInfoDecoderTests
     }
 
     [Test]
+    public void Decode_UnknownLayoutFailsForTypedWireDescriptor()
+    {
+        using var archive = CreateArchive(writer =>
+        {
+            writer.WriteIntPacked(1);
+            writer.WriteIntPacked(1);
+            WriteField(writer, 99, payload => payload.WriteBit(true));
+            writer.WriteIntPacked(0);
+            writer.WriteIntPacked(0);
+        });
+        var context = new FieldDecodeContext();
+
+        var exception = Assert.Throws<UnsupportedPlayerRoundInfoLayoutException>(
+            () => Decoder().Decode(ref context, archive));
+
+        Assert.That(exception!.Message, Does.Contain("field handle 99"));
+    }
+
+    [Test]
     public void Decode_UnknownLayoutFallsBackAndReportsDiagnostic()
     {
         var writer = new BitWriter();
@@ -88,7 +141,7 @@ public class AresPlayerRoundInfoDecoderTests
             FieldName = "RoundInfos",
         };
 
-        var value = Decoder().Decode(ref context, archive);
+        var value = new CompatibleAresPlayerRoundInfoDecoder().Decode(ref context, archive);
         var raw = (ValorantRawPayload)value.ObjectValue!;
         var diagnostic = diagnostics.Diagnostics.Single();
 

@@ -7,7 +7,8 @@ using Replay.Valorant.Descriptors;
 namespace Replay.Valorant.GameState;
 
 public sealed record AresPlayerRoundInfo(
-    int RoundNumber,
+    int Index,
+    int? RoundNumber,
     int? StartOfRoundMoney,
     int? StartOfRoundLoadoutValue,
     int? EndOfRoundMoney,
@@ -45,9 +46,9 @@ internal sealed class AresPlayerRoundInfoDecoder : IFieldDecoder
     private static AresPlayerRoundInfo[] ReadUpdates(FBitArchive archive, int infosCount)
     {
         var infos = new List<AresPlayerRoundInfo>();
-        while (ReadUpdateIndex(archive, infosCount) is { } roundNumber)
+        while (ReadUpdateIndex(archive, infosCount) is { } index)
         {
-            infos.Add(ReadUpdate(archive, roundNumber));
+            infos.Add(ReadUpdate(archive, index));
         }
 
         return infos.ToArray();
@@ -64,8 +65,9 @@ internal sealed class AresPlayerRoundInfoDecoder : IFieldDecoder
         throw InvalidCount(archive, encodedIndex, $"PlayerRoundInfo update index {infoIndex} exceeds count {infosCount}.");
     }
 
-    private static AresPlayerRoundInfo ReadUpdate(FBitArchive archive, int roundNumber)
+    private static AresPlayerRoundInfo ReadUpdate(FBitArchive archive, int index)
     {
+        int? roundNumber = null;
         int? startOfRoundMoney = null;
         int? startOfRoundLoadoutValue = null;
         int? endOfRoundMoney = null;
@@ -76,11 +78,11 @@ internal sealed class AresPlayerRoundInfoDecoder : IFieldDecoder
             var encodedHandle = archive.ReadIntPacked();
             if (encodedHandle == 0)
             {
-                return new AresPlayerRoundInfo(roundNumber, startOfRoundMoney, startOfRoundLoadoutValue, endOfRoundMoney, endOfRoundLoadoutValue);
+                return new AresPlayerRoundInfo(index, roundNumber, startOfRoundMoney, startOfRoundLoadoutValue, endOfRoundMoney, endOfRoundLoadoutValue);
             }
 
             if (fieldCount == MaxFieldsPerUpdate) throw TooManyFields(archive);
-            ReadField(archive, encodedHandle - 1, ref startOfRoundMoney, ref startOfRoundLoadoutValue, ref endOfRoundMoney, ref endOfRoundLoadoutValue);
+            ReadField(archive, encodedHandle - 1, ref roundNumber, ref startOfRoundMoney, ref startOfRoundLoadoutValue, ref endOfRoundMoney, ref endOfRoundLoadoutValue);
         }
 
         throw TooManyFields(archive);
@@ -89,16 +91,17 @@ internal sealed class AresPlayerRoundInfoDecoder : IFieldDecoder
     private static void ReadField(
         FBitArchive archive,
         uint handle,
+        ref int? roundNumber,
         ref int? startOfRoundMoney,
         ref int? startOfRoundLoadoutValue,
         ref int? endOfRoundMoney,
         ref int? endOfRoundLoadoutValue)
     {
-        var field = ReadFieldPayload(archive);
+        using var field = ReadFieldPayload(archive);
         switch (handle)
         {
             case RoundNumberHandle:
-                _ = field.ReadInt32();
+                roundNumber = field.ReadInt32();
                 break;
             case StartOfRoundMoneyHandle:
                 startOfRoundMoney = field.ReadInt32();

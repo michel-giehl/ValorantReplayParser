@@ -8,7 +8,7 @@ namespace Replay.Valorant.GameState;
 public sealed class BombGameStateDescriptor : ExportGroupDescriptor<BombGameStateDescriptor>
 {
     public override string Path => "/Game/GameModes/Bomb/BombGameState.BombGameState_C";
-    public override ExportCategory Categories => ExportCategory.GameState;
+    public override ExportCategory Categories => ExportCategory.GameState | ExportCategory.Economy;
     public override ExportGroupKind Kind => ExportGroupKind.Actor;
 
     public double ReplicatedWorldTimeSecondsDouble { get; set; }
@@ -31,28 +31,28 @@ public sealed class BombGameStateDescriptor : ExportGroupDescriptor<BombGameStat
 
     protected override void Configure()
     {
-        AddProperty(x => x.ReplicatedWorldTimeSecondsDouble).Double();
-        AddProperty(x => x.MatchState).FName();
-        AddProperty(x => x.WinningTeam).ObjectNetGuid();
-        AddProperty(x => x.CompletionState).SerializedInt(maxValue: 16);
-        AddProperty(x => x.TeamEconomy).Decode(ValorantPayloadDecoders.RawPayload("TArray<FAresTeamEconomy>"));
-        AddProperty(x => x.DisplayRemainingTime).Float();
-        AddProperty(x => x.StateRemainingTime).Float();
-        AddProperty(x => x.GamePhaseElapsedTime).Float();
-        AddProperty(x => x.AuthGameplayStartTimestamp).Float();
-        AddProperty(x => x.AuthGameplayEndTimestamp).Float();
-        AddProperty(x => x.NetServerMaxTickRate).Int32();
-        AddProperty(x => x.MatchID).FString();
-        AddProperty(x => x.RoundResults).Decode(
+        AddProperty(x => x.ReplicatedWorldTimeSecondsDouble, ExportCategory.GameState).Double();
+        AddProperty(x => x.MatchState, ExportCategory.GameState).FName();
+        AddProperty(x => x.WinningTeam, ExportCategory.GameState).ObjectNetGuid();
+        AddProperty(x => x.CompletionState, ExportCategory.GameState).SerializedInt(maxValue: 16);
+        AddProperty(x => x.TeamEconomy, ExportCategory.GameState).Decode(ValorantPayloadDecoders.RawPayload("TArray<FAresTeamEconomy>"));
+        AddProperty(x => x.DisplayRemainingTime, ExportCategory.GameState).Float();
+        AddProperty(x => x.StateRemainingTime, ExportCategory.GameState).Float();
+        AddProperty(x => x.GamePhaseElapsedTime, ExportCategory.GameState).Float();
+        AddProperty(x => x.AuthGameplayStartTimestamp, ExportCategory.GameState).Float();
+        AddProperty(x => x.AuthGameplayEndTimestamp, ExportCategory.GameState).Float();
+        AddProperty(x => x.NetServerMaxTickRate, ExportCategory.GameState).Int32();
+        AddProperty(x => x.MatchID, ExportCategory.GameState).FString();
+        AddProperty(x => x.RoundResults, ExportCategory.GameState).Decode(
             new VersionedDefinition<IFieldDecoderDescriptor>(
                     new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1301))
                 .From(
                     new ReplayReleaseVersion(13, 5),
                     new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1305)));
-        AddProperty(x => x.Phase).EnumByte();
-        AddProperty(x => x.RoundParticipantsInfos)
+        AddProperty(x => x.Phase, ExportCategory.GameState).EnumByte();
+        AddProperty(x => x.RoundParticipantsInfos, ExportCategory.GameState)
             .Decode(ValorantPayloadDecoders.RawPayload("TArray<FRoundParticipantsInfo>"));
-        AddProperty(x => x.RoundNumber).Int32();
-        AddProperty(x => x.BombState).SerializedInt(maxValue: 16);
+        AddProperty(x => x.RoundNumber, ExportCategory.GameState | ExportCategory.Economy).Int32();
+        AddProperty(x => x.BombState, ExportCategory.GameState).SerializedInt(maxValue: 16);
     }
 }

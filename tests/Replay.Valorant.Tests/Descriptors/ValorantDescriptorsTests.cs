@@ -13,6 +13,10 @@ public class ValorantDescriptorsTests
     [TestCase("BlindManagerComponent", "/Script/ShooterGame.BlindManagerComponent")]
     [TestCase("LocationalEffectManager", "/Script/ShooterGame.LocationalEffectManagerComponent")]
     [TestCase("DamageHandlerComponent", "/Script/ShooterGame.DamageableComponent")]
+    [TestCase("InventoryComponent", "/Script/ShooterGame.AresInventory")]
+    [TestCase("MoneyManagementComponent", "/Script/ShooterGame.MoneyManagementComponent")]
+    [TestCase("PurchasedItemComponent", "/Script/ShooterGame.PurchasedItemComponent")]
+    [TestCase("GunRequestComponent", "/Script/ShooterGame.GunRequestComponent")]
     public void CreateCatalog_RegistersStableSubobjectClasses(string objectName, string classPath)
     {
         Assert.That(ValorantDescriptors.CreateCatalog().SubobjectClassPaths[objectName], Is.EqualTo(classPath));
@@ -82,6 +86,10 @@ public class ValorantDescriptorsTests
             "/Game/GameModes/Bomb/BombGameState.BombGameState_C",
             "/Game/GameModes/Bomb/Bomb_CombatReportComponent.Bomb_CombatReportComponent_C",
             "/Script/ShooterGame.AresInventory",
+            "/Script/ShooterGame.ItemSlot",
+            "/Script/ShooterGame.MultiItemSlot",
+            "/Script/ShooterGame.PurchasedItemComponent",
+            "/Script/ShooterGame.MoneyManagementComponent",
             "/Script/ShooterGame.EquippableStateMachineComponent",
             "/Script/ShooterGame.AmmoComponent",
             "/Script/ShooterGame.AresAttributeSet",
