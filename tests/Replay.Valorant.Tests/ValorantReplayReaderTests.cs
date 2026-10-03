@@ -183,18 +183,55 @@ public class ValorantReplayReaderTests
         });
     }
 
+    [TestCase("++Ares-Core+release-11.06")]
+    [TestCase("++Ares-Core+release-11.07")]
+    [TestCase("++Ares-Core+release-11.08")]
+    [TestCase("++Ares-Core+release-11.09")]
+    [TestCase("++Ares-Core+release-11.10")]
+    [TestCase("++Ares-Core+release-11.11")]
+    [TestCase("++Ares-Core+release-12.00")]
+    [TestCase("++Ares-Core+release-12.01")]
+    [TestCase("++Ares-Core+release-12.02")]
+    [TestCase("++Ares-Core+release-12.03")]
+    [TestCase("++Ares-Core+release-12.04")]
+    [TestCase("++Ares-Core+release-12.05")]
+    [TestCase("++Ares-Core+release-12.06")]
+    [TestCase("++Ares-Core+release-12.07")]
+    [TestCase("++Ares-Core+release-12.08")]
+    [TestCase("++Ares-Core+release-12.09")]
+    public void Read_LegacyBranch_DispatchesReplayData(string replayVersion)
+    {
+        var handler = new CapturingReplayDataChunkHandler();
+        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
+        [
+            HeaderChunk(BuildHeader(replayVersion)),
+            ReplayDataChunk(0, 10, [0x01], memorySizeInBytes: 1),
+        ]));
+
+        var result = new ValorantReplayReader(new FakeOodleDecompressor(), chunkHandler: handler).Read(archive);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Status, Is.EqualTo(ReplayReadStatus.Completed));
+            Assert.That(result.Metadata.ReplayVersion.Branch, Is.EqualTo(replayVersion));
+            Assert.That(result.Metadata.FullParseSupportStatus, Is.EqualTo(ValorantReplaySupportStatus.Supported));
+            Assert.That(result.Metadata.FullParseUnsupportedReason, Is.Null);
+            Assert.That(handler.Payloads, Is.EqualTo(new[] { new byte[] { 0x01 } }));
+        });
+    }
+
     [Test]
     public void ReadMetadata_UnsupportedBranch_ReturnsExplicitSupportStatus()
     {
         var archive = new FBinaryArchive(BuildReplayInfo(chunks:
-            [HeaderChunk(BuildHeader("++Ares-Core+release-12.08"))]));
+            [HeaderChunk(BuildHeader("++Ares-Core+release-11.05"))]));
 
         var metadata = new ValorantReplayReader().ReadMetadata(archive);
 
         Assert.Multiple(() =>
         {
             Assert.That(metadata.FullParseSupportStatus, Is.EqualTo(ValorantReplaySupportStatus.UnsupportedVersion));
-            Assert.That(metadata.FullParseUnsupportedReason, Does.Contain("release-12.08"));
+            Assert.That(metadata.FullParseUnsupportedReason, Does.Contain("release-11.05"));
         });
     }
 
@@ -204,7 +241,7 @@ public class ValorantReplayReaderTests
         var handler = new CapturingReplayDataChunkHandler();
         var archive = new FBinaryArchive(BuildReplayInfo(chunks:
         [
-            HeaderChunk(BuildHeader("++Ares-Core+release-12.08")),
+            HeaderChunk(BuildHeader("++Ares-Core+release-11.05")),
             ReplayDataChunk(0, 10, [0x01], memorySizeInBytes: 1),
         ]));
 
@@ -213,7 +250,7 @@ public class ValorantReplayReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(exception!.Message, Does.Contain("release-12.08"));
+            Assert.That(exception!.Message, Does.Contain("release-11.05"));
             Assert.That(handler.Payloads, Is.Empty);
         });
     }

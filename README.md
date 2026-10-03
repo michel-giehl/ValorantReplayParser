@@ -107,6 +107,22 @@ The default `ParseProfile` enables all currently defined categories and selects 
 
 The full reader requires replay version `5.3.2`, game network protocol version `0`, Unreal version values `522/1009`, and a registered payload transform for the replay branch. The transform registry currently contains exactly these branches:
 
+- `++Ares-Core+release-11.06`
+- `++Ares-Core+release-11.07`
+- `++Ares-Core+release-11.08`
+- `++Ares-Core+release-11.09`
+- `++Ares-Core+release-11.10`
+- `++Ares-Core+release-11.11`
+- `++Ares-Core+release-12.00`
+- `++Ares-Core+release-12.01`
+- `++Ares-Core+release-12.02`
+- `++Ares-Core+release-12.03`
+- `++Ares-Core+release-12.04`
+- `++Ares-Core+release-12.05`
+- `++Ares-Core+release-12.06`
+- `++Ares-Core+release-12.07`
+- `++Ares-Core+release-12.08`
+- `++Ares-Core+release-12.09`
 - `++Ares-Core+release-12.10`
 - `++Ares-Core+release-12.11`
 - `++Ares-Core+release-13.00`
@@ -114,6 +130,7 @@ The full reader requires replay version `5.3.2`, game network protocol version `
 - `++Ares-Core+release-13.02`
 - `++Ares-Core+release-13.04`
 - `++Ares-Core+release-13.05`
+- `++Ares-Core+release-13.06`
 
 An unregistered branch or a mismatch in the replay, protocol, or Unreal versions is unsupported. The reader fails early rather than trying a guessed compatibility path. These version checks establish compatibility with the parser's known container and transform layout, not complete gameplay-semantic coverage.
 

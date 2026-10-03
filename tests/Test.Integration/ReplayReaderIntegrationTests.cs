@@ -15,14 +15,13 @@ public class ReplayReaderIntegrationTests
 {
     private const string Replay12_08 = "c96127a8-f003-48db-a2cd-9c71de5aba15.12_08.vrf";
     private const string Replay13_00 = "12974d2b-848f-490d-80ba-5f03a033c2d5.13_00.vrf";
-    private const string Branch12_08 = "++Ares-Core+release-12.08";
 
     [Test]
-    public void ReadReplay_12_08_ReportsUnsupportedVersion() =>
-        ReadReplayReportsUnsupportedVersion(Replay12_08, Branch12_08);
+    public void ReadReplay_12_08_RecordsStats() =>
+        ReadRawPacketsRecordsStats(Replay12_08, expectedPartialErrors: 2, expectedMalformedPayloads: 0);
 
     [Test]
-    public void ReadMetadata_12_08_ReturnsUnsupportedVersionWithoutReadingReplayData()
+    public void ReadMetadata_12_08_ReturnsSupportedVersionWithoutReadingReplayData()
     {
         var archive = new FBinaryArchive(TestHelper.ReadReplayBytes(Replay12_08));
 
@@ -30,8 +29,8 @@ public class ReplayReaderIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(metadata.FullParseSupportStatus, Is.EqualTo(ValorantReplaySupportStatus.UnsupportedVersion));
-            Assert.That(metadata.FullParseUnsupportedReason, Does.Contain(Branch12_08));
+            Assert.That(metadata.FullParseSupportStatus, Is.EqualTo(ValorantReplaySupportStatus.Supported));
+            Assert.That(metadata.FullParseUnsupportedReason, Is.Null);
             Assert.That(metadata.ReplayInfo.Chunks, Has.Count.EqualTo(1));
             Assert.That(metadata.ReplayInfo.DataChunks, Is.Empty);
             Assert.That(archive.AtEnd, Is.False);
@@ -132,18 +131,6 @@ public class ReplayReaderIntegrationTests
         var metadata = ReadReplayMetadata(replayBytes);
 
         Snapshot.Match(CreateReplayInfoSnapshot(replayFileName, metadata));
-    }
-
-    private static void ReadReplayReportsUnsupportedVersion(string replayFileName, string branch)
-    {
-        var replayBytes = TestHelper.ReadReplayBytes(replayFileName);
-        var exception = Assert.Throws<InvalidReplayInfoException>(() => ReadReplay(replayBytes));
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(exception!.Message, Does.Contain("Unsupported VALORANT replay version"));
-            Assert.That(exception.Message, Does.Contain(branch));
-        });
     }
 
     private static void ReadReplayHeaderMatchesSnapshot(string replayFileName)

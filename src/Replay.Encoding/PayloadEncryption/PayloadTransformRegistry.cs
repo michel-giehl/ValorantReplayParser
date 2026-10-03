@@ -23,6 +23,22 @@ public sealed class PayloadTransformRegistry
     }
 
     public static PayloadTransformRegistry CreateDefault() => new([
+        new ValorantSeededTransform11_06(),
+        new ValorantSeededTransform11_07(),
+        new ValorantSeededTransform11_08(),
+        new ValorantSeededTransform11_09(),
+        new ValorantSeededTransform11_10(),
+        new ValorantSeededTransform11_11(),
+        new ValorantSeededTransform12_00(),
+        new ValorantSeededTransform12_01(),
+        new ValorantSeededTransform12_02(),
+        new ValorantSeededTransform12_03(),
+        new ValorantSeededTransform12_04(),
+        new ValorantSeededTransform12_05(),
+        new ValorantSeededTransform12_06(),
+        new ValorantSeededTransform12_07(),
+        new ValorantSeededTransform12_08(),
+        new ValorantSeededTransform12_09(),
         new ValorantSeededTransform12_10(),
         new ValorantSeededTransform12_11(),
         new ValorantSeededTransform13_00(),

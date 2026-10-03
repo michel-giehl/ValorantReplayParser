@@ -63,6 +63,16 @@ internal static class ValorantSeededTransformHelpers
         }
     }
 
+    internal static ulong InitialPrngA(uint seed, uint seedAddend, int seedOffset)
+    {
+        unchecked
+        {
+            var seedPlus = seed + seedAddend;
+            var mixed = ((seedPlus >> 15) ^ seedPlus) >> 12 ^ ((seed + (uint)seedOffset) << 25) ^ seedPlus;
+            return mixed * Multiplier;
+        }
+    }
+
     internal static ulong InitialPrngB(uint seed)
     {
         unchecked

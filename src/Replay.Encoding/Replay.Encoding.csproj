@@ -13,6 +13,11 @@
     <Import Project="$(MSBuildThisFileDirectory)..\..\build\LibraryPackage.props" />
 
     <ItemGroup>
+      <None Include="..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" />
+      <None Include="..\..\third-party\vrfkit-LICENSE" Pack="true" PackagePath="third-party\" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\Replay.Models\Replay.Models.csproj" />
     </ItemGroup>
 
