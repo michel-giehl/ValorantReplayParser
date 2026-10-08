@@ -19,6 +19,7 @@ public class ValorantReplayReaderTests
     private const uint LocalReplayGuidB = 0x7E0B49E4;
     private const uint LocalReplayGuidC = 0xBA43D356;
     private const uint LocalReplayGuidD = 0x94FF87D9;
+    private const string China13_05Branch = "++Ares-Core+release-china-13.05";
     private static readonly Guid HeaderGuid = Guid.Parse("00112233-4455-6677-8899-aabbccddeeff");
 
     [Test]
@@ -84,6 +85,7 @@ public class ValorantReplayReaderTests
                  {
                      "++Ares-Core+release-13.01",
                      "++Ares-Core+release-13.05",
+                     China13_05Branch,
                      "++Ares-Core+release-13.01",
                  })
         {
@@ -98,6 +100,7 @@ public class ValorantReplayReaderTests
         Assert.That(handler.Releases, Is.EqualTo(new[]
         {
             new ReplayReleaseVersion(13, 1),
+            new ReplayReleaseVersion(13, 5),
             new ReplayReleaseVersion(13, 5),
             new ReplayReleaseVersion(13, 1),
         }));
@@ -180,6 +183,80 @@ public class ValorantReplayReaderTests
             Assert.That(metadata.ReplayInfo.Chunks, Has.Count.EqualTo(1));
             Assert.That(metadata.ReplayInfo.DataChunks, Is.Empty);
             Assert.That(archive.AtEnd, Is.False);
+        });
+    }
+
+    [Test]
+    public void ReadMetadata_China13_05_ReturnsSupportedBranch()
+    {
+        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
+            [HeaderChunk(BuildHeader(China13_05Branch))]));
+
+        var metadata = new ValorantReplayReader().ReadMetadata(archive);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(metadata.ReplayVersion.Branch, Is.EqualTo(China13_05Branch));
+            Assert.That(metadata.FullParseSupportStatus, Is.EqualTo(ValorantReplaySupportStatus.Supported));
+            Assert.That(metadata.FullParseUnsupportedReason, Is.Null);
+        });
+    }
+
+    [Test]
+    public void Read_China13_05_DispatchesReplayData()
+    {
+        var handler = new CapturingReplayDataChunkHandler();
+        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
+        [
+            HeaderChunk(BuildHeader(China13_05Branch)),
+            ReplayDataChunk(0, 10, [0x01], memorySizeInBytes: 1),
+        ]));
+
+        var result = new ValorantReplayReader(new FakeOodleDecompressor(), chunkHandler: handler).Read(archive);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Status, Is.EqualTo(ReplayReadStatus.Completed));
+            Assert.That(result.Metadata.ReplayVersion.Branch, Is.EqualTo(China13_05Branch));
+            Assert.That(result.Metadata.FullParseSupportStatus, Is.EqualTo(ValorantReplaySupportStatus.Supported));
+            Assert.That(handler.Payloads, Is.EqualTo(new[] { new byte[] { 0x01 } }));
+        });
+    }
+
+    [TestCase("++Ares-Core+release-china-13.04")]
+    [TestCase("++Ares-Core+release-china-13.06")]
+    public void ReadMetadata_UnregisteredChinaBranch_ReturnsUnsupportedStatus(string branch)
+    {
+        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
+            [HeaderChunk(BuildHeader(branch))]));
+
+        var metadata = new ValorantReplayReader().ReadMetadata(archive);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(metadata.FullParseSupportStatus, Is.EqualTo(ValorantReplaySupportStatus.UnsupportedVersion));
+            Assert.That(metadata.FullParseUnsupportedReason, Does.Contain(branch));
+        });
+    }
+
+    [TestCase("++Ares-Core+release-china-13.04")]
+    [TestCase("++Ares-Core+release-china-13.06")]
+    public void Read_UnregisteredChinaBranch_ThrowsBeforeReplayDataIsRead(string branch)
+    {
+        var handler = new CapturingReplayDataChunkHandler();
+        var archive = new FBinaryArchive(BuildReplayInfo(chunks:
+        [
+            HeaderChunk(BuildHeader(branch)),
+            ReplayDataChunk(0, 10, [0x01], memorySizeInBytes: 1),
+        ]));
+
+        var exception = Assert.Throws<InvalidReplayInfoException>(() =>
+            new ValorantReplayReader(new FakeOodleDecompressor(), chunkHandler: handler).Read(archive));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception!.Message, Does.Contain(branch));
+            Assert.That(handler.Payloads, Is.Empty);
         });
     }
 

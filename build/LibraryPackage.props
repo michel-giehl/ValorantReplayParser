@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <Version Condition="'$(Version)' == ''">0.1.0-alpha.1</Version>
+    <Version Condition="'$(Version)' == ''">0.1.0-alpha.2</Version>
     <Authors>Michel Giehl</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/michel-giehl/ValorantReplayParser</PackageProjectUrl>

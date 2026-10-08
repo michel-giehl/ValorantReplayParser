@@ -5,14 +5,14 @@
 
 `ValorantReplayParser` reads VALORANT replay files (`.vrf`) and emits typed gameplay events and replay metadata. It is a narrow, VALORANT-specific parser, not a general Unreal Engine replay parser.
 
-The first NuGet release, `0.1.0-alpha.1`, is experimental. Replay formats and the public API may change as the reverse-engineered format understanding improves. A replay version passing the compatibility checks does not mean every gameplay feature in that replay is decoded.
+The NuGet release `0.1.0-alpha.2` is experimental. Replay formats and the public API may change as the reverse-engineered format understanding improves. A replay version passing the compatibility checks does not mean every gameplay feature in that replay is decoded. See the [release notes and migration guide](https://github.com/michel-giehl/ValorantReplayParser/blob/main/CHANGELOG.md) before upgrading from `0.1.0-alpha.1`.
 
 ## Requirements and installation
 
 The package targets `net10.0`; consumers need the .NET 10 runtime. Building this repository requires the .NET 10 SDK. Install the prerelease with:
 
 ```powershell
-dotnet add package ValorantReplayParser --version 0.1.0-alpha.1
+dotnet add package ValorantReplayParser --version 0.1.0-alpha.2
 ```
 
 ## Read a replay
@@ -73,17 +73,17 @@ Malformed replay structure, invalid required reads, unsupported full-parse versi
 
 Events are streamed to the sink and are provisional until `Read` returns successfully. If a later parse error occurs, events already emitted cannot be rolled back. Some semantic enrichers defer events until related replay data is available, so event timestamps are not guaranteed to increase globally in emission order. If the sink throws, parsing stops and the original sink exception is propagated.
 
-## Inventory and economy events
+## Inventory and economy descriptors
 
-The default reader emits high-level events alongside the decoded export groups and RPCs:
+Inventory and economy data arrive as typed payloads on `ExportGroupReceived` and `RpcReceived` events:
 
-- `ValorantInventoryChanged` contains a detached inventory snapshot: player/character GUIDs, subject, active state, selected equippable, and the 16 named slot types. Slot references and multi-item contents merge sparse updates. A null item list means unobserved contents; an empty list means a known empty slot. Omitted slots are unknown. Selected-equippable evidence distinguishes a replicated equippable change from a server correction; the recorded net timestamp is exposed without inferring when the client finished equipping.
-- `ValorantInventoryRemoved` reports inventory deletion or destruction of its character.
-- `ValorantItemPurchaseInfoChanged` exposes replicated purchase provenance: purchaseable, purchasing player, session flag, and transaction source.
+- `AresInventoryDescriptor` exposes character and equippable references, active state, correction fields, and 16 named slot references in `EAresItemSlot` order. `GetDecodedItemSlots()` enumerates only references observed in this update, including explicit GUID zero clears.
+- `ItemSlotDescriptor.Contents` exposes a single item reference. `MultiItemSlotDescriptor.MultiContents` exposes an `ItemSlotContentsUpdate` containing the declared array `Count` and sparse indexed `Updates`. Omitted indices retain prior values; a reduced count truncates the array, and count zero means a known empty array.
+- `PurchasedItemComponentDescriptor` exposes replicated purchase provenance: purchaseable, purchasing player, session flag, and transaction source.
 
-Inventory types are in `Replay.Valorant.Inventory`; raw economy descriptors are in `Replay.Valorant.Economy`. Select `ExportCategory.Inventory` or `ExportCategory.Economy` in a parse profile to retain the corresponding identity fields too. Null values mean unobserved data; explicit GUID zero clears a reference. Inventory snapshots resolve known weapons with the existing equippable resolver and retain unknown item GUIDs.
+`AresInventoryDescriptor` is in `Replay.Valorant.GameState`; slot and purchase types are in `Replay.Valorant.Inventory`, and economy descriptors are in `Replay.Valorant.Economy`. Select `ExportCategory.Inventory` or `ExportCategory.Economy` in a parse profile to retain the corresponding identity fields too. Payloads represent individual updates. Use `HasDecoded(propertyName)` to distinguish observed properties from defaults; nullable slot references are null when absent from that update, and GUID zero explicitly clears a reference. Use `ExportGroupReceived.IsDeleted` and `ActorClosed` to track removals in consumer-owned state.
 
-Economy parsing emits decoded `ExportGroupReceived` and `RpcReceived` payloads: `MoneyManagementComponentDescriptor` exposes observed credits, `OwnerExclusivePlayerInfoDescriptor.RoundInfos` exposes raw round credit/loadout deltas, and gun request parameter descriptors expose recorded request fields. Use `HasDecoded` to distinguish observed properties from defaults. Identity joins, merged economy snapshots, credit deltas, and round buy classification belong to the analyser.
+`MoneyManagementComponentDescriptor` exposes observed credits, `OwnerExclusivePlayerInfoDescriptor.RoundInfos` exposes sparse round credit/loadout updates, and gun request parameter descriptors expose recorded request fields. Identity joins, merged inventory/economy snapshots, weapon-name resolution, credit deltas, and round buy classification belong to the analyser. The parser retains the wire references and timestamps without inferring when a client finished equipping.
 
 ## Metadata-only reads and input ownership
 
@@ -130,9 +130,11 @@ The full reader requires replay version `5.3.2`, game network protocol version `
 - `++Ares-Core+release-13.02`
 - `++Ares-Core+release-13.04`
 - `++Ares-Core+release-13.05`
+- `++Ares-Core+release-china-13.05`
 - `++Ares-Core+release-13.06`
 
 An unregistered branch or a mismatch in the replay, protocol, or Unreal versions is unsupported. The reader fails early rather than trying a guessed compatibility path. These version checks establish compatibility with the parser's known container and transform layout, not complete gameplay-semantic coverage.
+The China 13.05 transform has recovered payload-vector tests; a complete China replay fixture is not included in this repository.
 
 Within those explicitly supported branches, descriptors and custom decoders may register release boundaries. A boundary applies from that VALORANT release forward until another boundary replaces it. This is intended for known semantic changes such as shifted field handles; it does not make an unknown branch or wire format supported.
 

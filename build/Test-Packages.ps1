@@ -238,7 +238,12 @@ foreach ($package in $packageProjects) {
     }
 }
 
-$encodingDependencies = $packageMetadata['ValorantReplayParser.Encoding'].Dependencies
+$encodingMetadata = $packageMetadata['ValorantReplayParser.Encoding']
+foreach ($requiredNotice in @('THIRD-PARTY-NOTICES.md', 'third-party/vrfkit-LICENSE', 'third-party/ValCoach-LICENSE')) {
+    Require ($encodingMetadata.Entries -ccontains $requiredNotice) "The Encoding package is missing $requiredNotice."
+}
+
+$encodingDependencies = $encodingMetadata.Dependencies
 $oozSharp = $encodingDependencies | Where-Object { $_.Id -eq 'OozSharp' } | Select-Object -First 1
 Require ($null -ne $oozSharp -and $oozSharp.Version.Contains('3.0.1')) 'The Encoding package does not retain the OozSharp 3.0.1 dependency.'
 

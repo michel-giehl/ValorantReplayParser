@@ -6,16 +6,20 @@ namespace Replay.Valorant;
 
 internal static class ValorantReleaseVersionParser
 {
-    private const string BranchPrefix = "++Ares-Core+release-";
+    private const string GlobalBranchPrefix = "++Ares-Core+release-";
+    private const string ChinaBranchPrefix = "++Ares-Core+release-china-";
 
     public static ReplayReleaseVersion ParseRequired(string branch)
     {
-        if (!branch.StartsWith(BranchPrefix, StringComparison.Ordinal))
+        var branchPrefix = branch.StartsWith(ChinaBranchPrefix, StringComparison.Ordinal)
+            ? ChinaBranchPrefix
+            : GlobalBranchPrefix;
+        if (!branch.StartsWith(branchPrefix, StringComparison.Ordinal))
         {
             throw InvalidBranch(branch);
         }
 
-        var version = branch.AsSpan(BranchPrefix.Length);
+        var version = branch.AsSpan(branchPrefix.Length);
         var separator = version.IndexOf('.');
         if (separator <= 0 ||
             separator == version.Length - 1 ||

@@ -32,7 +32,7 @@ jobs:
           SNAPSHOOTER_STRICT_MODE: true
       - name: Validate NuGet packages with an isolated consumer
         shell: pwsh
-        run: pwsh -File build/Test-Packages.ps1 -Version 0.1.0-alpha.1
+        run: pwsh -File build/Test-Packages.ps1 -Version 0.1.0-alpha.2
       - name: Upload packages, symbols, and test results
         if: always()
         uses: actions/upload-artifact@v4

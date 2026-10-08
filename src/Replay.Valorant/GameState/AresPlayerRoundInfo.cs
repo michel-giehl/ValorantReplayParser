@@ -1,6 +1,7 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
 using Replay.Models.Diagnostics;
+using Replay.Models.Errors;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors;
 
@@ -188,4 +189,4 @@ internal sealed class CompatibleAresPlayerRoundInfoDecoder : IFieldDecoder
 }
 
 internal sealed class UnsupportedPlayerRoundInfoLayoutException(uint handle)
-    : Exception($"Unknown FAresPlayerRoundInfo field handle {handle}.");
+    : ReplayParseException($"Unknown FAresPlayerRoundInfo field handle {handle}.");

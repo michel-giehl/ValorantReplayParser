@@ -9,6 +9,8 @@ public static class DeadeyeDescriptors
         return
         [
             new DeadeyeAgentDescriptor(),
+            new ChamberPresenceDescriptor(ChamberPresenceDescriptor.Trademark),
+            new ChamberPresenceDescriptor(ChamberPresenceDescriptor.Rendezvous),
         ];
     }
 }

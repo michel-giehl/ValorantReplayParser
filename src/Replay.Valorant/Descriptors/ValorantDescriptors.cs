@@ -59,6 +59,30 @@ public static class ValorantDescriptors
         catalog.AddSubobjectClassPath("MoneyManagementComponent", "/Script/ShooterGame.MoneyManagementComponent");
         catalog.AddSubobjectClassPath("GunRequestComponent", "/Script/ShooterGame.GunRequestComponent");
         catalog.AddSubobjectClassPath("PurchasedItemComponent", "/Script/ShooterGame.PurchasedItemComponent");
+        catalog.AddSubobjectClassPath("PossessableActorComponent", "/Game/Characters/States/PossessableActorComponent.PossessableActorComponent_C");
+        catalog.AddSubobjectClassPath("Comp_AbilityFuelSystem", new AbilityFuelComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("AbilityRadius", new AbilityRadiusComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("BlueprintResourceVisualization", new BlueprintResourceVisualizationDescriptor().Path);
+        catalog.AddSubobjectClassPath("Comp_Ability_GunAmmoResourceComponent", new AbilityGunAmmoResourceDescriptor().Path);
+        catalog.AddSubobjectClassPath("Comp_Ability_CooldownComponent", new AbilityCooldownComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("EquipmentCharge", new EquipmentChargeComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("SignatureAbilityResource", new SignatureAbilityResourceComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("ExternalResource", new ExternalResourceComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("MagazineAmmo", new AmmoComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("ReserveAmmo", new AmmoComponentDescriptor().Path);
+        catalog.Add(new AbilityFuelComponentDescriptor());
+        catalog.Add(new AbilityGunAmmoResourceDescriptor());
+        catalog.Add(new ExternalResourceComponentDescriptor());
+        catalog.Add(new BlueprintResourceVisualizationDescriptor());
+        catalog.Add(new AbilityRadiusComponentDescriptor());
+        catalog.Add(new AbilityCooldownComponentDescriptor());
+        catalog.Add(new EquipmentChargeComponentDescriptor());
+        catalog.Add(new SignatureAbilityResourceComponentDescriptor());
+        catalog.Add(new AbilityResourceComponentDescriptor());
+        catalog.Add(new AbilityRechargeComponentDescriptor());
+        catalog.Add(new LightArmorItemDescriptor());
+        catalog.Add(new HeavyArmorItemDescriptor());
+        catalog.Add(new PlasmaArmorItemDescriptor());
         PrecalculatedProjectilePathDescriptors.AddTo(catalog);
 
         catalog.Add(AggrobotDescriptors.CreateDescriptors());
@@ -76,6 +100,7 @@ public static class ValorantDescriptors
         catalog.Add(GuideDescriptors.CreateDescriptors());
         catalog.Add(GuideDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(GumshoeDescriptors.CreateDescriptors());
+        catalog.Add(GumshoeDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(HunterDescriptors.CreateDescriptors());
         catalog.Add(IrisDescriptors.CreateDescriptors());
         catalog.Add(IrisDescriptors.CreateClassNetCacheDescriptors());
@@ -109,6 +134,12 @@ public static class ValorantDescriptors
         catalog.Add(WushuDescriptors.CreateDescriptors());
         catalog.Add(WushuDescriptors.CreateClassNetCacheDescriptors());
 
+        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Skye));
+        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Sova));
+        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Tejo));
+        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Gekko));
+        catalog.Add(new Replay.Valorant.Descriptors.Control.PossessableActorComponentDescriptor());
+        catalog.Add(new AbilityRechargeCooldownComponentDescriptor());
         catalog.Add(new AresAbilitySystemComponentDescriptor());
         catalog.Add(new AresAttributeSetDescriptor());
         catalog.Add(new AmmoComponentDescriptor());
@@ -131,6 +162,10 @@ public static class ValorantDescriptors
         catalog.Add(new BaseReplayControllerClassNetCacheDescriptor());
         catalog.Add(new BombGameStateClassNetCacheDescriptor());
         catalog.Add(new BombObjectiveClassNetCacheDescriptor());
+        catalog.Add(new PhoenixPresenceDescriptor(PhoenixPresenceDescriptor.HotHands));
+        catalog.Add(new PhoenixPresenceDescriptor(PhoenixPresenceDescriptor.RunItBack));
+        catalog.Add(new EquippableGroundPickupDescriptor());
+        catalog.Add(new EquippablePickupProjectileDescriptor());
         catalog.Add(new WingmanDescriptor());
         catalog.Add(new AresAbilitySystemComponentClassNetCacheDescriptor());
         catalog.Add(new ChildDamageSectionClassNetCacheDescriptor());

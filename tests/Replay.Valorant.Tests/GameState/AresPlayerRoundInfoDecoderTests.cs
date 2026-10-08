@@ -1,5 +1,7 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Diagnostics;
+using Replay.Models.Errors;
+using Replay.Models.Net;
 using Replay.Unreal.Parsing;
 using Replay.Unreal.Readers;
 using Replay.Valorant.Descriptors;
@@ -116,6 +118,50 @@ public class AresPlayerRoundInfoDecoderTests
             () => Decoder().Decode(ref context, archive));
 
         Assert.That(exception!.Message, Does.Contain("field handle 99"));
+    }
+
+    [Test]
+    public void ParseContentPayload_UnknownRoundInfoLayout_ThrowsReplayParseExceptionBeforeNextField()
+    {
+        var descriptor = new OwnerExclusivePlayerInfoDescriptor();
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        registry.OnExportGroupAdded(new NetFieldExportGroup
+        {
+            PathName = descriptor.Path,
+            PathNameIndex = 1,
+            NetFieldExports =
+            [
+                new() { Handle = 0, CompatibleChecksum = 0, Name = nameof(descriptor.RoundInfos) },
+                new() { Handle = 1, CompatibleChecksum = 0, Name = nameof(descriptor.EndOfRoundBeforeRewardsMoney) },
+            ],
+        });
+        using var archive = CreateArchive(writer =>
+        {
+            writer.WriteBit(false);
+            WriteField(writer, 0, roundInfos =>
+            {
+                roundInfos.WriteIntPacked(1);
+                roundInfos.WriteIntPacked(1);
+                WriteField(roundInfos, 99, field => field.WriteBit(true));
+                roundInfos.WriteIntPacked(0);
+                roundInfos.WriteIntPacked(0);
+            });
+            WriteField(writer, 1, field => field.WriteInt32(800));
+            writer.WriteIntPacked(0);
+        });
+        var diagnostics = new ReplayDiagnosticCollector();
+        var context = new FieldDecodeContext { ExportGroupPath = descriptor.Path, Diagnostics = diagnostics };
+
+        var exception = Assert.Catch<ReplayParseException>(() => new FieldPayloadParser().ParseContentPayload(
+            archive, registry.GetBoundGroup(descriptor.Path)!, ref context));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.TypeOf<UnsupportedPlayerRoundInfoLayoutException>());
+            Assert.That(exception!.Message, Does.Contain("field handle 99"));
+            Assert.That(archive.AtEnd, Is.False, "Parsing must stop before the following field.");
+            Assert.That(diagnostics.TotalDiagnosticCount, Is.Zero, "An unknown typed layout must fail, not fall back.");
+        });
     }
 
     [Test]

@@ -122,6 +122,9 @@ public class ValorantSeededTransformTests
     [TestCase("++Ares-Core+release-13.02", 65)]
     [TestCase("++Ares-Core+release-13.04", 65)]
     [TestCase("++Ares-Core+release-13.05", 65)]
+    [TestCase("++Ares-Core+release-china-13.05", 31)]
+    [TestCase("++Ares-Core+release-china-13.05", 64)]
+    [TestCase("++Ares-Core+release-china-13.05", 65)]
     [TestCase("++Ares-Core+release-13.06", 65)]
     public void Apply_WithExplicitBitCount_ConsumesOnlyRequestedPayloadBits(string replayVersion, int bitCount)
     {
@@ -190,6 +193,8 @@ public class ValorantSeededTransformTests
         Assert.That(registry.GetRequired("++Ares-Core+release-13.02"), Is.Not.Null);
         Assert.That(registry.GetRequired("++Ares-Core+release-13.04"), Is.Not.Null);
         Assert.That(registry.GetRequired("++Ares-Core+release-13.05"), Is.Not.Null);
+        var chinaTransform = registry.GetRequired("++Ares-Core+release-china-13.05");
+        Assert.That(chinaTransform.GetType(), Is.Not.EqualTo(registry.GetRequired("++Ares-Core+release-13.05").GetType()));
         Assert.That(registry.GetRequired("++Ares-Core+release-13.06"), Is.Not.Null);
     }
 
@@ -199,6 +204,81 @@ public class ValorantSeededTransformTests
         var registry = PayloadTransformRegistry.CreateDefault();
 
         Assert.Throws<UnsupportedPayloadTransformVersionException>(() => registry.GetRequired("release-12.12"));
+    }
+
+    [TestCase("++Ares-Core+release-china-13.04")]
+    [TestCase("++Ares-Core+release-china-13.06")]
+    [TestCase("++Ares-Core+release-China-13.05")]
+    public void Registry_RejectsUnregisteredChinaBranches(string replayVersion)
+    {
+        Assert.Throws<UnsupportedPayloadTransformVersionException>(() =>
+            PayloadTransformRegistry.CreateDefault().GetRequired(replayVersion));
+    }
+
+    [TestCase(32, 43u, "669B201A", "100CA261")]
+    [TestCase(64, 285u, "E0300FEB039E0CA4", "100CA461300F0804")]
+    [TestCase(128, 285u, "E0300FEB039E0CA4FE245F1C0000A09C", "100CA461300F08049340010000004039")]
+    public void China13_05_ProducesRecoveredKnownVectors(
+        int bitCount,
+        uint seed,
+        string ciphertextHex,
+        string plaintextHex)
+    {
+        var payload = new BitArchiveReader(Convert.FromHexString(ciphertextHex), bitCount);
+        var transform = PayloadTransformRegistry.CreateDefault()
+            .GetRequired("++Ares-Core+release-china-13.05");
+        var output = new byte[transform.GetOutputByteCount(bitCount)];
+
+        transform.Apply(payload, bitCount, seed, output);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Convert.ToHexString(output), Is.EqualTo(plaintextHex));
+            Assert.That(payload.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
+    public void China13_05_FirstControllerBlockHasExactRepLayout()
+    {
+        const string ciphertext =
+            "E0300FEB039E0CA4FE245F1C0000A09C1E835D3D100000B0656C6954FFFF9FBFA5008D7E";
+        var encrypted = new BitArchiveReader(Convert.FromHexString(ciphertext), PayloadBits);
+        var transform = PayloadTransformRegistry.CreateDefault()
+            .GetRequired("++Ares-Core+release-china-13.05");
+        var plaintext = new byte[transform.GetOutputByteCount(PayloadBits)];
+
+        transform.Apply(encrypted, PayloadBits, PayloadBits ^ ActorNetGuid, plaintext);
+
+        using var payload = new BitArchiveReader(plaintext, PayloadBits);
+        Assert.That(payload.TryReadBit(out var checksumBit), Is.True);
+        Assert.That(checksumBit, Is.False);
+        var fields = new List<(int Handle, int Bits, long PayloadStart)>();
+        while (true)
+        {
+            var encodedHandle = payload.ReadIntPacked();
+            if (encodedHandle == 0)
+            {
+                break;
+            }
+
+            var bitCount = checked((int)payload.ReadIntPacked());
+            fields.Add((checked((int)encodedHandle - 1), bitCount, payload.BitPosition));
+            payload.SkipBits(bitCount);
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fields, Is.EqualTo(new[]
+            {
+                (3, 3, 17L),
+                (12, 3, 36L),
+                (14, 8, 55L),
+                (18, 192, 87L),
+            }));
+            Assert.That(payload.BitPosition, Is.EqualTo(PayloadBits));
+            Assert.That(payload.AtEnd, Is.True);
+        });
     }
 
     [Test]

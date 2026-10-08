@@ -1,9 +1,9 @@
+using Replay.Valorant.Economy;
+using Replay.Valorant.Inventory;
 using Replay.Models.Descriptors;
 using Replay.Models.Diagnostics;
 using Replay.Models.Events;
 using Replay.Valorant;
-using Replay.Valorant.Economy;
-using Replay.Valorant.Inventory;
 using Replay.Valorant.Descriptors;
 using Replay.Valorant.GameState;
 
@@ -43,10 +43,6 @@ public class InventoryEconomyIntegrationTests
             if (categories.HasFlag(ExportCategory.Inventory))
             {
                 Assert.That(sink.InventoryCount, Is.Positive);
-                Assert.That(sink.NamedWeaponCount, Is.Positive);
-                Assert.That(sink.InventoryWithPlayerCount, Is.Positive);
-                Assert.That(sink.KnownSlotItemCount, Is.Positive);
-                Assert.That(sink.RemovalCount, Is.Positive);
             }
             if (categories.HasFlag(ExportCategory.Economy))
             {
@@ -59,10 +55,6 @@ public class InventoryEconomyIntegrationTests
     private sealed class InventoryEconomySink : IReplayEventSink
     {
         public int InventoryCount { get; private set; }
-        public int NamedWeaponCount { get; private set; }
-        public int InventoryWithPlayerCount { get; private set; }
-        public int KnownSlotItemCount { get; private set; }
-        public int RemovalCount { get; private set; }
         public int CreditCount { get; private set; }
         public int RoundLoadoutCount { get; private set; }
         public int RequestCount { get; private set; }
@@ -72,14 +64,8 @@ public class InventoryEconomyIntegrationTests
         {
             switch (replayEvent)
             {
-                case ValorantInventoryChanged changed:
+                case ExportGroupReceived { Payload: AresInventoryDescriptor inventory } when inventory.DecodedProperties.Count > 0:
                     InventoryCount++;
-                    if (changed.Inventory.SelectedEquippable?.Name is not null) NamedWeaponCount++;
-                    if (changed.Inventory.PlayerStateNetGuid is > 0 && changed.Inventory.Subject is not null) InventoryWithPlayerCount++;
-                    if (changed.Inventory.Slots.Any(x => x.Items?.Any(item => item.ItemNetGuid is > 0) == true)) KnownSlotItemCount++;
-                    break;
-                case ValorantInventoryRemoved:
-                    RemovalCount++;
                     break;
                 case ExportGroupReceived { IsDeleted: false, Payload: MoneyManagementComponentDescriptor money }
                     when money.HasDecoded(nameof(MoneyManagementComponentDescriptor.Money)):
@@ -93,7 +79,7 @@ public class InventoryEconomyIntegrationTests
                 case RpcReceived { Payload: IGunRequestParameters }:
                     RequestCount++;
                     break;
-                case ValorantItemPurchaseInfoChanged:
+                case ExportGroupReceived { IsDeleted: false, Payload: PurchasedItemComponentDescriptor purchase } when purchase.DecodedProperties.Count > 0:
                     PurchaseCount++;
                     break;
             }

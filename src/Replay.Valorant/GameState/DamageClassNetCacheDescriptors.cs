@@ -46,7 +46,7 @@ internal sealed class ArmorDamageSectionClassNetCacheDescriptor
     }
 }
 
-internal sealed class MulticastNotifySetLifeParameters
+public sealed class MulticastNotifySetLifeParameters
     : ExportGroupDescriptor<MulticastNotifySetLifeParameters>
 {
     public override string Path =>

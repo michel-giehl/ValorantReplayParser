@@ -11,14 +11,14 @@ public sealed class AbilityCooldownComponentDescriptor
     public override ExportCategory Categories => ExportCategory.Ability;
     public override ExportGroupKind Kind => ExportGroupKind.Component;
 
-    public float CooldownSeconds { get; set; }
-    public float StartTimeStamp { get; set; }
+    public double CooldownSeconds { get; set; }
+    public double StartTimeStamp { get; set; }
     public bool CooldownActive { get; set; }
 
     protected override void Configure()
     {
-        AddProperty(x => x.CooldownSeconds).Float();
-        AddProperty(x => x.StartTimeStamp).Float();
+        AddProperty(x => x.CooldownSeconds).Double();
+        AddProperty(x => x.StartTimeStamp).Double();
         AddProperty(x => x.CooldownActive).Bool();
     }
 }

@@ -1,6 +1,7 @@
 using Replay.Models.Descriptors;
 using Replay.Models.Unreal;
 using Replay.Unreal.Parsing;
+using Replay.Valorant.Descriptors;
 
 namespace Replay.Valorant.GameState;
 
@@ -11,6 +12,10 @@ public sealed class BombObjectiveClassNetCacheDescriptor : ClassNetCacheDescript
     {
         AddFunction<BombPlantedRpcParameters>("BombPlantedRPC", BombPlantedRpcParameters.ExportPath, ExportCategory.GameState);
         AddFunction<BombDefusedRpcParameters>("BombDefusedRPC", BombDefusedRpcParameters.ExportPath, ExportCategory.GameState);
+        AddFunction<BombPickedUpRpcParameters>("BombPickedUpRPC", BombPickedUpRpcParameters.ExportPath, ExportCategory.GameState);
+        AddFunction<BombDroppedRpcParameters>("BombDroppedRPC", BombDroppedRpcParameters.ExportPath, ExportCategory.GameState);
+        AddFunction("BombExplodedRPC", "/Game/GameModes/Components/Comp_BombEvents.Comp_BombEvents_C:BombExplodedRPC",
+            ExportCategory.GameState).Decode(ValorantPayloadDecoders.NoParametersRpc);
     }
 }
 

@@ -8,6 +8,25 @@ namespace Replay.Valorant.Tests.Descriptors;
 
 public class ValorantDescriptorsTests
 {
+    private static IEnumerable<TestCaseData> CatalogExportDescriptors =>
+        ValorantDescriptors.CreateCatalog().ExportGroupDescriptors.Select(descriptor =>
+            new TestCaseData(descriptor).SetName($"CreatePayloadInstance_PreservesDescriptor({descriptor.Path})"));
+
+    [TestCaseSource(nameof(CatalogExportDescriptors))]
+    public void CreatePayloadInstance_PreservesDescriptor(ExportGroupDescriptor descriptor)
+    {
+        var payload = descriptor.CreatePayloadInstance();
+
+        Assert.That(payload, Is.TypeOf(descriptor.GetType()));
+        var payloadDescriptor = (ExportGroupDescriptor)payload;
+        Assert.Multiple(() =>
+        {
+            Assert.That(payloadDescriptor, Is.Not.SameAs(descriptor));
+            Assert.That(payloadDescriptor.Path, Is.EqualTo(descriptor.Path));
+            Assert.That(payloadDescriptor.DecodedProperties, Is.Empty);
+        });
+    }
+
     [TestCase("ReplayEffect", "/Script/ShooterGame.ReplayEffectComponent")]
     [TestCase("EffectManager", "/Script/ShooterGame.EffectManagerComponent")]
     [TestCase("BlindManagerComponent", "/Script/ShooterGame.BlindManagerComponent")]
@@ -68,7 +87,7 @@ public class ValorantDescriptorsTests
 
         var actualAgentPaths = ValorantDescriptors.CreateCatalog()
             .ExportGroupDescriptors
-            .Where(descriptor => descriptor.Categories.HasFlag(ExportCategory.Agent))
+            .Where(descriptor => descriptor is Replay.Valorant.Descriptors.Agents.GenericAgentDescriptor)
             .Select(descriptor => descriptor.Path)
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
@@ -186,7 +205,7 @@ public class ValorantDescriptorsTests
             .Fields.Single(field => field.PropertyName == "DamagedBone");
 
         var agentCachePaths = catalog.ExportGroupDescriptors
-            .Where(descriptor => descriptor.Categories.HasFlag(ExportCategory.Agent))
+            .Where(descriptor => descriptor is Replay.Valorant.Descriptors.Agents.GenericAgentDescriptor)
             .Select(descriptor => descriptor.Path + "_ClassNetCache")
             .ToHashSet(StringComparer.Ordinal);
         var agentCaches = catalog.ClassNetCacheDescriptors

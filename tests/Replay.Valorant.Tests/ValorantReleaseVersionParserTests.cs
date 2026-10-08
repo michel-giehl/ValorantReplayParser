@@ -7,6 +7,8 @@ public class ValorantReleaseVersionParserTests
 {
     [TestCase("++Ares-Core+release-13.05", 13, 5)]
     [TestCase("++Ares-Core+release-13.10", 13, 10)]
+    [TestCase("++Ares-Core+release-china-13.05", 13, 5)]
+    [TestCase("++Ares-Core+release-china-13.10", 13, 10)]
     public void ParseRequired_ParsesNumericRelease(string branch, int major, int minor)
     {
         Assert.That(
@@ -18,6 +20,10 @@ public class ValorantReleaseVersionParserTests
     [TestCase("++Ares-Core+release-13.05.1")]
     [TestCase("release-13.05")]
     [TestCase("++Ares-Core+release-thirteen.five")]
+    [TestCase("++Ares-Core+release-china-13")]
+    [TestCase("++Ares-Core+release-china-13.05.1")]
+    [TestCase("++Ares-Core+release-china-thirteen.five")]
+    [TestCase("++Ares-Core+release-China-13.05")]
     public void ParseRequired_RejectsMalformedBranch(string branch)
     {
         var exception = Assert.Throws<InvalidReplayInfoException>(() =>

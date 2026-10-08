@@ -6,7 +6,7 @@ using Replay.Valorant.Combat;
 namespace Replay.Valorant.Flashes.Descriptors;
 
 public sealed class EffectManagerPlayContinuousParameters
-    : ExportGroupDescriptor<EffectManagerPlayContinuousParameters>, IEffectDataPayload
+    : ExportGroupDescriptor<EffectManagerPlayContinuousParameters>, IEffectDataPayload, IDecodedPayloadEventEmitter
 {
     public override string Path => "/Script/ShooterGame.EffectManagerComponent:MulticastPlayContinuousEffect";
     public override ExportCategory Categories => ExportCategory.Effects;
@@ -14,6 +14,13 @@ public sealed class EffectManagerPlayContinuousParameters
     public override FieldStreamGrammar Grammar => FieldStreamGrammar.FunctionParameters;
 
     public uint? EffectContainer { get; set; }
+    /// <summary>Wire object name resolved from the GUID cache; null when absent/unresolved.</summary>
+    public string? EffectContainerPath { get; set; }
+    public void EmitDecodedEvents(ref FieldDecodeContext context)
+    {
+        if (HasDecoded(nameof(EffectContainer)) && EffectContainer is { } guid &&
+            context.NetGuidCache?.TryGetPath(guid, out var path) == true) EffectContainerPath = path;
+    }
     public uint? WaitOnReplicationActor { get; set; }
     public EffectManagerFunctionFloatValue[]? FunctionFloatValues { get; set; }
     public EffectManagerFunctionVectorValue[]? FunctionVectorValues { get; set; }
@@ -62,7 +69,7 @@ public sealed class EffectManagerPlayContinuousParameters
 }
 
 public sealed class EffectManagerPlayOneShotParameters
-    : ExportGroupDescriptor<EffectManagerPlayOneShotParameters>, IEffectDataPayload
+    : ExportGroupDescriptor<EffectManagerPlayOneShotParameters>, IEffectDataPayload, IDecodedPayloadEventEmitter
 {
     public override string Path => "/Script/ShooterGame.EffectManagerComponent:MulticastPlayOneShotEffect";
     public override ExportCategory Categories => ExportCategory.Effects;
@@ -70,6 +77,13 @@ public sealed class EffectManagerPlayOneShotParameters
     public override FieldStreamGrammar Grammar => FieldStreamGrammar.FunctionParameters;
 
     public uint? EffectContainer { get; set; }
+    /// <summary>Wire object name resolved from the GUID cache; null when absent/unresolved.</summary>
+    public string? EffectContainerPath { get; set; }
+    public void EmitDecodedEvents(ref FieldDecodeContext context)
+    {
+        if (HasDecoded(nameof(EffectContainer)) && EffectContainer is { } guid &&
+            context.NetGuidCache?.TryGetPath(guid, out var path) == true) EffectContainerPath = path;
+    }
     public uint? WaitOnReplicationActor { get; set; }
     public EffectManagerFunctionFloatValue[]? FunctionFloatValues { get; set; }
     public EffectManagerFunctionObjectValue[]? FunctionObjectValues { get; set; }

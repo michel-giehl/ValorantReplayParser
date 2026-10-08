@@ -15,3 +15,15 @@ and transform helpers. Native expected outputs are preserved.
 
 Copyright (c) 2026 vrfkit contributors.
 Used under the MIT License; see [third-party/vrfkit-LICENSE](third-party/vrfkit-LICENSE).
+
+## ValCoach
+
+The China 13.05 payload transform in
+`src/Replay.Encoding/PayloadEncryption/VersionedTransforms/ValorantSeededTransformChina13_05.cs`
+and its recovered vectors in
+`tests/Replay.Encoding.Tests/PayloadEncryption/ValorantSeededTransformTests.cs`
+are ported from [ValCoach's production patch](https://github.com/STarRyx727/ValCoach/blob/62708dc31d5beac89c588a04502303eade77fbe6/patches/valorant_parser_valcoach_profile.patch)
+(commit `62708dc31d5beac89c588a04502303eade77fbe6`).
+
+Copyright (c) 2026 ValCoach contributors.
+Used under the MIT License; see [third-party/ValCoach-LICENSE](third-party/ValCoach-LICENSE).

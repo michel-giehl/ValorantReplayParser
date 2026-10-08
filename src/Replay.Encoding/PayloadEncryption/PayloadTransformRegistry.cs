@@ -46,6 +46,7 @@ public sealed class PayloadTransformRegistry
         new ValorantSeededTransform13_02(),
         new ValorantSeededTransform13_04(),
         new ValorantSeededTransform13_05(),
+        new ValorantSeededTransformChina13_05(),
         new ValorantSeededTransform13_06(),
     ]);
 

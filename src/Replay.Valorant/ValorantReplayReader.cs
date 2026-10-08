@@ -254,8 +254,7 @@ public sealed class ValorantReplayReader
         var wallEventEnricher = new ValorantWallEventEnricher(consumerSink);
         var nearsightEventEnricher = new ValorantNearsightEventEnricher(wallEventEnricher, netGuidCache);
         var flashEventEnricher = new ValorantFlashEventEnricher(nearsightEventEnricher, netGuidCache);
-        var inventoryEventEnricher = new ValorantInventoryEventEnricher(flashEventEnricher, netGuidCache);
-        var eventSink = new ValorantShotEventEnricher(inventoryEventEnricher, netGuidCache);
+        var eventSink = new ValorantShotEventEnricher(flashEventEnricher, netGuidCache);
         var context = new ReplayReaderContext(
             archive,
             eventSink,
