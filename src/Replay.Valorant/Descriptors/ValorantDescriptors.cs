@@ -90,11 +90,13 @@ public static class ValorantDescriptors
         catalog.Add(BreachDescriptors.CreateDescriptors());
         catalog.Add(BreachDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(CableDescriptors.CreateDescriptors());
+        catalog.Add(CableDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(CashewDescriptors.CreateDescriptors());
         catalog.Add(ClayDescriptors.CreateDescriptors());
         catalog.Add(ClayDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(new RazeProjectileEffectDescriptor());
         catalog.Add(DeadeyeDescriptors.CreateDescriptors());
+        catalog.Add(DeadeyeDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(GrenadierDescriptors.CreateDescriptors());
         catalog.Add(GrenadierDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(GuideDescriptors.CreateDescriptors());
@@ -105,11 +107,14 @@ public static class ValorantDescriptors
         catalog.Add(IrisDescriptors.CreateDescriptors());
         catalog.Add(IrisDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(KilljoyDescriptors.CreateDescriptors());
+        catalog.Add(KilljoyDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(MageDescriptors.CreateDescriptors());
         catalog.Add(MageDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(NoxDescriptors.CreateDescriptors());
         catalog.Add(NoxDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(PandemicDescriptors.CreateDescriptors());
+        catalog.Add(new DynamicVolume.GroundVolumeComponentDescriptor());
+        catalog.AddSubobjectClassPath("GroundVolume", DynamicVolume.GroundVolumeComponentDescriptor.ExportPath);
         catalog.Add(PandemicDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(PhoenixDescriptors.CreateDescriptors());
         catalog.Add(PhoenixDescriptors.CreateClassNetCacheDescriptors());
@@ -134,11 +139,11 @@ public static class ValorantDescriptors
         catalog.Add(WushuDescriptors.CreateDescriptors());
         catalog.Add(WushuDescriptors.CreateClassNetCacheDescriptors());
 
-        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Skye));
-        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Sova));
-        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Tejo));
-        catalog.Add(new Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor(Replay.Valorant.Descriptors.Control.ControllablePawnDescriptor.Gekko));
-        catalog.Add(new Replay.Valorant.Descriptors.Control.PossessableActorComponentDescriptor());
+        catalog.Add(new Control.ControllablePawnDescriptor(Control.ControllablePawnDescriptor.Skye));
+        catalog.Add(new Control.ControllablePawnDescriptor(Control.ControllablePawnDescriptor.Sova));
+        catalog.Add(new Control.ControllablePawnDescriptor(Control.ControllablePawnDescriptor.Tejo));
+        catalog.Add(new Control.ControllablePawnDescriptor(Control.ControllablePawnDescriptor.Gekko));
+        catalog.Add(new Control.PossessableActorComponentDescriptor());
         catalog.Add(new AbilityRechargeCooldownComponentDescriptor());
         catalog.Add(new AresAbilitySystemComponentDescriptor());
         catalog.Add(new AresAttributeSetDescriptor());

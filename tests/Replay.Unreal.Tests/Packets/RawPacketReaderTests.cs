@@ -134,8 +134,7 @@ public class RawPacketReaderTests
                 w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
                 w.WriteIntPacked(2);
                 w.WriteBit(false); w.WriteBit(false);
-                w.WriteBit(true); w.WriteBit(true); w.WriteBit(false);
-                w.WriteBit(false);
+                w.WriteBit(true); w.WriteBit(false); w.WriteBit(true); w.WriteBit(false);
                 w.WriteFName(1);
                 w.WritePayloadSize(8);
                 w.WritePayloadBits(8);
@@ -145,8 +144,7 @@ public class RawPacketReaderTests
                 w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
                 w.WriteIntPacked(2);
                 w.WriteBit(false); w.WriteBit(false);
-                w.WriteBit(true); w.WriteBit(false); w.WriteBit(true);
-                w.WriteBit(false);
+                w.WriteBit(true); w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
                 w.WriteFName(1);
                 w.WritePayloadSize(4);
                 w.WritePayloadBits(4);
@@ -176,8 +174,7 @@ public class RawPacketReaderTests
             w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
             w.WriteIntPacked(5);
             w.WriteBit(false); w.WriteBit(false);
-            w.WriteBit(true); w.WriteBit(false); w.WriteBit(true);
-            w.WriteBit(false);
+            w.WriteBit(true); w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
             w.WriteFName(1);
             w.WritePayloadSize(0);
         });
@@ -241,8 +238,7 @@ public class RawPacketReaderTests
                 w.WriteBit(false); w.WriteBit(false); w.WriteBit(true); // reliable
                 w.WriteIntPacked(2);
                 w.WriteBit(false); w.WriteBit(false);
-                w.WriteBit(true); w.WriteBit(true); w.WriteBit(false);
-                w.WriteBit(false);
+                w.WriteBit(true); w.WriteBit(false); w.WriteBit(true); w.WriteBit(false);
                 w.WriteFName(1);
                 w.WritePayloadSize(0);
             },
@@ -251,8 +247,7 @@ public class RawPacketReaderTests
                 w.WriteBit(false); w.WriteBit(false); w.WriteBit(false); // NOT reliable
                 w.WriteIntPacked(2);
                 w.WriteBit(false); w.WriteBit(false);
-                w.WriteBit(true); w.WriteBit(false); w.WriteBit(true);
-                w.WriteBit(false);
+                w.WriteBit(true); w.WriteBit(false); w.WriteBit(false); w.WriteBit(true);
                 w.WritePayloadSize(0);
             });
 
@@ -340,9 +335,9 @@ public class RawPacketReaderTests
         writer.WriteBit(false); // package-map exports
         writer.WriteBit(false); // must-be-mapped GUIDs
         writer.WriteBit(true); // partial
+        writer.WriteBit(false); // VALORANT bit precedes partial flags
         writer.WriteBit(initial);
         writer.WriteBit(final);
-        writer.WriteBit(false); // VALORANT bit
         writer.WriteFName(1);
         writer.WritePayloadSize(0);
     }

@@ -26,4 +26,7 @@
       <ProjectReference Include="..\..\src\Replay.Valorant\Replay.Valorant.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Update="Fixtures\ViperPit\*.bin" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
 </Project>

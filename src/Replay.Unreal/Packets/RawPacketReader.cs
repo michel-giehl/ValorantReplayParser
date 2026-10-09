@@ -113,13 +113,13 @@ public sealed class RawPacketReader
             bunch.ChSequence = packetId;
         }
 
+        _ = reader.ReadBit(); // VALORANT flag precedes partial initial/final flags.
         if (bunch.bPartial)
         {
             bunch.bPartialInitial = reader.ReadBit();
             bunch.bPartialFinal = reader.ReadBit();
         }
 
-        _ = reader.ReadBit(); // Valorant specific bit
         if (bunch.bReliable || bunch.bOpen)
         {
             bunch.ChName = reader.ReadFName();

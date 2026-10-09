@@ -69,6 +69,8 @@ public class FieldPayloadParser
 
             if (ParseProperty(payload, boundGroup, payloadObject, ref context, ref decodedFieldCount, diagnosticFields))
             {
+                if (!payload.AtEnd && payloadObject is IRepLayoutCustomDeltaPayload nativeDelta)
+                    nativeDelta.ReadCustomDelta(ref context, payload);
                 return CreateDecodedPayloadResult(payloadObject, decodedFieldCount, diagnosticFields ?? [],
                     ref context);
             }

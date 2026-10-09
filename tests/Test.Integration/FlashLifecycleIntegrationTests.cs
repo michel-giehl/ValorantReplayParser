@@ -87,7 +87,7 @@ public class FlashLifecycleIntegrationTests
                 Is.True);
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
-            Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(2));
+            Assert.That(context.PacketStats.PartialErrorCount, Is.Zero);
         });
 
         foreach (var group in paths.GroupBy(path => path.FlashActorNetGuid))
@@ -189,7 +189,7 @@ public class FlashLifecycleIntegrationTests
             Assert.That(hits.All(hit => hit.TargetCharacterNetGuid is 146 or 458), Is.True);
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
-            Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(2));
+            Assert.That(context.PacketStats.PartialErrorCount, Is.Zero);
         });
 
         foreach (var group in paths.GroupBy(path => path.FlashActorNetGuid))

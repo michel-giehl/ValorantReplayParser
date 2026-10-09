@@ -43,7 +43,7 @@ public class NearsightLifecycleIntegrationTests
             Assert.That(ended.All(effect => Math.Abs(effect.ObservedDurationSeconds - 2) < 1e-5), Is.True);
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
-            Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(2));
+            Assert.That(context.PacketStats.PartialErrorCount, Is.Zero);
         });
 
         AssertMonotonicPathIndices(paths);
@@ -74,7 +74,7 @@ public class NearsightLifecycleIntegrationTests
             Assert.That(ended, Has.Length.EqualTo(29));
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
-            Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(470));
+            Assert.That(context.PacketStats.PartialErrorCount, Is.Zero);
         });
 
         AssertOmenHit(casts, hits, ended, 10062, 538, 2, 1.8671875f);

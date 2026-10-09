@@ -10,6 +10,7 @@ public static class PandemicDescriptors
         return
         [
             new PandemicAgentDescriptor(),
+            new ViperPitActorDescriptor(),
             new ProjectileSmokeScreenDescriptor(),
             new SmokeScreenManagerDescriptor(),
         ];

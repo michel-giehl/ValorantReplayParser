@@ -1070,13 +1070,13 @@ public class BunchPayloadPipelineTests
         w.WriteBit(bHasMustBeMappedGUIDs);
         w.WriteBit(bPartial);
 
+        w.WriteBit(false); // VALORANT bit precedes partial flags
+
         if (bPartial)
         {
             w.WriteBit(bPartialInitial);
             w.WriteBit(bPartialFinal);
         }
-
-        w.WriteBit(false);
 
         if (bReliable || bOpen)
         {

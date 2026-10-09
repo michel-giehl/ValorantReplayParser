@@ -41,7 +41,7 @@ public class WallLifecycleIntegrationTests
             Assert.That(destroyed, Has.Length.EqualTo(8));
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
             Assert.That(context.BunchPayloadStats.MalformedPayloadCount, Is.Zero);
-            Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(2));
+            Assert.That(context.PacketStats.PartialErrorCount, Is.Zero);
         });
 
         var damagedSegment = segmentDestroyed.Single(value => value.SegmentActorNetGuid == 466);
@@ -86,7 +86,7 @@ public class WallLifecycleIntegrationTests
             Assert.That(activated.WallStart, Is.EqualTo(placed.Single(wall => wall.WallActorNetGuid == 31980).WallStart));
             Assert.That(activated.WallEnd, Is.EqualTo(placed.Single(wall => wall.WallActorNetGuid == 31980).WallEnd));
             Assert.That(context.PacketStats.MalformedPacketCount, Is.Zero);
-            Assert.That(context.PacketStats.PartialErrorCount, Is.EqualTo(141));
+            Assert.That(context.PacketStats.PartialErrorCount, Is.Zero);
         });
 
         var activeWallDestroyed = destroyed.Single(value => value.WallActorNetGuid == 31980);

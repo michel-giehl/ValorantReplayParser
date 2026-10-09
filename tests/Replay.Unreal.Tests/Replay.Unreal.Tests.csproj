@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -29,4 +29,5 @@
       <Folder Include="Readers\" />
     </ItemGroup>
 
+    <ItemGroup><None Update="Fixtures\ViperPit\*.bin" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>
