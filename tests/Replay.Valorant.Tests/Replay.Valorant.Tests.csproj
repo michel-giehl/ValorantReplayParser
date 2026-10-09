@@ -28,5 +28,6 @@
 
     <ItemGroup>
         <None Update="Fixtures\ViperPit\*.bin" CopyToOutputDirectory="PreserveNewest" />
+        <None Update="Fixtures\CellularPatch\*.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>

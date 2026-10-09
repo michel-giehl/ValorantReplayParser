@@ -1,6 +1,7 @@
 using Replay.Models.Descriptors;
 using static Replay.Valorant.Descriptors.Agents.AbilityDescriptorRegistration;
 using Replay.Valorant.Walls.Descriptors;
+using Replay.Valorant.Descriptors.Patches;
 
 namespace Replay.Valorant.Descriptors.Agents.Thorne;
 
@@ -26,6 +27,9 @@ public static class ThorneDescriptors
     [
         Rpc("/Game/Characters/Thorne/S0/Ability_4/Patch_Thorne_4_SlowField_Production.Patch_Thorne_4_SlowField_Production_C", "MulticastBeginDissipate", 1),
         Rpc("/Game/Characters/Thorne/S0/Ability_4/Projectile_Thorne_4_SlowFIeld_Production.Projectile_Thorne_4_SlowFIeld_Production_C", "MulticastStopProjectile", 3),
+        new ClassNetCacheDescriptor("/Game/Characters/Thorne/S0/Ability_4/Patch_Thorne_4_SlowField_Production.Patch_Thorne_4_SlowField_Production_C_ClassNetCache",
+            [new RpcDescriptor { Name = "NetMulticastUpdateNodeGrid", Handle = 3, Categories = ExportCategory.Ability,
+                FunctionExportPath = CellularPatchNodeGridParameters.ExportPath, ParameterDescriptor = new CellularPatchNodeGridParameters() }]),
         new SageWallSegmentClassNetCacheDescriptor(),
     ]);
 }
