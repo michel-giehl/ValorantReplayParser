@@ -122,5 +122,7 @@ public class ByteArchiveReader : FArchive
             _disposed = true;
             _owner?.Dispose();
         }
+
+        base.Dispose(disposing);
     }
 }

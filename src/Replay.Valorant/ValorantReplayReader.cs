@@ -6,6 +6,7 @@ using Replay.Encoding.PayloadEncryption;
 using Replay.Models.Descriptors;
 using Replay.Models.Errors;
 using Replay.Models.Events;
+using Replay.Models.Net;
 using Replay.Models.Replay;
 using Replay.Models.Results;
 using Replay.Unreal.Chunks;
@@ -304,8 +305,8 @@ public sealed class ValorantReplayReader
                 group.PathName,
                 group.PathNameIndex,
                 Array.AsReadOnly(group.NetFieldExports
-                    .Where(field => field is not null)
-                    .Select(field => new ReplayExportFieldSummary(field!.Handle, field.Name, field.CompatibleChecksum))
+                    .OfType<NetFieldExport>()
+                    .Select(field => new ReplayExportFieldSummary(field.Handle, field.Name, field.CompatibleChecksum))
                     .OrderBy(field => field.Handle)
                     .ToArray())))
             .ToArray();

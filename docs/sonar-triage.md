@@ -2,17 +2,19 @@
 
 ## Analysis status
 
-The SonarCloud view inspected on 2026-09-19 showed 64 unresolved code smells. Its new-code quality gate failed only on duplication density: 3.1% against a 3.0% threshold. That analysis revision differs from the local checkout, so rerun analysis after the release changes before comparing issue counts or deciding whether the gate passes.
+The SonarCloud analysis inspected on 2026-10-09 covers release commit `d05038eef424a943b8da3cf9c8b9db49e032dd86`. It reports 90 unresolved code smells. The new-code quality gate fails only on duplication density: 4.4% against a 3.0% threshold. Reliability, security, maintainability, and security-hotspot review conditions pass.
 
-The repository currently has no SonarScanner workflow or tracked Sonar analysis properties file. The active SonarCloud analysis mode and project-settings access have not been verified in this implementation. If the project uses automatic analysis, apply this single duplication exclusion in the SonarCloud project settings:
+The project uses automatic .NET analysis (`autoscanEnabled=true`, `ciName=Autoscan for DotNet`). The tracked root `.sonarcloud.properties` file configures this single duplication exclusion:
 
 ```text
 sonar.cpd.exclusions=src/Replay.Encoding/PayloadEncryption/VersionedTransforms/**/*.cs
 ```
 
-Do not add these files to `sonar.exclusions`: Sonar correctness and security analysis must continue to inspect the transforms, and the transform tests must remain analyzed. Do not add an ignored local properties file or create a second analysis pipeline to work around automatic analysis. If analysis later becomes scanner-driven, put the same property in that actual scanner configuration.
+Do not add these files to `sonar.exclusions`: Sonar correctness and security analysis must continue to inspect the transforms, and the transform tests must remain analyzed. `.sonarcloud.properties` is the [supported configuration file for automatic analysis](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis#additional-analysis-configuration); `sonar-project.properties` is ignored in this mode. Do not create a second analysis pipeline. If analysis later becomes scanner-driven, put the same property in that actual scanner configuration.
 
-**Pending external action:** the duplication exclusion must still be applied in SonarCloud project settings if automatic analysis is active. This repository change documents the setting but does not change SonarCloud or claim that its gate is fixed.
+The two CLI tools now compile one shared Serilog logger provider instead of maintaining identical copies. The byte archive reader also calls its base disposal implementation; the field binding helper is static, and a redundant null-forgiving operator was removed.
+
+**Pending validation:** after these local changes are pushed, automatic analysis must confirm the new duplication density and quality-gate result. Local tests and builds cannot establish that the remote gate passes.
 
 ## Triage decisions
 

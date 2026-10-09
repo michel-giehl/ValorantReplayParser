@@ -252,7 +252,7 @@ public class FieldPayloadParser
         return false;
     }
 
-    private FieldBinding GetBinding(int handle, BoundExportGroup boundGroup)
+    private static FieldBinding GetBinding(int handle, BoundExportGroup boundGroup)
     {
         if ((uint)handle < (uint)boundGroup.FieldsByHandle.Length)
         {

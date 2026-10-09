@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Serilog.Events;
 
-namespace NetGuidCacheReader.Logging;
+namespace Replay.Tools.Logging;
 
 internal sealed class SerilogLoggerProvider : ILoggerProvider
 {
