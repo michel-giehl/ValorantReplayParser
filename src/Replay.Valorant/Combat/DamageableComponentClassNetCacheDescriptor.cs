@@ -16,5 +16,11 @@ public sealed class DamageableComponentClassNetCacheDescriptor
             1, "MulticastNotifyDamage_Point",
             "/Script/ShooterGame.DamageableComponent:MulticastNotifyDamage_Point",
             ExportCategory.Gunplay);
+        AddFunctionHandle<MulticastNotifyHealParameters>(
+            6, "MulticastNotifyHeal", "/Script/ShooterGame.DamageableComponent:MulticastNotifyHeal", ExportCategory.Gunplay);
+        AddFunctionHandle<MulticastNotifyOverhealDecayParameters>(
+            7, "MulticastNotifyOverhealDecay", "/Script/ShooterGame.DamageableComponent:MulticastNotifyOverhealDecay", ExportCategory.Gunplay);
+        AddFunctionHandle<MulticastSectionLifeChangeParameters>(
+            8, "MulticastSectionLifeChange", "/Script/ShooterGame.DamageableComponent:MulticastSectionLifeChange", ExportCategory.Gunplay);
     }
 }

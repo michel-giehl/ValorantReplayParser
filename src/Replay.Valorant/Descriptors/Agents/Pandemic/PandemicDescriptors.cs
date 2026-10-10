@@ -13,6 +13,7 @@ public static class PandemicDescriptors
             new ViperPitActorDescriptor(),
             new ProjectileSmokeScreenDescriptor(),
             new SmokeScreenManagerDescriptor(),
+            .. SnakeBiteDescriptors.CreateDescriptors(),
         ];
     }
 
@@ -21,6 +22,7 @@ public static class PandemicDescriptors
         return
         [
             new SmokeScreenManagerClassNetCacheDescriptor(),
+            .. SnakeBiteDescriptors.CreateClassNetCacheDescriptors(),
         ];
     }
 }
