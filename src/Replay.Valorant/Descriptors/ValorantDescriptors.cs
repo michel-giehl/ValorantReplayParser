@@ -189,6 +189,7 @@ public static class ValorantDescriptors
         catalog.Add(new AttachedDamageSectionComponentDescriptor());
         catalog.Add(new BombCombatReportComponentDescriptor());
         catalog.Add(new BombGameStateDescriptor());
+        catalog.Add(new TimedBombDescriptor());
         catalog.Add(new BombPlayerStateDescriptor());
         catalog.Add(new ChildDamageSectionComponentDescriptor());
         catalog.Add(new ChildRegionDamageSectionComponentDescriptor());
