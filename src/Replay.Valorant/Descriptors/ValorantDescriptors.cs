@@ -31,6 +31,7 @@ using Replay.Valorant.Descriptors.Agents.Thorne;
 using Replay.Valorant.Descriptors.Agents.Vampire;
 using Replay.Valorant.Descriptors.Agents.Wraith;
 using Replay.Valorant.Descriptors.Agents.Wushu;
+using Replay.Valorant.Descriptors.Effects.Locational;
 using Replay.Valorant.Descriptors.Effects.Replay;
 using Replay.Valorant.Flashes.Descriptors;
 using Replay.Valorant.GameState;
@@ -208,6 +209,7 @@ public static class ValorantDescriptors
         catalog.Add(new AttachedDamageSectionClassNetCacheDescriptor());
         catalog.Add(new ArmorDamageSectionClassNetCacheDescriptor());
         catalog.Add(new ReplayEffectComponentClassNetCacheDescriptor());
+        catalog.Add(new LocationalEffectManagerClassNetCacheDescriptor());
         catalog.Add(new EffectManagerComponentDescriptor());
         catalog.Add(new EffectManagerComponentClassNetCacheDescriptor());
         catalog.Add(new BlindManagerComponentDescriptor());
