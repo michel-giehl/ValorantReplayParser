@@ -4,6 +4,7 @@ using Replay.Models.Events;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Events.Combat;
 using Replay.Valorant.Events.Flashes;
+using Replay.Valorant.Events.Footsteps;
 using Replay.Valorant.Events.Movement;
 using Replay.Valorant.Events.Nearsights;
 using Replay.Valorant.Events.Walls;
@@ -122,6 +123,23 @@ internal sealed class ReplayEventJsonWriter
         writer.WriteString("fire_mode", ReplayJsonNormalizer.ToSnakeCase(shot.FireMode.ToString()));
         WriteNullableString(writer, "fire_mode_evidence", shot.FireModeEvidence);
         writer.WriteEndObject();
+        writer.WriteEndObject();
+    }
+
+    public void WriteValorantFootstep(Utf8JsonWriter writer, ValorantFootstepReceived footstep)
+    {
+        WriteEventStart(writer, "valorant_footstep_received", footstep);
+        WriteObjectIdentity(writer, footstep.ActorNetGuid, footstep.ObjectNetGuid, footstep.ChannelIndex);
+        writer.WriteString("kind", ReplayJsonNormalizer.ToSnakeCase(footstep.Kind.ToString()));
+        WriteNullableValue(writer, "character_net_guid", footstep.CharacterNetGuid);
+        WriteNullableValue(writer, "player_state_net_guid", footstep.PlayerStateNetGuid);
+        WriteNullableString(writer, "subject", footstep.Subject);
+        WriteNullableValue(writer, "location", footstep.Location);
+        WriteNullableValue(writer, "rotation", footstep.Rotation);
+        WriteNullableValue(writer, "surface", footstep.Surface);
+        WriteNullableValue(writer, "intensity", footstep.Intensity);
+        WriteNullableValue(writer, "start_movement_time", footstep.StartMovementTime);
+        WriteNullableValue(writer, "effect_container", footstep.EffectContainer);
         writer.WriteEndObject();
     }
 

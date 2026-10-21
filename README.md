@@ -79,7 +79,7 @@ The event-project split is a breaking change in the current development version.
 
 The core parser emits only `ActorSpawned`, `ActorClosed`, `ExportGroupReceived`, `RpcReceived`, and `NetGuidExported`. Movement batches and effect RPC parameters remain native payloads. Object-reference fields, including damage `EquippableUsed`, expose `NetObjectReference` with the recorded `NetGuid` and its `Path` resolved at decode time; an unknown path is null. Nullable reference fields distinguish an absent update (null) from a recorded null object (`NetGuid == 0`).
 
-The separate `Replay.Valorant.Events` project (package `ValorantReplayParser.Events`) owns movement, shot, flash, nearsight, and wall events, their enrichers, and equipment-name resolution. Consumers explicitly wrap their sink:
+The separate `Replay.Valorant.Events` project (package `ValorantReplayParser.Events`) owns movement, shot, footstep, flash, nearsight, and wall events, their enrichers, and equipment-name resolution. Consumers explicitly wrap their sink:
 
 ```csharp
 using Replay.Valorant;

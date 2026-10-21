@@ -145,6 +145,7 @@ internal sealed class ReplayExportManifestWriter
         writer.WriteNumber("export_group_received", statistics.ExportGroupCount);
         writer.WriteNumber("rpc_received", statistics.RpcCount);
         writer.WriteNumber("valorant_shot_received", statistics.ValorantShotReceivedCount);
+        writer.WriteNumber("valorant_footstep_received", statistics.ValorantFootstepReceivedCount);
         writer.WriteNumber("valorant_flash_cast", statistics.ValorantFlashCastCount);
         writer.WriteNumber("valorant_flash_path_updated", statistics.ValorantFlashPathUpdatedCount);
         writer.WriteNumber("valorant_flash_exploded", statistics.ValorantFlashExplodedCount);

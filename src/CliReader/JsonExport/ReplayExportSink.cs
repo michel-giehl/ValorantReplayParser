@@ -4,6 +4,7 @@ using Replay.Valorant.Events.Combat;
 using Replay.Valorant.Events.Flashes;
 using Replay.Valorant.Events.Movement;
 using Replay.Valorant.Events.Nearsights;
+using Replay.Valorant.Events.Footsteps;
 using Replay.Valorant.Events.Walls;
 using Replay.Valorant.Movement;
 
@@ -71,6 +72,10 @@ internal sealed class ReplayExportSink :
             case ValorantShotReceived shot:
                 _events.Write(writer => _eventWriter.WriteValorantShot(writer, shot));
                 Statistics.ValorantShotReceivedCount++;
+                break;
+            case ValorantFootstepReceived footstep:
+                _events.Write(writer => _eventWriter.WriteValorantFootstep(writer, footstep));
+                Statistics.ValorantFootstepReceivedCount++;
                 break;
             case ValorantFlashCast cast:
                 _events.Write(writer => _eventWriter.WriteValorantFlashCast(writer, cast));

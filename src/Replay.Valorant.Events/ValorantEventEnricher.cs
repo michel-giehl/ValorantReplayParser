@@ -3,6 +3,7 @@ using Replay.Models.Events;
 using Replay.Models.Net;
 using Replay.Valorant.Events.Combat;
 using Replay.Valorant.Events.Flashes;
+using Replay.Valorant.Events.Footsteps;
 using Replay.Valorant.Events.Movement;
 using Replay.Valorant.Events.Nearsights;
 using Replay.Valorant.Events.Walls;
@@ -23,7 +24,7 @@ public sealed class ValorantEventEnricher : IReplayEventSink
     public ValorantEventEnricher(IReplayEventSink sink)
     {
         ArgumentNullException.ThrowIfNull(sink);
-        _walls = new ValorantWallEventEnricher(sink);
+        _walls = new ValorantWallEventEnricher(new ValorantFootstepEventEnricher(sink, _netGuidCache));
         _nearsights = new ValorantNearsightEventEnricher(_walls, _netGuidCache);
         _flashes = new ValorantFlashEventEnricher(_nearsights, _netGuidCache);
         _events = new ValorantMovementEventEnricher(new ValorantShotEventEnricher(_flashes, _netGuidCache));

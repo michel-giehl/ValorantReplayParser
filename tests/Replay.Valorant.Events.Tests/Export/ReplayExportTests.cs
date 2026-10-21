@@ -10,6 +10,7 @@ using Replay.Models.Unreal;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Events.Combat;
 using Replay.Valorant.Events.Flashes;
+using Replay.Valorant.Events.Footsteps;
 using Replay.Valorant.Events.Movement;
 using Replay.Valorant.Events.Nearsights;
 using Replay.Valorant.Events.Walls;
@@ -282,6 +283,34 @@ public class ReplayExportTests
     }
 
     [Test]
+    public void EventSink_WritesFootstepReceived()
+    {
+        using var events = new MemoryStream();
+        using var movement = new MemoryStream();
+        using (var sink = CreateSink(events, movement))
+        {
+            sink.Emit(new ValorantFootstepReceived(1.5f, 4, 2, 6, 1, ValorantFootstepKind.JumpLand, 20, 30, "jett",
+                new FVector(1, 2, 3), new FRotator(0, 90, 0), 5, 1, 12.5f,
+                new NetObjectReference(99, "/Game/Characters/_Core/FXC_JumpLand.FXC_JumpLand_C")));
+            Assert.That(sink.Statistics.ValorantFootstepReceivedCount, Is.EqualTo(1));
+            Assert.That(sink.Statistics.EventCount, Is.EqualTo(1));
+        }
+
+        var documents = ParseLines(events);
+        var footstep = documents.Single().RootElement;
+        Assert.Multiple(() =>
+        {
+            Assert.That(footstep.GetProperty("type").GetString(), Is.EqualTo("valorant_footstep_received"));
+            Assert.That(footstep.GetProperty("kind").GetString(), Is.EqualTo("jump_land"));
+            Assert.That(footstep.GetProperty("character_net_guid").GetUInt32(), Is.EqualTo(20));
+            Assert.That(footstep.GetProperty("subject").GetString(), Is.EqualTo("jett"));
+            Assert.That(footstep.GetProperty("location").GetProperty("x").GetDouble(), Is.EqualTo(1));
+            Assert.That(footstep.GetProperty("surface").GetDouble(), Is.EqualTo(5));
+        });
+        Dispose(documents);
+    }
+
+    [Test]
     public void EventSink_WritesStructuredRoundResultPayload()
     {
         using var events = new MemoryStream();
@@ -452,6 +481,7 @@ public class ReplayExportTests
                 Assert.That(
                     manifest.GetProperty("counts").GetProperty("valorant_shot_received").GetInt32(),
                     Is.EqualTo(1));
+                Assert.That(manifest.GetProperty("counts").GetProperty("valorant_footstep_received").GetInt32(), Is.Zero);
                 Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_cast").GetInt32(), Is.EqualTo(1));
                 Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_path_updated").GetInt32(), Is.EqualTo(1));
                 Assert.That(manifest.GetProperty("counts").GetProperty("valorant_flash_exploded").GetInt32(), Is.EqualTo(1));

@@ -16,6 +16,7 @@ internal sealed class ReplayExportStatistics
     public int EmptyDecodedExportGroupCount { get; private set; }
     public int RpcCount { get; internal set; }
     public int ValorantShotReceivedCount { get; internal set; }
+    public int ValorantFootstepReceivedCount { get; internal set; }
     public int ValorantFlashCastCount { get; internal set; }
     public int ValorantFlashPathUpdatedCount { get; internal set; }
     public int ValorantFlashExplodedCount { get; internal set; }
@@ -34,6 +35,7 @@ internal sealed class ReplayExportStatistics
 
     public int EventCount =>
         ActorSpawnedCount + ActorClosedCount + ExportGroupCount + RpcCount + ValorantShotReceivedCount +
+        ValorantFootstepReceivedCount +
         ValorantFlashCastCount + ValorantFlashPathUpdatedCount + ValorantFlashExplodedCount +
         ValorantFlashPlayerHitCount + ValorantNearsightCastCount + ValorantNearsightPathUpdatedCount +
         ValorantNearsightActivatedCount + ValorantNearsightPlayerHitCount +
