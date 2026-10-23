@@ -72,6 +72,7 @@ public static class ValorantDescriptors
         catalog.AddSubobjectClassPath("ExternalResource", new ExternalResourceComponentDescriptor().Path);
         catalog.AddSubobjectClassPath("MagazineAmmo", new AmmoComponentDescriptor().Path);
         catalog.AddSubobjectClassPath("ReserveAmmo", new AmmoComponentDescriptor().Path);
+        catalog.AddSubobjectClassPath("ZoomMultiplier", new ZoomMultiplierComponentDescriptor().Path);
         catalog.AddSubobjectClassPath("SplineMovement", SplineMovementComponentDescriptor.ExportPath);
         catalog.AddSubobjectClassPath("EquippableStateMachine", new EquippableStateMachineComponentDescriptor().Path);
         catalog.AddSubobjectClassPath("ZoomStateMachine", new EquippableStateMachineComponentDescriptor().Path);
@@ -180,6 +181,7 @@ public static class ValorantDescriptors
         catalog.Add(new AresAbilitySystemComponentDescriptor());
         catalog.Add(new AresAttributeSetDescriptor());
         catalog.Add(new AmmoComponentDescriptor());
+        catalog.Add(new ZoomMultiplierComponentDescriptor());
         catalog.Add(new AresInventoryDescriptor());
         catalog.Add(new ItemSlotDescriptor());
         catalog.Add(new MultiItemSlotDescriptor());
