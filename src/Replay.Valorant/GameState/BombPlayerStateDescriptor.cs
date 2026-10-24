@@ -13,6 +13,8 @@ public sealed class BombPlayerStateDescriptor : ExportGroupDescriptor<BombPlayer
 
     public int PlayerId { get; set; }
     public RiotUniqueNetId? UniqueId { get; set; }
+    /// <summary>Replicated ping. Valorant sends it as 16 bits rather than UE4's compressed ms/4 byte; observed values (12-27 in ranked EU) read as round-trip milliseconds.</summary>
+    public uint Ping { get; set; }
     public int CompetitiveTier { get; set; }
     public string? Subject { get; set; }
     public NetObjectReference SpectatedPlayer { get; set; }
@@ -28,6 +30,7 @@ public sealed class BombPlayerStateDescriptor : ExportGroupDescriptor<BombPlayer
         AddProperty("PlayerId", x => x.PlayerId, ExportCategory.GameState).Int32();
         AddProperty("PlayerID", x => x.PlayerId, ExportCategory.GameState).Int32();
         AddProperty(x => x.UniqueId, ExportCategory.GameState).Decode(RiotUniqueNetIdDecoder.Instance);
+        AddProperty(x => x.Ping, ExportCategory.GameState).UInt16();
         AddProperty(x => x.CompetitiveTier, ExportCategory.GameState).Int32();
         AddProperty(x => x.Subject, ExportCategory.GameState | ExportCategory.Inventory | ExportCategory.Economy).FString();
         AddProperty(x => x.SpectatedPlayer, ExportCategory.GameState).ObjectNetGuid();

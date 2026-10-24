@@ -8,6 +8,7 @@ namespace Replay.Unreal.Parsing;
 public static class PrimitiveDecoders
 {
     public static readonly IFieldDecoder Int32 = new Int32Decoder();
+    public static readonly IFieldDecoder UInt16 = new UInt16Decoder();
     public static readonly IFieldDecoder UInt32 = new UInt32Decoder();
     public static readonly IFieldDecoder UInt64 = new UInt64Decoder();
     public static readonly IFieldDecoder Float = new FloatDecoder();
@@ -99,6 +100,12 @@ public static class PrimitiveDecoders
     {
         public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive) =>
             DecodedFieldValue.FromInt32(archive.ReadInt32());
+    }
+
+    private sealed class UInt16Decoder : IFieldDecoder
+    {
+        public DecodedFieldValue Decode(ref FieldDecodeContext context, FBitArchive archive) =>
+            DecodedFieldValue.FromUInt32(archive.ReadUInt16());
     }
 
     private sealed class UInt32Decoder : IFieldDecoder

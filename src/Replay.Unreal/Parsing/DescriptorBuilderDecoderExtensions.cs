@@ -9,6 +9,9 @@ public static class DescriptorBuilderDecoderExtensions
     public static FieldDescriptorBuilder Int32(this FieldDescriptorBuilder builder) =>
         builder.Decode(PrimitiveDecoders.Int32);
 
+    public static FieldDescriptorBuilder UInt16(this FieldDescriptorBuilder builder) =>
+        builder.Decode(PrimitiveDecoders.UInt16);
+
     public static FieldDescriptorBuilder UInt32(this FieldDescriptorBuilder builder) =>
         builder.Decode(PrimitiveDecoders.UInt32);
 
