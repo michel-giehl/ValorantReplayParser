@@ -186,6 +186,7 @@ public static class ValorantDescriptors
         catalog.Add(new ItemSlotDescriptor());
         catalog.Add(new MultiItemSlotDescriptor());
         catalog.Add(new PurchasedItemComponentDescriptor());
+        foreach (var gun in GunActorDescriptor.ClassPaths) catalog.Add(new GunActorDescriptor(gun));
         catalog.Add(new MoneyManagementComponentDescriptor());
         catalog.Add(new GunRequestComponentClassNetCacheDescriptor());
         catalog.Add(new AttachedDamageSectionComponentDescriptor());

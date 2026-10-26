@@ -53,6 +53,16 @@ public class ValorantEquippableTests
     }
 
     [Test]
+    public void GunClassPaths_AreTheGunActorDescriptorsPlusChamberAbilityGuns()
+    {
+        var purchasable = Replay.Valorant.Inventory.GunActorDescriptor.ClassPaths;
+        Assert.That(purchasable, Is.SubsetOf(ValorantEquippableResolver.GunClassPaths));
+        Assert.That(ValorantEquippableResolver.GunClassPaths.Except(purchasable)
+            .Select(path => ValorantEquippableResolver.TryResolve(1, [path], out var gun) ? gun.Category : default),
+            Is.All.EqualTo(ValorantEquippableCategory.Ability));
+    }
+
+    [Test]
     public void Resolve_DefaultObjectOuterPath_ReturnsKnownEquippable()
     {
         const string classPath = "/Game/Equippables/Guns/Rifles/AK/AssaultRifle_AK.AssaultRifle_AK_C";
