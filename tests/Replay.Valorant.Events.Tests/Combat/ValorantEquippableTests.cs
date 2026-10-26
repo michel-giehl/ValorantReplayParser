@@ -33,6 +33,7 @@ public class ValorantEquippableTests
     [TestCase("/Game/Equippables/Guns/HvyMachineGuns/LMG/LightMachineGun.LightMachineGun_C", "Ares", ValorantEquippableCategory.MachineGun)]
     [TestCase("/Game/Equippables/Guns/HvyMachineGuns/HMG/HeavyMachineGun.HeavyMachineGun_C", "Odin", ValorantEquippableCategory.MachineGun)]
     [TestCase("/Game/Characters/Deadeye/S0/Ability_Q/Gun/Gun_Deadeye_Q_Pistol.Gun_Deadeye_Q_Pistol_C", "Headhunter", ValorantEquippableCategory.Ability )]
+    [TestCase("/Game/Characters/Sprinter/S0/Ability_X/Gun_Sprinter_X_HeavyLightningGun_Production.Gun_Sprinter_X_HeavyLightningGun_Production_C", "Overdrive", ValorantEquippableCategory.Ability)]
     public void Resolve_KnownEquippablePath_ReturnsCanonicalWeapon(
         string classPath,
         string expectedName,
@@ -53,7 +54,7 @@ public class ValorantEquippableTests
     }
 
     [Test]
-    public void GunClassPaths_AreTheGunActorDescriptorsPlusChamberAbilityGuns()
+    public void GunClassPaths_AreTheGunActorDescriptorsPlusAbilityGuns()
     {
         var purchasable = Replay.Valorant.Inventory.GunActorDescriptor.ClassPaths;
         Assert.That(purchasable, Is.SubsetOf(ValorantEquippableResolver.GunClassPaths));

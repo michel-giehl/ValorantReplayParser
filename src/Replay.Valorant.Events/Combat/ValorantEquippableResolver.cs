@@ -34,6 +34,7 @@ public static class ValorantEquippableResolver
         Define("/Game/Equippables/Guns/HvyMachineGuns/HMG/HeavyMachineGun.HeavyMachineGun_C", "Odin", ValorantEquippableCategory.MachineGun),
         Define("/Game/Characters/Deadeye/S0/Ability_Q/Gun/Gun_Deadeye_Q_Pistol.Gun_Deadeye_Q_Pistol_C", "Headhunter", ValorantEquippableCategory.Ability),
         Define("/Game/Characters/Deadeye/S0/Ability_X/Gun_Giantslayer/Gun_Deadeye_X_Giantslayer_Prototype_FIreRatePrototype.Gun_Deadeye_X_Giantslayer_Prototype_FireRatePrototype_C", "Tour de Force", ValorantEquippableCategory.Ability),
+        Define("/Game/Characters/Sprinter/S0/Ability_X/Gun_Sprinter_X_HeavyLightningGun_Production.Gun_Sprinter_X_HeavyLightningGun_Production_C", "Overdrive", ValorantEquippableCategory.Ability),
     ];
 
     private static readonly IReadOnlyDictionary<string, Definition> Definitions = CreateDefinitions();
