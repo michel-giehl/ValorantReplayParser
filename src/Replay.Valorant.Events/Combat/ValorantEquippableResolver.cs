@@ -16,7 +16,7 @@ public static class ValorantEquippableResolver
         Define("/Game/Equippables/Guns/Sidearms/Slim/SawedOffShotgun.SawedOffShotgun_C", "Shorty", ValorantEquippableCategory.Sidearm),
         Define("/Game/Equippables/Guns/Sidearms/AutoPistol/AutomaticPistol.AutomaticPistol_C", "Frenzy", ValorantEquippableCategory.Sidearm),
         Define("/Game/Equippables/Guns/Sidearms/Luger/LugerPistol.LugerPistol_C", "Ghost", ValorantEquippableCategory.Sidearm),
-        Define("/Game/Equippables/Guns/Sidearms/Compact/CompactPistol.CompactPistol_C", "Compact Pistol", ValorantEquippableCategory.Sidearm),
+        Define("/Game/Equippables/Guns/Sidearms/Compact/CompactPistol.CompactPistol_C", "Bandit", ValorantEquippableCategory.Sidearm),
         Define("/Game/Equippables/Guns/Sidearms/Revolver/RevolverPistol.RevolverPistol_C", "Sheriff", ValorantEquippableCategory.Sidearm),
         Define("/Game/Equippables/Guns/SubMachineGuns/Vector/Vector.Vector_C", "Stinger", ValorantEquippableCategory.Smg),
         Define("/Game/Equippables/Guns/SubMachineGuns/MP5/SubMachineGun_MP5.SubMachineGun_MP5_C", "Spectre", ValorantEquippableCategory.Smg),
@@ -24,7 +24,7 @@ public static class ValorantEquippableResolver
         Define("/Game/Equippables/Guns/Shotguns/AutoShotgun/AutomaticShotgun.AutomaticShotgun_C", "Judge", ValorantEquippableCategory.Shotgun),
         Define("/Game/Equippables/Guns/Rifles/Burst/AssaultRifle_Burst.AssaultRifle_Burst_C", "Bulldog", ValorantEquippableCategory.Rifle),
         Define("/Game/Equippables/Guns/Rifles/BattleRifle/BattleRifle.BattleRifle_C", "Warden", ValorantEquippableCategory.Rifle),
-        Define("/Game/Equippables/Guns/SniperRifles/Dmr/DMR.DMR_C", "Guardian", ValorantEquippableCategory.Rifle),
+        Define("/Game/Equippables/Guns/SniperRifles/DMR/DMR.DMR_C", "Guardian", ValorantEquippableCategory.Rifle),
         Define("/Game/Equippables/Guns/Rifles/Carbine/AssaultRifle_ACR.AssaultRifle_ACR_C", "Phantom", ValorantEquippableCategory.Rifle),
         Define("/Game/Equippables/Guns/Rifles/AK/AssaultRifle_AK.AssaultRifle_AK_C", "Vandal", ValorantEquippableCategory.Rifle),
         Define("/Game/Equippables/Guns/SniperRifles/Leversniper/LeverSniperRifle.LeverSniperRifle_C", "Marshal", ValorantEquippableCategory.SniperRifle),
@@ -34,6 +34,7 @@ public static class ValorantEquippableResolver
         Define("/Game/Equippables/Guns/HvyMachineGuns/HMG/HeavyMachineGun.HeavyMachineGun_C", "Odin", ValorantEquippableCategory.MachineGun),
         Define("/Game/Characters/Deadeye/S0/Ability_Q/Gun/Gun_Deadeye_Q_Pistol.Gun_Deadeye_Q_Pistol_C", "Headhunter", ValorantEquippableCategory.Ability),
         Define("/Game/Characters/Deadeye/S0/Ability_X/Gun_Giantslayer/Gun_Deadeye_X_Giantslayer_Prototype_FIreRatePrototype.Gun_Deadeye_X_Giantslayer_Prototype_FireRatePrototype_C", "Tour de Force", ValorantEquippableCategory.Ability),
+        Define("/Game/Characters/Sprinter/S0/Ability_X/Gun_Sprinter_X_HeavyLightningGun_Production.Gun_Sprinter_X_HeavyLightningGun_Production_C", "Overdrive", ValorantEquippableCategory.Ability),
     ];
 
     private static readonly IReadOnlyDictionary<string, Definition> Definitions = CreateDefinitions();

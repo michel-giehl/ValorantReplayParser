@@ -16,7 +16,7 @@ public class ValorantEquippableTests
     [TestCase("/Game/Equippables/Guns/Sidearms/Slim/SawedOffShotgun.SawedOffShotgun_C", "Shorty", ValorantEquippableCategory.Sidearm)]
     [TestCase("/Game/Equippables/Guns/Sidearms/AutoPistol/AutomaticPistol.AutomaticPistol_C", "Frenzy", ValorantEquippableCategory.Sidearm)]
     [TestCase("/Game/Equippables/Guns/Sidearms/Luger/LugerPistol.LugerPistol_C", "Ghost", ValorantEquippableCategory.Sidearm)]
-    [TestCase("/Game/Equippables/Guns/Sidearms/Compact/CompactPistol.CompactPistol_C", "Compact Pistol", ValorantEquippableCategory.Sidearm)]
+    [TestCase("/Game/Equippables/Guns/Sidearms/Compact/CompactPistol.CompactPistol_C", "Bandit", ValorantEquippableCategory.Sidearm)]
     [TestCase("/Game/Equippables/Guns/Sidearms/Revolver/RevolverPistol.RevolverPistol_C", "Sheriff", ValorantEquippableCategory.Sidearm)]
     [TestCase("/Game/Equippables/Guns/SubMachineGuns/Vector/Vector.Vector_C", "Stinger", ValorantEquippableCategory.Smg)]
     [TestCase("/Game/Equippables/Guns/SubMachineGuns/MP5/SubMachineGun_MP5.SubMachineGun_MP5_C", "Spectre", ValorantEquippableCategory.Smg)]
@@ -24,7 +24,7 @@ public class ValorantEquippableTests
     [TestCase("/Game/Equippables/Guns/Shotguns/AutoShotgun/AutomaticShotgun.AutomaticShotgun_C", "Judge", ValorantEquippableCategory.Shotgun)]
     [TestCase("/Game/Equippables/Guns/Rifles/Burst/AssaultRifle_Burst.AssaultRifle_Burst_C", "Bulldog", ValorantEquippableCategory.Rifle)]
     [TestCase("/Game/Equippables/Guns/Rifles/BattleRifle/BattleRifle.BattleRifle_C", "Warden", ValorantEquippableCategory.Rifle)]
-    [TestCase("/Game/Equippables/Guns/SniperRifles/Dmr/DMR.DMR_C", "Guardian", ValorantEquippableCategory.Rifle)]
+    [TestCase("/Game/Equippables/Guns/SniperRifles/DMR/DMR.DMR_C", "Guardian", ValorantEquippableCategory.Rifle)]
     [TestCase("/Game/Equippables/Guns/Rifles/Carbine/AssaultRifle_ACR.AssaultRifle_ACR_C", "Phantom", ValorantEquippableCategory.Rifle)]
     [TestCase("/Game/Equippables/Guns/Rifles/AK/AssaultRifle_AK.AssaultRifle_AK_C", "Vandal", ValorantEquippableCategory.Rifle)]
     [TestCase("/Game/Equippables/Guns/SniperRifles/Leversniper/LeverSniperRifle.LeverSniperRifle_C", "Marshal", ValorantEquippableCategory.SniperRifle)]
@@ -33,6 +33,7 @@ public class ValorantEquippableTests
     [TestCase("/Game/Equippables/Guns/HvyMachineGuns/LMG/LightMachineGun.LightMachineGun_C", "Ares", ValorantEquippableCategory.MachineGun)]
     [TestCase("/Game/Equippables/Guns/HvyMachineGuns/HMG/HeavyMachineGun.HeavyMachineGun_C", "Odin", ValorantEquippableCategory.MachineGun)]
     [TestCase("/Game/Characters/Deadeye/S0/Ability_Q/Gun/Gun_Deadeye_Q_Pistol.Gun_Deadeye_Q_Pistol_C", "Headhunter", ValorantEquippableCategory.Ability )]
+    [TestCase("/Game/Characters/Sprinter/S0/Ability_X/Gun_Sprinter_X_HeavyLightningGun_Production.Gun_Sprinter_X_HeavyLightningGun_Production_C", "Overdrive", ValorantEquippableCategory.Ability)]
     public void Resolve_KnownEquippablePath_ReturnsCanonicalWeapon(
         string classPath,
         string expectedName,
@@ -50,6 +51,16 @@ public class ValorantEquippableTests
             Assert.That(equippable.Category, Is.EqualTo(expectedCategory));
             Assert.That(equippable.ClassPath, Is.EqualTo(classPath));
         });
+    }
+
+    [Test]
+    public void GunClassPaths_AreTheGunActorDescriptorsPlusAbilityGuns()
+    {
+        var purchasable = Replay.Valorant.Inventory.GunActorDescriptor.ClassPaths;
+        Assert.That(purchasable, Is.SubsetOf(ValorantEquippableResolver.GunClassPaths));
+        Assert.That(ValorantEquippableResolver.GunClassPaths.Except(purchasable)
+            .Select(path => ValorantEquippableResolver.TryResolve(1, [path], out var gun) ? gun.Category : default),
+            Is.All.EqualTo(ValorantEquippableCategory.Ability));
     }
 
     [Test]

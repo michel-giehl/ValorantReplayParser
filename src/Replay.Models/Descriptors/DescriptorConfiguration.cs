@@ -23,33 +23,43 @@ internal sealed class DescriptorConfiguration<TBuilder, TItem>
         Action configure,
         Func<TBuilder, TItem> build)
     {
-        if (_items is not null)
+        if (Volatile.Read(ref _items) is { } configured)
         {
-            return _items;
+            return configured;
         }
 
-        if (_isConfiguring)
+        // Descriptors are shared between readers on different threads; the lock is reentrant, so a
+        // descriptor requesting its own members while configuring is still caught below.
+        lock (_builders)
         {
-            throw new InvalidOperationException($"Descriptor '{descriptorName}' recursively requested its {recursiveMemberName}.");
-        }
-
-        _builders.Clear();
-        _isConfiguring = true;
-        try
-        {
-            configure();
-            var items = new TItem[_builders.Count];
-            for (var i = 0; i < items.Length; i++)
+            if (_items is not null)
             {
-                items[i] = build(_builders[i]);
+                return _items;
             }
 
-            _items = items;
-            return _items;
-        }
-        finally
-        {
-            _isConfiguring = false;
+            if (_isConfiguring)
+            {
+                throw new InvalidOperationException($"Descriptor '{descriptorName}' recursively requested its {recursiveMemberName}.");
+            }
+
+            _builders.Clear();
+            _isConfiguring = true;
+            try
+            {
+                configure();
+                var items = new TItem[_builders.Count];
+                for (var i = 0; i < items.Length; i++)
+                {
+                    items[i] = build(_builders[i]);
+                }
+
+                Volatile.Write(ref _items, items);
+                return items;
+            }
+            finally
+            {
+                _isConfiguring = false;
+            }
         }
     }
 }
