@@ -1,7 +1,9 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 using Replay.Unreal.Parsing;
+using Replay.Valorant.Descriptors;
 using Replay.Valorant.GameState;
 using Replay.Valorant.Inventory;
 
@@ -35,9 +37,33 @@ public sealed class InventoryDescriptorTests
             Assert.That(decoded.GetDecodedItemSlots().Count(), Is.EqualTo(16));
             Assert.That(decoded.GetItemSlot(EAresItemSlot.Primary)?.NetGuid, Is.Zero);
             Assert.That(decoded.GetItemSlot(EAresItemSlot.SecondaryStorage)?.NetGuid, Is.EqualTo(57));
-            Assert.That(decoded.ItemSlots, Has.Count.EqualTo(16));
+            Assert.That(decoded.ItemSlots, Has.Count.EqualTo((int)EAresItemSlot.Count));
             Assert.That(decoded.HasDecoded(nameof(AresInventoryDescriptor.PrimarySlot)), Is.True);
             Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    [TestCase(8, null, 21u, 22u, 23u, 31u)]
+    [TestCase(9, 18u, 22u, 23u, 24u, 32u)]
+    public void CatalogSelectsReleaseSpecificHandlesAfterItemSlots(
+        int minor, uint? unnamed1309Slot, uint newCurrentEquippable, uint character, uint netTimestamp, uint lastSeenCorrectionIndex)
+    {
+        var descriptor = ValorantDescriptors.CreateCatalog().ExportGroupDefinitions
+            .Single(definition => definition.Baseline.Path == "/Script/ShooterGame.AresInventory")
+            .Resolve(new ReplayReleaseVersion(13, checked((ushort)minor)));
+        var handles = descriptor.Fields.ToDictionary(field => field.PropertyName!, field => field.Handle);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(handles[nameof(AresInventoryDescriptor.SecondaryStorageSlot)], Is.EqualTo(17));
+            Assert.That(handles.GetValueOrDefault(nameof(AresInventoryDescriptor.Unnamed1309Slot)), Is.EqualTo(unnamed1309Slot));
+            Assert.That(handles[nameof(AresInventoryDescriptor.NewCurrentEquippable)], Is.EqualTo(newCurrentEquippable));
+            Assert.That(handles[nameof(AresInventoryDescriptor.Character)], Is.EqualTo(character));
+            Assert.That(handles[nameof(AresInventoryDescriptor.NetTimestamp)], Is.EqualTo(netTimestamp));
+            Assert.That(handles[nameof(AresInventoryDescriptor.LastSeenClientCorrectionIndex)], Is.EqualTo(lastSeenCorrectionIndex));
+            Assert.That(descriptor.CreatePayloadInstance(), Is.InstanceOf<AresInventoryDescriptor>());
+            Assert.That(((ExportGroupDescriptor)descriptor.CreatePayloadInstance()).Fields
+                .Single(field => field.PropertyName == nameof(AresInventoryDescriptor.Character)).Handle, Is.EqualTo(character));
         });
     }
 

@@ -18,7 +18,7 @@ public sealed class AbilityProjectileDescriptorTests
     public void NamedProjectileFieldsBindAtRecordedHandlesAndAssignConcretePayload(Type descriptorType)
     {
         var descriptor = (ExportGroupDescriptor)Activator.CreateInstance(descriptorType)!;
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var exports = new NetFieldExport?[24];
         exports[23] = new NetFieldExport { Handle = 23, Name = "Owner", CompatibleChecksum = 0 };
         registry.OnExportGroupAdded(new NetFieldExportGroup

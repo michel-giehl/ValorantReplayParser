@@ -135,6 +135,7 @@ public sealed class DescriptorCoveragePayloadTests
     [TestCase(4, "AgL0QAcAAAD2cAIC+BBUAAAAAA==", 152)]
     [TestCase(5, "AgL8QAcAAAD+gAICAQIQVAAAAAA=", 160)]
     [TestCase(8, "AgLWQAcAAADYcAIC2hBUAAAAAA==", 152)]
+    [TestCase(9, "AgLkQAcAAADmcAIC6BBUAAAAAA==", 152)]
     public void RoundParticipantsSelectsObservedReleaseHandles(int minor, string data, int bits)
     {
         var release = new ReplayReleaseVersion(13, checked((ushort)minor));

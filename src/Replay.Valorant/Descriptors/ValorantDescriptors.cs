@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Descriptors.Agents.Aggrobot;
 using Replay.Valorant.Descriptors.Agents;
@@ -18,6 +19,7 @@ using Replay.Valorant.Descriptors.Agents.Mage;
 using Replay.Valorant.Descriptors.Agents.Mage.TidalWave;
 using Replay.Valorant.Descriptors.Agents.Nox;
 using Replay.Valorant.Descriptors.Agents.Pandemic;
+using Replay.Valorant.Descriptors.Agents.Paprika;
 using Replay.Valorant.Descriptors.Agents.Phoenix;
 using Replay.Valorant.Descriptors.Agents.Pine;
 using Replay.Valorant.Descriptors.Agents.Rift;
@@ -145,6 +147,10 @@ public static class ValorantDescriptors
         catalog.AddSubobjectClassPath("PatchVolume", DynamicVolume.GroundVolumeComponentDescriptor.ExportPath);
         catalog.AddSubobjectClassPath("GroundVolume", DynamicVolume.GroundVolumeComponentDescriptor.ExportPath);
         catalog.Add(PandemicDescriptors.CreateClassNetCacheDescriptors());
+        catalog.Add(PaprikaDescriptors.CreateDescriptors());
+        catalog.Add(PaprikaDescriptors.CreateClassNetCacheDescriptors());
+        catalog.AddSubobjectClassPath(PaprikaRangedUsableComponentDescriptor.InstanceName, PaprikaRangedUsableComponentDescriptor.ExportPath);
+        catalog.AddSubobjectClassPath(PaprikaForceProxyManagerUserDescriptor.InstanceName, PaprikaForceProxyManagerUserDescriptor.ExportPath);
         catalog.Add(PhoenixDescriptors.CreateDescriptors());
         catalog.Add(PhoenixDescriptors.CreateClassNetCacheDescriptors());
         catalog.Add(PineDescriptors.CreateDescriptors());
@@ -182,7 +188,8 @@ public static class ValorantDescriptors
         catalog.Add(new AresAttributeSetDescriptor());
         catalog.Add(new AmmoComponentDescriptor());
         catalog.Add(new ZoomMultiplierComponentDescriptor());
-        catalog.Add(new AresInventoryDescriptor());
+        catalog.AddExportGroup(new VersionedDefinition<AresInventoryDescriptor>(new())
+            .From(new ReplayReleaseVersion(13, 9), new(AresInventoryDescriptor.Release1309ItemSlotCount)));
         catalog.Add(new ItemSlotDescriptor());
         catalog.Add(new MultiItemSlotDescriptor());
         catalog.Add(new PurchasedItemComponentDescriptor());

@@ -124,7 +124,7 @@ public class AresPlayerRoundInfoDecoderTests
     public void ParseContentPayload_UnknownRoundInfoLayout_ThrowsReplayParseExceptionBeforeNextField()
     {
         var descriptor = new OwnerExclusivePlayerInfoDescriptor();
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         registry.OnExportGroupAdded(new NetFieldExportGroup
         {
             PathName = descriptor.Path,

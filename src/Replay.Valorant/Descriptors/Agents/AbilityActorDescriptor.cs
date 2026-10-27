@@ -1,5 +1,6 @@
 using Replay.Models.Descriptors;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 using Replay.Models.Unreal;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors.Agents.Terra;
@@ -37,6 +38,9 @@ public sealed class AbilityActorDescriptor(
     public NetObjectReference? GameObjectSpline { get; set; }
     public NetObjectReference? SplineObject { get; set; }
     public NetObjectReference? Projectile { get; set; }
+    public NetObjectReference? SpawnedBlast { get; set; }
+    public FVector? SelectedPoint { get; set; }
+    public ReplicatedObjectReference?[]? Proxies { get; set; }
     public NetObjectReference? WarningActor { get; set; }
     public NetObjectReference? AssignedPlayspace { get; set; }
     public NetObjectReference? OwningPrimaryDataAsset { get; set; }
@@ -74,6 +78,11 @@ public sealed class AbilityActorDescriptor(
         if (exportedFields.Contains("Game Object Spline")) AddProperty("Game Object Spline", x => x.GameObjectSpline).ObjectNetGuid();
         if (exportedFields.Contains("Spline Object")) AddProperty("Spline Object", x => x.SplineObject).ObjectNetGuid();
         if (exportedFields.Contains("Projectile")) AddProperty("Projectile", x => x.Projectile).ObjectNetGuid();
+        if (exportedFields.Contains("Spawned Blast")) AddProperty("Spawned Blast", x => x.SpawnedBlast).ObjectNetGuid();
+        if (exportedFields.Contains("Selected Point")) AddProperty("Selected Point", x => x.SelectedPoint).FVector();
+        if (exportedFields.Contains("Proxies"))
+            AddProperty("Proxies", x => x.Proxies).RepLayoutDynamicArray(
+                new VersionedDefinition<ReplicatedObjectReference>(new(15, "Proxies")));
         if (exportedFields.Contains("WarningActor")) AddProperty("WarningActor", x => x.WarningActor).ObjectNetGuid();
         if (exportedFields.Contains("AssignedPlayspace")) AddProperty("AssignedPlayspace", x => x.AssignedPlayspace).ObjectNetGuid();
         if (exportedFields.Contains("OwningPrimaryDataAsset")) AddProperty("OwningPrimaryDataAsset", x => x.OwningPrimaryDataAsset).ObjectNetGuid();

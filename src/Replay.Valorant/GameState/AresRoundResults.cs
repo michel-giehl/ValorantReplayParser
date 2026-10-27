@@ -15,6 +15,12 @@ public sealed record AresRoundResult(
     AresRoundOutcome? RoundResult)
 {
     public ReplicatedObjectReference?[]? EliminatedTeams { get; init; }
+
+    /// <summary>Raw winning-team-mode enum, replicated since 13.09.</summary>
+    public byte? WinningTeamMode { get; init; }
+
+    /// <summary>Per-team outcomes, replicated since 13.09.</summary>
+    public AresTeamRoundResult?[]? TeamResults { get; init; }
 }
 
 public enum AresTeamRole : byte
@@ -42,7 +48,7 @@ public enum AresRoundOutcome : byte
 internal sealed class AresRoundResultsDecoder : IFieldDecoder
 {
     internal const int MaxRoundCount = 128;
-    private const int MaxFieldsPerUpdate = 4;
+    private const int MaxFieldsPerUpdate = 6;
     private const int MaxFieldPayloadBits = 64 * 1024;
     private readonly AresRoundResultHandles _handles;
 
@@ -93,47 +99,33 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
 
     private AresRoundResult ReadUpdate(FBitArchive archive, int roundNumber)
     {
-        string? winningTeam = null;
-        AresTeamRole? winningTeamRole = null;
-        AresRoundOutcome? roundResult = null;
-        ReplicatedObjectReference?[]? eliminatedTeams = null;
-
+        var result = new AresRoundResult(roundNumber, null, null, null);
         for (var fieldCount = 0; fieldCount <= MaxFieldsPerUpdate; fieldCount++)
         {
             var encodedHandle = archive.ReadIntPacked();
-            if (encodedHandle == 0)
-            {
-                return new AresRoundResult(roundNumber, winningTeam, winningTeamRole, roundResult)
-                { EliminatedTeams = eliminatedTeams };
-            }
+            if (encodedHandle == 0) return result;
 
             if (fieldCount == MaxFieldsPerUpdate) throw TooManyFields(archive);
-            ReadField(archive, encodedHandle - 1, ref winningTeam, ref winningTeamRole, ref roundResult, ref eliminatedTeams);
+            result = ReadField(archive, encodedHandle - 1, result);
         }
 
         throw TooManyFields(archive);
     }
 
-    private void ReadField(
-        FBitArchive archive,
-        uint handle,
-        ref string? winningTeam,
-        ref AresTeamRole? winningTeamRole,
-        ref AresRoundOutcome? roundResult,
-        ref ReplicatedObjectReference?[]? eliminatedTeams)
+    private AresRoundResult ReadField(FBitArchive archive, uint handle, AresRoundResult result)
     {
         using var field = ReadFieldPayload(archive);
         if (handle == _handles.WinningTeam)
         {
-            winningTeam = field.ReadFName();
+            result = result with { WinningTeam = field.ReadFName() };
         }
         else if (handle == _handles.WinningTeamRole)
         {
-            winningTeamRole = (AresTeamRole)ReadEnum(field);
+            result = result with { WinningTeamRole = (AresTeamRole)ReadEnum(field) };
         }
         else if (handle == _handles.RoundResult)
         {
-            roundResult = (AresRoundOutcome)ReadEnum(field);
+            result = result with { RoundResult = (AresRoundOutcome)ReadEnum(field) };
         }
         else if (handle == _handles.EliminatedTeams)
         {
@@ -141,7 +133,18 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
                 new Replay.Models.Replay.VersionedDefinition<ReplicatedObjectReference>(
                     new(_handles.EliminatedTeams + 1, "EliminatedTeams")));
             var context = new FieldDecodeContext();
-            eliminatedTeams = (ReplicatedObjectReference?[])decoder.Decode(ref context, field).ObjectValue!;
+            result = result with { EliminatedTeams = (ReplicatedObjectReference?[])decoder.Decode(ref context, field).ObjectValue! };
+        }
+        else if (handle == _handles.WinningTeamMode)
+        {
+            result = result with { WinningTeamMode = ReadEnum(field) };
+        }
+        else if (handle == _handles.TeamResults)
+        {
+            var decoder = RepLayoutArrayDecoders.DynamicArray(
+                new Replay.Models.Replay.VersionedDefinition<AresTeamRoundResult>(new(handle + 1)));
+            var context = new FieldDecodeContext();
+            result = result with { TeamResults = (AresTeamRoundResult?[])decoder.Decode(ref context, field).ObjectValue! };
         }
         else
         {
@@ -149,6 +152,7 @@ internal sealed class AresRoundResultsDecoder : IFieldDecoder
         }
 
         field.EnsureFullyConsumed($"FAresRoundResult field {handle}");
+        return result;
     }
 
     private static FBitArchive ReadFieldPayload(FBitArchive archive)
@@ -244,11 +248,15 @@ internal readonly record struct AresRoundResultHandles(
     uint WinningTeam,
     uint WinningTeamRole,
     uint RoundResult,
-    uint EliminatedTeams)
+    uint EliminatedTeams,
+    uint? WinningTeamMode = null,
+    uint? TeamResults = null)
 {
     public static AresRoundResultHandles Release1211 { get; } = new("12.11", 96, 97, 98, 99);
     public static AresRoundResultHandles Release1301 { get; } = new("13.01", 93, 94, 95, 96);
     public static AresRoundResultHandles Release1305 { get; } = new("13.05", 82, 83, 84, 85);
+    public static AresRoundResultHandles Release1309 { get; } =
+        new("13.09", 83, 84, 91, 92, WinningTeamMode: 82, TeamResults: 85);
 }
 
 internal sealed class UnsupportedRoundResultsLayoutException(uint handle)

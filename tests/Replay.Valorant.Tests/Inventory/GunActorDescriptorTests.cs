@@ -11,7 +11,7 @@ public class GunActorDescriptorTests
     [Test]
     public void EveryGunClassIsRegistered()
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         foreach (var path in GunActorDescriptor.ClassPaths)
         {
             registry.OnExportGroupAdded(new() { PathName = path, PathNameIndex = 1, NetFieldExports = [] });
@@ -29,7 +29,7 @@ public class GunActorDescriptorTests
     public void CosmeticAssetsBindByNameAndDecodeAsObjectReferences(int handle, string name)
     {
         const string path = "/Game/Equippables/Guns/Sidearms/BasePistol/BasePistol.BasePistol_C";
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var fields = new NetFieldExport?[handle + 1];
         fields[handle] = new() { Handle = (uint)handle, Name = name, CompatibleChecksum = 0 };
         registry.OnExportGroupAdded(new() { PathName = path, PathNameIndex = 1, NetFieldExports = fields });

@@ -46,7 +46,7 @@ public class SpikeDescriptorTests
     {
         var descriptor = Descriptor(kind);
         Assert.That(((ExportGroupDescriptor)descriptor.CreatePayloadInstance()).Path, Is.EqualTo(descriptor.Path));
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var fields = new NetFieldExport?[17];
         fields[first] = new() { Handle = (uint)first, Name = firstName, CompatibleChecksum = 0 };
         fields[second] = new() { Handle = (uint)second, Name = secondName, CompatibleChecksum = 0 };
@@ -60,7 +60,7 @@ public class SpikeDescriptorTests
     [TestCase("BombDroppedRPC", "drop", 6)]
     public void ObjectiveRpcsBindTheirTypedReferenceParameters(string name, string kind, int handle)
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var fields = new NetFieldExport?[9];
         fields[handle] = new() { Handle = (uint)handle, Name = name, CompatibleChecksum = 0 };
         var path = new BombObjectiveClassNetCacheDescriptor().Path;

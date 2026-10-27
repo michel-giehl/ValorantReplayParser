@@ -1,6 +1,7 @@
 using Replay.Models.Descriptors;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Descriptors.Agents.Clay;
+using Replay.Valorant.Descriptors.Agents.Paprika;
 using Replay.Valorant.GameState;
 using Replay.Valorant.Inventory;
 
@@ -23,7 +24,7 @@ internal static class AgentClassNetCacheDescriptors
     private static IReadOnlyList<RpcDescriptor> CreateFunctions(ExportGroupDescriptor agent)
     {
         var shared = new[] { CreateKillRpc(), CreateItemPickedUpRpc(), CreateHalosRpc() };
-        if (agent is not ClayAgentDescriptor) return shared;
+        if (agent is not (ClayAgentDescriptor or PaprikaAgentDescriptor)) return shared;
         var reset = new ClayResetRemoteMovementPredictionParameters();
         return [.. shared, new RpcDescriptor
         {

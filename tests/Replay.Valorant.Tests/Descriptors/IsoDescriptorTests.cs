@@ -67,7 +67,7 @@ public sealed class IsoDescriptorTests
     [TestCase("Cover3_GEN_VARIABLE.Cover3_GEN_VARIABLE_GameObject_Sequoia_X_ArenaCover_C_CAT")]
     public void RecordedArenaCoverTemplatesBindPropertiesAndIntroRpc(string templatePath)
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         registry.OnExportGroupAdded(Group(SequoiaDescriptors.ArenaCoverPath, 1,
             (1, "bHidden"), (3, "216"), (4, "AttachParent"), (6, "RelativeScale3D"),
             (9, "AttachComponent"), (12, "215")));

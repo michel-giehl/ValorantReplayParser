@@ -11,7 +11,7 @@ public class UltimateObjectiveDescriptorTests
     [Test]
     public void OrbPickupBindsInheritedRpcAndSpacedParameterNames()
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var exports = new NetFieldExport?[10];
         exports[9] = new() { Handle = 9, Name = "OrbPickedUpRPC", CompatibleChecksum = 0 };
         const string cache = "/Game/GameModes/Bomb/BombGameState.BombGameState_C_ClassNetCache";

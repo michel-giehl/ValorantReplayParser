@@ -87,7 +87,7 @@ public class ValorantShotTests
     [Test]
     public void BindingRegistry_BindsContinuousEffectParameterDescriptorFromClassNetCacheOnly()
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var exports = new NetFieldExport?[3];
         exports[0] = new NetFieldExport
         {
@@ -134,7 +134,7 @@ public class ValorantShotTests
     [Test]
     public void BindingRegistry_BindsContinuousEffectFromSuffixlessCatalogPathBeforeExportArrives()
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
 
         var boundCache = registry.GetBoundCache("/Script/ShooterGame.ReplayEffectComponent")!;
         var function = boundCache.FunctionsByHandle[0];

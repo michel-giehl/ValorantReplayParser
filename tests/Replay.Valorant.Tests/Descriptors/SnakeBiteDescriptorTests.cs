@@ -36,7 +36,7 @@ public sealed class SnakeBiteDescriptorTests
     [Test]
     public void RecordedExportNamesBindToTheirHandlesIncludingTheMisspelledPatchFlag()
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var fields = new NetFieldExport?[32];
         foreach (var (handle, name) in new[] { (11, "Owner"), (13, "Instigator"), (31, "Has Succesfully Hit") })
             fields[handle] = new() { Handle = (uint)handle, CompatibleChecksum = 0, Name = name };
