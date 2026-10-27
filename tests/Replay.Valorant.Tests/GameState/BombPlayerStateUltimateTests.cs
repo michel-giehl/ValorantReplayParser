@@ -17,7 +17,7 @@ public class BombPlayerStateUltimateTests
     {
         var exports = new NetFieldExport?[203];
         exports[handle] = new NetFieldExport { Handle = handle, Name = name, CompatibleChecksum = 0 };
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         registry.OnExportGroupAdded(new NetFieldExportGroup { PathName = Path, PathNameIndex = 1, NetFieldExports = exports });
         var field = registry.GetBoundGroup(Path)!.FieldsByHandle[handle];
         Assert.Multiple(() =>

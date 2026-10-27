@@ -1,6 +1,6 @@
 namespace Replay.Valorant.Inventory;
 
-/// <summary>VALORANT's 16 inventory slots, in their replicated ItemSlots array order.</summary>
+/// <summary>VALORANT's inventory slots, in their replicated ItemSlots array order.</summary>
 public enum EAresItemSlot : byte
 {
     Primary = 0,
@@ -19,7 +19,10 @@ public enum EAresItemSlot : byte
     Totem = 13,
     PrimaryStorage = 14,
     SecondaryStorage = 15,
-    Count = 16,
+
+    /// <summary>Slot appended in 13.09; its game name is unknown and it stayed empty in every observed replay.</summary>
+    Unnamed1309 = 16,
+    Count = 17,
     Any = 253,
     Invalid = 254,
 }

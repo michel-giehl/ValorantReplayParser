@@ -14,7 +14,7 @@ public class WingmanDescriptorTests
     {
         var fields = new NetFieldExport?[14];
         fields[handle] = new() { Handle = handle, Name = name, CompatibleChecksum = 0 };
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         registry.OnExportGroupAdded(new() { PathName = WingmanDescriptor.ExportPath, PathNameIndex = 1, NetFieldExports = fields });
         var field = registry.GetBoundGroup(WingmanDescriptor.ExportPath)!.FieldsByHandle[handle];
         Assert.That(field.Enabled, Is.True);

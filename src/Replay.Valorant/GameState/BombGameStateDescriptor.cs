@@ -55,13 +55,17 @@ public sealed class BombGameStateDescriptor : ExportGroupDescriptor<BombGameStat
                     new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1301))
                 .From(
                     new ReplayReleaseVersion(13, 4),
-                    new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1305)));
+                    new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1305))
+                .From(
+                    new ReplayReleaseVersion(13, 9),
+                    new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1309)));
         AddProperty(x => x.Phase, ExportCategory.GameState).EnumByte();
         AddProperty(x => x.RoundParticipantsInfos, ExportCategory.GameState)
             .RepLayoutDynamicArray(new VersionedDefinition<RoundParticipantsInfo>(new(132))
                 .From(new ReplayReleaseVersion(13, 4), new(121))
                 .From(new ReplayReleaseVersion(13, 5), new(125))
-                .From(new ReplayReleaseVersion(13, 8), new(106)));
+                .From(new ReplayReleaseVersion(13, 8), new(106))
+                .From(new ReplayReleaseVersion(13, 9), new(113)));
         AddProperty(x => x.RoundNumber, ExportCategory.GameState | ExportCategory.Economy).Int32();
         AddProperty(x => x.BombState, ExportCategory.GameState).SerializedInt(maxValue: 16);
     }

@@ -21,7 +21,7 @@ public class ZoomMultiplierComponentDescriptorTests
     [Test]
     public void ZoomFieldsBindObservedHandlesByName()
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var fields = new NetFieldExport?[11];
         foreach (var (handle, name) in new[]
                  {

@@ -72,6 +72,7 @@ public class ValorantDescriptorsTests
             "/Game/Characters/Mage/Mage_PC.Mage_PC_C",
             "/Game/Characters/Nox/Nox_PC.Nox_PC_C",
             "/Game/Characters/Pandemic/Pandemic_PC.Pandemic_PC_C",
+            "/Game/Characters/Paprika/Paprika_PC.Paprika_PC_C",
             "/Game/Characters/Phoenix/Phoenix_PC.Phoenix_PC_C",
             "/Game/Characters/Pine/Pine_PC.Pine_PC_C",
             "/Game/Characters/Rift/Rift_PC.Rift_PC_C",

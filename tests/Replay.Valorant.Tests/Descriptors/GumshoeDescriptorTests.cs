@@ -27,7 +27,7 @@ public sealed class GumshoeDescriptorTests
             fields[10] = new() { CompatibleChecksum = 0, Handle = 10, Name = "ReplicatedMovement" };
             fields[17] = new() { CompatibleChecksum = 0, Handle = 17, Name = "Deployed" };
             fields[58] = new() { CompatibleChecksum = 0, Handle = 58, Name = "CreatedByCharacter" };
-            var registry = new ExportBindingRegistry(catalog);
+            var registry = new ExportBindingRegistry(catalog, releaseVersion: TestReleases.Current);
             registry.OnExportGroupAdded(new() { PathName = actor.Path, PathNameIndex = 1, NetFieldExports = fields });
             var bound = registry.GetBoundGroup(actor.Path)!;
             Assert.That(bound.FieldsByHandle[11].Enabled, Is.True);

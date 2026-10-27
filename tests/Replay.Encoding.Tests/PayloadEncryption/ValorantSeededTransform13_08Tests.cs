@@ -102,7 +102,6 @@ public class ValorantSeededTransform13_08Tests
     }
 
     [TestCase("++Ares-Core+release-13.07")]
-    [TestCase("++Ares-Core+release-13.09")]
     [TestCase("++Ares-Core+release-13.08.1")]
     [TestCase("++ares-core+release-13.08")]
     [TestCase("release-13.08")]

@@ -135,6 +135,34 @@ public class AresRoundResultsDecoderTests
     }
 
     [Test]
+    public void Decode_RecordedRelease1309PayloadDecodesTeamResults()
+    {
+        using var archive = new BitArchiveReader(Convert.FromBase64String(
+            "AgKmBkGVVgAAACDEVlcGAAAAAKBqINZGAwIBV2kFAAAAQmx1ZQAAAAAAsEABAAAAsgaiNQgAgaswAgAAAKkyMgAAAAAAWCABAAAAWYPQGggAABcBdOEEBHghIAEAAAAA"),
+            761);
+        var release = new ReplayReleaseVersion(13, 9);
+        var context = new FieldDecodeContext { ReplayReleaseVersion = release };
+
+        var result = ((AresRoundResultsUpdate)Decoder(release).Decode(ref context, archive).ObjectValue!).Updates.Single();
+        var teams = result.TeamResults!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.RoundNumber, Is.Zero);
+            Assert.That(result.WinningTeamMode, Is.EqualTo(1));
+            Assert.That(result.WinningTeam, Is.EqualTo("Blue"));
+            Assert.That(result.WinningTeamRole, Is.EqualTo(AresTeamRole.Defender));
+            Assert.That(result.RoundResult, Is.EqualTo(AresRoundOutcome.Elimination));
+            Assert.That(result.EliminatedTeams, Has.Length.EqualTo(1));
+            Assert.That(teams.Select(team => team!.TeamName), Is.EqualTo(new[] { "Blue", "Red" }));
+            Assert.That(teams.Select(team => team!.TeamNumber), Is.EqualTo(new int?[] { 1, 2 }));
+            Assert.That(teams.Select(team => team!.TeamRole), Is.EqualTo(new AresTeamRole?[] { AresTeamRole.Defender, AresTeamRole.Attacker }));
+            Assert.That(teams.Select(team => team!.TeamOutcome), Is.EqualTo(new byte?[] { 1, 2 }));
+            Assert.That(archive.AtEnd, Is.True);
+        });
+    }
+
+    [Test]
     public void Decode_RejectsRoundCountAboveBound()
     {
         var archive = CreateArchive(writer => writer.WriteIntPacked(129));

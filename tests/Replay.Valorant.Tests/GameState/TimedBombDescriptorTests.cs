@@ -31,7 +31,7 @@ public class TimedBombDescriptorTests
     [Test]
     public void SpikePropertiesBindObservedHandlesByName()
     {
-        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog());
+        var registry = new ExportBindingRegistry(ValorantDescriptors.CreateCatalog(), releaseVersion: TestReleases.Current);
         var fields = new NetFieldExport?[24];
         foreach (var (handle, name) in new[]
                  {
