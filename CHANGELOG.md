@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `ValorantRoundPhaseChanged` precedes each round-boundary RPC, so consumers no longer match RPC names.
+
 ### Breaking changes: separate native parsing and gameplay events
 
 These changes describe the event-project refactor in the current development version.

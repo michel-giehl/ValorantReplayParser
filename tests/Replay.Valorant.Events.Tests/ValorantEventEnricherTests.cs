@@ -9,6 +9,7 @@ using Replay.Valorant.Descriptors.Effects.Replay;
 using Replay.Valorant.Events.Combat;
 using Replay.Valorant.Events.Flashes;
 using Replay.Valorant.Events.Movement;
+using Replay.Valorant.Events.Rounds;
 using Replay.Valorant.Flashes.Descriptors;
 using Replay.Valorant.Movement;
 
@@ -114,6 +115,20 @@ public class ValorantEventEnricherTests
             Assert.That(sink.Events, Has.Count.EqualTo(count));
             Assert.Throws<InvalidOperationException>(() => events.Emit(spawn));
         });
+    }
+
+    [TestCase("ClientResetRound", ValorantRoundPhase.BuyPhaseStarted)]
+    [TestCase("ClientBuyPhaseEnd", ValorantRoundPhase.RoundLive)]
+    [TestCase("MulticastEndRound", ValorantRoundPhase.RoundEnded)]
+    public void Emit_RoundRpc_PrecedesTheNativeEventWithItsPhase(string function, ValorantRoundPhase expected)
+    {
+        var sink = new CapturingSink();
+        var rpc = new RpcReceived(12.5f, 99, 100, 101, 7, "native class", function, "native export", 0,
+            ExportCategory.All, 0, 0, false, null, 1, []);
+
+        new ValorantEventEnricher(sink).Emit(rpc);
+
+        Assert.That(sink.Events, Is.EqualTo(new ReplayEvent[] { new ValorantRoundPhaseChanged(12.5f, 99, 100, expected), rpc }));
     }
 
     private static RpcReceived Rpc(object payload) => new(
