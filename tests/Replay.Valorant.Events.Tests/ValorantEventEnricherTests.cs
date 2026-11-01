@@ -9,6 +9,7 @@ using Replay.Valorant.Descriptors.Effects.Replay;
 using Replay.Valorant.Events.Combat;
 using Replay.Valorant.Events.Flashes;
 using Replay.Valorant.Events.Movement;
+using Replay.Valorant.Events.Ownership;
 using Replay.Valorant.Events.Rounds;
 using Replay.Valorant.Flashes.Descriptors;
 using Replay.Valorant.Movement;
@@ -129,6 +130,85 @@ public class ValorantEventEnricherTests
         new ValorantEventEnricher(sink).Emit(rpc);
 
         Assert.That(sink.Events, Is.EqualTo(new ReplayEvent[] { new ValorantRoundPhaseChanged(12.5f, 99, 100, expected), rpc }));
+    }
+
+    [Test]
+    public void Emit_ExportNamingAnOwner_PrecedesTheNativeEvent()
+    {
+        var sink = new CapturingSink();
+        var payload = new DeviceWithNullableFields { Owner = new(5, null), CreatedByCharacter = new(9, null) };
+        payload.MarkDecoded(nameof(payload.Owner));
+        payload.MarkDecoded(nameof(payload.CreatedByCharacter));
+        var export = Export(payload);
+
+        new ValorantEventEnricher(sink).Emit(export);
+
+        Assert.That(sink.Events, Is.EqualTo(new ReplayEvent[]
+        {
+            new ValorantActorOwnerObserved(12.5f, 99, 100, new ActorOwnerReferences(5, null, 9)), export,
+        }));
+    }
+
+    [Test]
+    public void Emit_ExportNamingNobody_OnlyForwardsTheNativeEvent()
+    {
+        var sink = new CapturingSink();
+        var payload = new DeviceWithNullableFields { Owner = new(5, null) };
+        var export = Export(payload);
+
+        new ValorantEventEnricher(sink).Emit(export);
+
+        Assert.That(sink.Events, Is.EqualTo(new ReplayEvent[] { export }));
+    }
+
+    [Test]
+    public void OwnerReferences_ReadBothDeclaredTypes()
+    {
+        var nullable = new DeviceWithNullableFields { Instigator = new(7, null) };
+        nullable.MarkDecoded(nameof(nullable.Instigator));
+        var plain = new DeviceWithPlainFields { Instigator = new(8, null) };
+        plain.MarkDecoded(nameof(plain.Instigator));
+
+        Assert.That(ActorOwnerReferences.Read(nullable), Is.EqualTo(new ActorOwnerReferences(null, 7, null)));
+        Assert.That(ActorOwnerReferences.Read(plain), Is.EqualTo(new ActorOwnerReferences(null, 8, null)));
+    }
+
+    [Test]
+    public void OwnerReferences_IgnoreAFieldSetToNothing()
+    {
+        var payload = new DeviceWithPlainFields { Owner = new(0, null) };
+        payload.MarkDecoded(nameof(payload.Owner));
+
+        Assert.That(ActorOwnerReferences.Read(payload).IsEmpty, Is.True);
+    }
+
+    [Test]
+    public void OwnerReferences_OfSomethingThatIsNotAPayloadAreEmpty() =>
+        Assert.That(ActorOwnerReferences.Read("not a payload").IsEmpty, Is.True);
+
+    private static ExportGroupReceived Export(object payload) => new(
+        12.5f, 99, 100, 101, 7, true, false, 0, "native export", ExportGroupKind.Actor, ExportCategory.All,
+        0, 0, "native object", "native class", null, 0, 0, true, payload, 1, []);
+
+    private sealed class DeviceWithNullableFields : IDecodedPayload
+    {
+        private readonly HashSet<string> _decoded = [];
+        public NetObjectReference? Owner { get; init; }
+        public NetObjectReference? Instigator { get; init; }
+        public NetObjectReference? CreatedByCharacter { get; init; }
+        public IReadOnlySet<string> DecodedProperties => _decoded;
+        public bool HasDecoded(string propertyName) => _decoded.Contains(propertyName);
+        public void MarkDecoded(string propertyName) => _decoded.Add(propertyName);
+    }
+
+    private sealed class DeviceWithPlainFields : IDecodedPayload
+    {
+        private readonly HashSet<string> _decoded = [];
+        public NetObjectReference Owner { get; init; }
+        public NetObjectReference Instigator { get; init; }
+        public IReadOnlySet<string> DecodedProperties => _decoded;
+        public bool HasDecoded(string propertyName) => _decoded.Contains(propertyName);
+        public void MarkDecoded(string propertyName) => _decoded.Add(propertyName);
     }
 
     private static RpcReceived Rpc(object payload) => new(

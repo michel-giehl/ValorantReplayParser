@@ -5,6 +5,8 @@
 ### Added
 
 - `ValorantRoundPhaseChanged` precedes each round-boundary RPC, so consumers no longer match RPC names.
+- `ActorOwnerReferences.Read` is the one way to read an actor's Owner, Instigator and CreatedByCharacter, and
+  `ValorantActorOwnerObserved` precedes each export that names one.
 
 ### Breaking changes: separate native parsing and gameplay events
 

@@ -6,6 +6,7 @@ using Replay.Valorant.Events.Flashes;
 using Replay.Valorant.Events.Footsteps;
 using Replay.Valorant.Events.Movement;
 using Replay.Valorant.Events.Nearsights;
+using Replay.Valorant.Events.Ownership;
 using Replay.Valorant.Events.Rounds;
 using Replay.Valorant.Events.Walls;
 
@@ -42,6 +43,7 @@ public sealed class ValorantEventEnricher : IReplayEventSink
         }
 
         if (replayEvent is RpcReceived rpc && ValorantRoundPhaseChanged.From(rpc) is { } phase) _events.Emit(phase);
+        if (replayEvent is ExportGroupReceived export && ValorantActorOwnerObserved.From(export) is { } owner) _events.Emit(owner);
         _events.Emit(replayEvent);
     }
 
