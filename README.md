@@ -156,9 +156,12 @@ The full reader requires replay version `5.3.2`, game network protocol version `
 - `++Ares-Core+release-china-13.05`
 - `++Ares-Core+release-13.06`
 - `++Ares-Core+release-13.08`
+- `++Ares-Core+release-13.09`
+- `++Ares-Core+release-china-13.09`
 
 An unregistered branch or a mismatch in the replay, protocol, or Unreal versions is unsupported. The reader fails early rather than trying a guessed compatibility path. These version checks establish compatibility with the parser's known container and transform layout, not complete gameplay-semantic coverage.
 The China 13.05 transform has recovered payload-vector tests; a complete China replay fixture is not included in this repository.
+The China 13.09 transform was recovered from a China 13.09 replay by known plaintext and has payload-vector tests; that replay is not included in this repository.
 The global 13.08 transform is verified against native executable outputs; a complete 13.08 replay fixture is not included in this repository.
 
 Within those explicitly supported branches, descriptors and custom decoders may register release boundaries. A boundary applies from that VALORANT release forward until another boundary replaces it. This is intended for known semantic changes such as shifted field handles; it does not make an unknown branch or wire format supported.

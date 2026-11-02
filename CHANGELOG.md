@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Payload transform for `++Ares-Core+release-china-13.09`.
+
 ### Fixed
 
 - Damage and temporary-death RPCs before 12.10 decode: `FNetworkedDamageResponseData` had no
