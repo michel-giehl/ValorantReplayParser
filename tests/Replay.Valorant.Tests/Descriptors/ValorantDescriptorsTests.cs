@@ -1,6 +1,7 @@
 using Replay.Encoding.Archives;
 using Replay.Models.Descriptors;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Combat;
 using Replay.Valorant.Descriptors;
@@ -186,16 +187,13 @@ public class ValorantDescriptorsTests
     public void CreateCatalog_DecodesDamageAndKillRpcFields()
     {
         var catalog = ValorantDescriptors.CreateCatalog();
+        var release = new ReplayReleaseVersion(13, 9);
 
-        AssertDecodedRpcFields(
-            catalog.ClassNetCacheDescriptors.Single(cache =>
-                    cache.Path == "/Script/ShooterGame.DamageableComponent_ClassNetCache")
-                .FunctionFields.Single(function => function.Name == "MulticastNotifyDamage_Base"),
+        AssertDecodedRpcFieldsAt(
+            DamageRpc("MulticastNotifyDamage_Base"), release,
             "DamageTaken", "DamagerPlayerState", "KillCreditPlayerState", "KillsForKiller");
-        AssertDecodedRpcFields(
-            catalog.ClassNetCacheDescriptors.Single(cache =>
-                    cache.Path == "/Script/ShooterGame.DamageableComponent_ClassNetCache")
-                .FunctionFields.Single(function => function.Name == "MulticastNotifyDamage_Point"),
+        AssertDecodedRpcFieldsAt(
+            DamageRpc("MulticastNotifyDamage_Point"), release,
             "DamageTaken", "DamagerPlayerState", "DamagedComponent", "DamagedBone", "KillsForKiller");
 
         var equippableField = catalog.ClassNetCacheDescriptors.Single(cache =>
@@ -304,18 +302,50 @@ public class ValorantDescriptorsTests
         return descriptor.Fields.Single(field => field.PropertyName == fieldName);
     }
 
+    [TestCase("MulticastNotifyDamage_Base", "RegionalDamage", 17u, "KillsForKiller", 31u)]
+    [TestCase("MulticastNotifyDamage_Point", "DamagedComponent", 25u, "KillsForKiller", 39u)]
+    public void CreateCatalog_DamageRpcsBefore1210HaveNoKillCreditPlayerState(
+        string functionName, string shiftedField, uint shiftedHandle, string deathField, uint deathHandle)
+    {
+        var fields = DamageRpc(functionName).ParameterDescriptorDefinition!
+            .Resolve(new ReplayReleaseVersion(12, 9)).Fields;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fields.Select(field => field.PropertyName), Does.Not.Contain("KillCreditPlayerState"));
+            Assert.That(fields.Single(field => field.PropertyName == "DamagerPlayerState").Handle, Is.EqualTo(16));
+            Assert.That(fields.Single(field => field.PropertyName == shiftedField).Handle, Is.EqualTo(shiftedHandle));
+            Assert.That(fields.Single(field => field.PropertyName == deathField).Handle, Is.EqualTo(deathHandle));
+        });
+    }
+
+    private static RpcDescriptor DamageRpc(string functionName) =>
+        ValorantDescriptors.CreateCatalog().ClassNetCacheDescriptors
+            .Single(cache => cache.Path == "/Script/ShooterGame.DamageableComponent_ClassNetCache")
+            .FunctionFields.Single(function => function.Name == functionName);
+
+    private static void AssertDecodedRpcFieldsAt(RpcDescriptor descriptor, ReplayReleaseVersion release, params string[] fieldNames)
+    {
+        Assert.That(descriptor.Decoder, Is.Null, $"{descriptor.Name} should use named function fields");
+        AssertDecodedFields(descriptor.Name, descriptor.ParameterDescriptorDefinition!.Resolve(release).Fields, fieldNames);
+    }
+
     private static void AssertDecodedRpcFields(RpcDescriptor descriptor, params string[] fieldNames)
     {
         Assert.That(descriptor.Decoder, Is.Null, $"{descriptor.Name} should use named function fields");
+        AssertDecodedFields(descriptor.Name, descriptor.Fields, fieldNames);
+    }
 
-        var fieldsByName = descriptor.Fields
+    private static void AssertDecodedFields(string name, IReadOnlyList<FieldDescriptor> fields, string[] fieldNames)
+    {
+        var fieldsByName = fields
             .Where(field => field.PropertyName is not null)
             .ToDictionary(field => field.PropertyName!, StringComparer.Ordinal);
 
         foreach (var fieldName in fieldNames)
         {
-            Assert.That(fieldsByName.ContainsKey(fieldName), Is.True, $"{descriptor.Name}:{fieldName}");
-            Assert.That(fieldsByName[fieldName].Decoder, Is.Not.Null, $"{descriptor.Name}:{fieldName}");
+            Assert.That(fieldsByName.ContainsKey(fieldName), Is.True, $"{name}:{fieldName}");
+            Assert.That(fieldsByName[fieldName].Decoder, Is.Not.Null, $"{name}:{fieldName}");
         }
     }
 

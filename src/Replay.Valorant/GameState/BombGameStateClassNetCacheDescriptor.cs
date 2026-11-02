@@ -1,4 +1,6 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
+using Replay.Valorant.Combat;
 using Replay.Valorant.Descriptors;
 
 namespace Replay.Valorant.GameState;
@@ -58,17 +60,21 @@ public sealed class BombGameStateClassNetCacheDescriptor : ClassNetCacheDescript
 
     private void AddTemporaryDeathBase()
     {
-        AddFunction<MulticastReceivePlayerTemporaryDeathEventBaseParameters>(
+        AddFunction(
             "MulticastReceivePlayerTemporaryDeathEvent_Base",
             "/Script/ShooterGame.ShooterGameState:MulticastReceivePlayerTemporaryDeathEvent_Base",
+            new VersionedDefinition<MulticastReceivePlayerTemporaryDeathEventBaseParameters>(new(hasKillCreditPlayerState: false))
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
             ExportCategory.GameState | ExportCategory.Gunplay);
     }
 
     private void AddTemporaryDeathPoint()
     {
-        AddFunction<MulticastReceivePlayerTemporaryDeathEventPointParameters>(
+        AddFunction(
             "MulticastReceivePlayerTemporaryDeathEvent_Point",
             "/Script/ShooterGame.ShooterGameState:MulticastReceivePlayerTemporaryDeathEvent_Point",
+            new VersionedDefinition<MulticastReceivePlayerTemporaryDeathEventPointParameters>(new(hasKillCreditPlayerState: false))
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
             ExportCategory.GameState | ExportCategory.Gunplay);
     }
 }

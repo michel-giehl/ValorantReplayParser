@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- Payload transform for `++Ares-Core+release-china-13.09`.
+
+### Fixed
+
+- Damage and temporary-death RPCs before 12.10 decode: `FNetworkedDamageResponseData` had no
+  `KillCreditPlayerState`, so every later handle sits one lower. 12.10 and 12.11 are unverified.
+- RoundResults uses the 12.11 handle layout from 12.09, where 12.09 and 12.10 replays already send it.
+
 ### Breaking changes: separate native parsing and gameplay events
 
 These changes describe the event-project refactor in the current development version.

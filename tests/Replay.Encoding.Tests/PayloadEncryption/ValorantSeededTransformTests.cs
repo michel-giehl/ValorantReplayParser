@@ -254,6 +254,30 @@ public class ValorantSeededTransformTests
         });
     }
 
+    // Recovered from a China 13.09 replay; plaintexts match the same export groups in global 13.09 replays.
+    [TestCase(9, 11u, "3200", "0000")]
+    [TestCase(47, 2468u, "9EBDAC66E952", "100CA2613000")]
+    [TestCase(122, 1612u, "12CB34E39234C6129F4C07B61E0B4C03", "10841100000048959101000000000000")]
+    public void China13_09_ProducesRecoveredKnownVectors(
+        int bitCount,
+        uint seed,
+        string ciphertextHex,
+        string plaintextHex)
+    {
+        var payload = new BitArchiveReader(Convert.FromHexString(ciphertextHex), bitCount);
+        var transform = PayloadTransformRegistry.CreateDefault()
+            .GetRequired("++Ares-Core+release-china-13.09");
+        var output = new byte[transform.GetOutputByteCount(bitCount)];
+
+        transform.Apply(payload, bitCount, seed, output);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Convert.ToHexString(output), Is.EqualTo(plaintextHex));
+            Assert.That(payload.AtEnd, Is.True);
+        });
+    }
+
     [Test]
     public void China13_05_FirstControllerBlockHasExactRepLayout()
     {

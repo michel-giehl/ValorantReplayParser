@@ -1,4 +1,5 @@
 using Replay.Models.Descriptors;
+using Replay.Models.Replay;
 
 namespace Replay.Valorant.Combat;
 
@@ -8,13 +9,17 @@ public sealed class DamageableComponentClassNetCacheDescriptor
     public override string Path => "/Script/ShooterGame.DamageableComponent_ClassNetCache";
     protected override void Configure()
     {
-        AddFunctionHandle<MulticastNotifyDamageBaseParameters>(
+        AddFunctionHandle(
             0, "MulticastNotifyDamage_Base",
             "/Script/ShooterGame.DamageableComponent:MulticastNotifyDamage_Base",
+            new VersionedDefinition<MulticastNotifyDamageBaseParameters>(new(hasKillCreditPlayerState: false))
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
             ExportCategory.Gunplay);
-        AddFunctionHandle<MulticastNotifyDamagePointParameters>(
+        AddFunctionHandle(
             1, "MulticastNotifyDamage_Point",
             "/Script/ShooterGame.DamageableComponent:MulticastNotifyDamage_Point",
+            new VersionedDefinition<MulticastNotifyDamagePointParameters>(new(hasKillCreditPlayerState: false))
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
             ExportCategory.Gunplay);
         AddFunctionHandle<MulticastNotifyHealParameters>(
             6, "MulticastNotifyHeal", "/Script/ShooterGame.DamageableComponent:MulticastNotifyHeal", ExportCategory.Gunplay);

@@ -252,7 +252,7 @@ internal readonly record struct AresRoundResultHandles(
     uint? WinningTeamMode = null,
     uint? TeamResults = null)
 {
-    public static AresRoundResultHandles Release1211 { get; } = new("12.11", 96, 97, 98, 99);
+    public static AresRoundResultHandles Release1209 { get; } = new("12.09", 96, 97, 98, 99);
     public static AresRoundResultHandles Release1301 { get; } = new("13.01", 93, 94, 95, 96);
     public static AresRoundResultHandles Release1305 { get; } = new("13.05", 82, 83, 84, 85);
     public static AresRoundResultHandles Release1309 { get; } =

@@ -6,6 +6,16 @@ namespace Replay.Valorant.Combat;
 
 public sealed class MulticastNotifyDamagePointParameters : PointDamageParameters<MulticastNotifyDamagePointParameters>
 {
+    public MulticastNotifyDamagePointParameters()
+        : this(hasKillCreditPlayerState: true)
+    {
+    }
+
+    public MulticastNotifyDamagePointParameters(bool hasKillCreditPlayerState)
+        : base(hasKillCreditPlayerState)
+    {
+    }
+
     public override string Path => "/Script/ShooterGame.DamageableComponent:MulticastNotifyDamage_Point";
 
     public DamageAssist?[]? AssistsList { get; set; }
@@ -24,16 +34,17 @@ public sealed class MulticastNotifyDamagePointParameters : PointDamageParameters
     {
         AddSharedFields();
         AddPointFields();
-        AddPropertyHandle(34, x => x.AssistsList).RepLayoutDynamicArray<DamageAssist>();
-        AddPropertyHandle(35, x => x.AssistType).EnumRemainingBits();
-        AddPropertyHandle(36, x => x.Assister, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(37, x => x.AssistingEquippableClass, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(38, x => x.AssistTag).FGameplayTag();
-        AddPropertyHandle(40, x => x.KillsForKiller, ExportCategory.Gunplay).Int32();
-        AddPropertyHandle(41, x => x.KillsForVictim, ExportCategory.Gunplay).Int32();
-        AddPropertyHandle(42, x => x.DeathAnimMontage, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(43, x => x.DeathMontageEffectOverride).ObjectNetGuid();
-        AddPropertyHandle(44, x => x.DeathMontageEffectOverrideContext).ObjectNetGuid();
-        AddPropertyHandle(45, "bDeathMontageEffectOverrideIsQueued", x => x.DeathMontageEffectOverrideIsQueued, ExportCategory.Gunplay).Bool();
+        AddPropertyHandle(LayoutHandle(34), x => x.AssistsList).RepLayoutDynamicArray(
+            new Replay.Models.Replay.VersionedDefinition<DamageAssist>(new(LayoutHandle(35))));
+        AddPropertyHandle(LayoutHandle(35), x => x.AssistType).EnumRemainingBits();
+        AddPropertyHandle(LayoutHandle(36), x => x.Assister, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(37), x => x.AssistingEquippableClass, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(38), x => x.AssistTag).FGameplayTag();
+        AddPropertyHandle(LayoutHandle(40), x => x.KillsForKiller, ExportCategory.Gunplay).Int32();
+        AddPropertyHandle(LayoutHandle(41), x => x.KillsForVictim, ExportCategory.Gunplay).Int32();
+        AddPropertyHandle(LayoutHandle(42), x => x.DeathAnimMontage, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(43), x => x.DeathMontageEffectOverride).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(44), x => x.DeathMontageEffectOverrideContext).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(45), "bDeathMontageEffectOverrideIsQueued", x => x.DeathMontageEffectOverrideIsQueued, ExportCategory.Gunplay).Bool();
     }
 }
