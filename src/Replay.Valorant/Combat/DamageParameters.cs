@@ -3,13 +3,31 @@ using Replay.Models.Net;
 using Replay.Models.Replay;
 using Replay.Models.Unreal;
 using Replay.Unreal.Parsing;
-using Replay.Valorant.Descriptors;
 
 namespace Replay.Valorant.Combat;
+
+public static class DamageResponseLayout
+{
+    /// <summary>
+    /// First release known to replicate KillCreditPlayerState. 12.07 and 12.09 do not; 13.00 does.
+    /// 12.10 and 12.11 are unverified.
+    /// </summary>
+    public static ReplayReleaseVersion KillCreditPlayerStateRelease { get; } = new(12, 10);
+
+    /// <summary>KillCreditPlayerState's handle in FNetworkedDamageResponseData. Later handles sit one lower without it.</summary>
+    internal const uint KillCreditPlayerStateHandle = 17;
+}
 
 public abstract class DamageParameters<T> : ExportGroupDescriptor<T>
     where T : DamageParameters<T>
 {
+    private readonly bool _hasKillCreditPlayerState;
+
+    protected DamageParameters(bool hasKillCreditPlayerState)
+    {
+        _hasKillCreditPlayerState = hasKillCreditPlayerState;
+    }
+
     public override ExportCategory Categories => ExportCategory.Gunplay;
     public override ExportGroupKind Kind => ExportGroupKind.ClassNetCache;
     public override FieldStreamGrammar Grammar => FieldStreamGrammar.FunctionParameters;
@@ -40,6 +58,10 @@ public abstract class DamageParameters<T> : ExportGroupDescriptor<T>
     public bool EquippableUsedZoomed { get; set; }
     public bool EquippableUsedInFocusMode { get; set; }
 
+    /// <summary>Maps a handle in the current layout, whose damage response data starts at <paramref name="offset"/>, to this release's handle.</summary>
+    protected uint LayoutHandle(uint handle, uint offset = 0) =>
+        _hasKillCreditPlayerState || handle < DamageResponseLayout.KillCreditPlayerStateHandle + offset ? handle : handle - 1;
+
     protected void AddSharedFields(uint offset = 0)
     {
         AddPropertyHandle(offset, x => x.DamageTaken, ExportCategory.Gunplay).Float();
@@ -59,14 +81,15 @@ public abstract class DamageParameters<T> : ExportGroupDescriptor<T>
         AddPropertyHandle(13 + offset, "bAliveAfterChange", x => x.AliveAfterChange, ExportCategory.Gunplay).Bool();
         AddPropertyHandle(15 + offset, x => x.EventInstigatorPawn, ExportCategory.Gunplay).ObjectNetGuid();
         AddPropertyHandle(16 + offset, x => x.DamagerPlayerState, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(17 + offset, x => x.KillCreditPlayerState, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(18 + offset, x => x.RegionalDamage, ExportCategory.Gunplay).EnumByte();
-        AddPropertyHandle(19 + offset, x => x.Character, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(20 + offset, x => x.NetTimestamp, ExportCategory.Gunplay).Float();
-        AddPropertyHandle(21 + offset, x => x.RespawnNumber, ExportCategory.Gunplay).Int32();
-        AddPropertyHandle(22 + offset, x => x.LifeChangeEventIndex, ExportCategory.Gunplay).Int32();
-        AddPropertyHandle(23 + offset, x => x.VictimRespawnNumber, ExportCategory.Gunplay).Int32();
-        AddPropertyHandle(24 + offset, "bEquippableUsedZoomed", x => x.EquippableUsedZoomed, ExportCategory.Gunplay).Bool();
-        AddPropertyHandle(25 + offset, "bEquippableUsedInFocusMode", x => x.EquippableUsedInFocusMode, ExportCategory.Gunplay).Bool();
+        if (_hasKillCreditPlayerState)
+            AddPropertyHandle(17 + offset, x => x.KillCreditPlayerState, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(18 + offset, offset), x => x.RegionalDamage, ExportCategory.Gunplay).EnumByte();
+        AddPropertyHandle(LayoutHandle(19 + offset, offset), x => x.Character, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(20 + offset, offset), x => x.NetTimestamp, ExportCategory.Gunplay).Float();
+        AddPropertyHandle(LayoutHandle(21 + offset, offset), x => x.RespawnNumber, ExportCategory.Gunplay).Int32();
+        AddPropertyHandle(LayoutHandle(22 + offset, offset), x => x.LifeChangeEventIndex, ExportCategory.Gunplay).Int32();
+        AddPropertyHandle(LayoutHandle(23 + offset, offset), x => x.VictimRespawnNumber, ExportCategory.Gunplay).Int32();
+        AddPropertyHandle(LayoutHandle(24 + offset, offset), "bEquippableUsedZoomed", x => x.EquippableUsedZoomed, ExportCategory.Gunplay).Bool();
+        AddPropertyHandle(LayoutHandle(25 + offset, offset), "bEquippableUsedInFocusMode", x => x.EquippableUsedInFocusMode, ExportCategory.Gunplay).Bool();
     }
 }

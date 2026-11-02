@@ -6,6 +6,16 @@ namespace Replay.Valorant.Combat;
 
 public sealed class MulticastNotifyDamageBaseParameters : DamageParameters<MulticastNotifyDamageBaseParameters>
 {
+    public MulticastNotifyDamageBaseParameters()
+        : this(hasKillCreditPlayerState: true)
+    {
+    }
+
+    public MulticastNotifyDamageBaseParameters(bool hasKillCreditPlayerState)
+        : base(hasKillCreditPlayerState)
+    {
+    }
+
     public override string Path => "/Script/ShooterGame.DamageableComponent:MulticastNotifyDamage_Base";
 
     public int KillsForKiller { get; set; }
@@ -19,9 +29,9 @@ public sealed class MulticastNotifyDamageBaseParameters : DamageParameters<Multi
     protected override void Configure()
     {
         AddSharedFields();
-        AddPropertyHandle(26, x => x.AssistsList).RepLayoutDynamicArray(
-            new Replay.Models.Replay.VersionedDefinition<DamageAssist>(new(27)));
-        AddDeathFields(32);
+        AddPropertyHandle(LayoutHandle(26), x => x.AssistsList).RepLayoutDynamicArray(
+            new Replay.Models.Replay.VersionedDefinition<DamageAssist>(new(LayoutHandle(27))));
+        AddDeathFields(LayoutHandle(32));
     }
 
     private void AddDeathFields(uint firstHandle)

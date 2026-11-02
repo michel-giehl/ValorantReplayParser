@@ -48,8 +48,8 @@ public sealed class BombGameStateDescriptor : ExportGroupDescriptor<BombGameStat
             new VersionedDefinition<IFieldDecoderDescriptor>(
                     new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1301))
                 .From(
-                    new ReplayReleaseVersion(12, 11),
-                    new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1211))
+                    new ReplayReleaseVersion(12, 9),
+                    new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1209))
                 .From(
                     new ReplayReleaseVersion(13, 0),
                     new CompatibleAresRoundResultsDecoder(AresRoundResultHandles.Release1301))

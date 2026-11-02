@@ -7,6 +7,16 @@ namespace Replay.Valorant.GameState;
 
 public sealed class MulticastReceivePlayerTemporaryDeathEventBaseParameters : DamageParameters<MulticastReceivePlayerTemporaryDeathEventBaseParameters>
 {
+    public MulticastReceivePlayerTemporaryDeathEventBaseParameters()
+        : this(hasKillCreditPlayerState: true)
+    {
+    }
+
+    public MulticastReceivePlayerTemporaryDeathEventBaseParameters(bool hasKillCreditPlayerState)
+        : base(hasKillCreditPlayerState)
+    {
+    }
+
     public override string Path => "/Script/ShooterGame.ShooterGameState:MulticastReceivePlayerTemporaryDeathEvent_Base";
     public override ExportCategory Categories => ExportCategory.GameState | ExportCategory.Gunplay;
     public NetObjectReference? DamagerPlayer { get; set; }
@@ -19,7 +29,7 @@ public sealed class MulticastReceivePlayerTemporaryDeathEventBaseParameters : Da
         AddPropertyHandle(0, x => x.DamagerPlayer).ObjectNetGuid();
         AddPropertyHandle(1, x => x.DownedPlayer).ObjectNetGuid();
         AddSharedFields(2);
-        AddPropertyHandle(28, "EquippableUsed", x => x.TemporaryDeathEquippableUsed).ObjectNetGuid();
-        AddPropertyHandle(29, "bRecoversInstantly", x => x.RecoversInstantly).Bool();
+        AddPropertyHandle(LayoutHandle(28, 2), "EquippableUsed", x => x.TemporaryDeathEquippableUsed).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(29, 2), "bRecoversInstantly", x => x.RecoversInstantly).Bool();
     }
 }

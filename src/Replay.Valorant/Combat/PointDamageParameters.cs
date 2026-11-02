@@ -7,6 +7,11 @@ namespace Replay.Valorant.Combat;
 
 public abstract class PointDamageParameters<T> : DamageParameters<T> where T : PointDamageParameters<T>
 {
+    protected PointDamageParameters(bool hasKillCreditPlayerState)
+        : base(hasKillCreditPlayerState)
+    {
+    }
+
     public NetObjectReference DamagedComponent { get; set; }
     public string? DamagedBone { get; set; }
     public bool IsWallPenetration { get; set; }
@@ -18,13 +23,13 @@ public abstract class PointDamageParameters<T> : DamageParameters<T> where T : P
 
     protected void AddPointFields(uint offset = 0)
     {
-        AddPropertyHandle(26 + offset, x => x.DamagedComponent, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(27 + offset, x => x.DamagedBone, ExportCategory.Gunplay).FName();
-        AddPropertyHandle(28 + offset, "bIsWallPenetration", x => x.IsWallPenetration, ExportCategory.Gunplay).Bool();
-        AddPropertyHandle(29 + offset, x => x.FalloffMultiplier, ExportCategory.Gunplay).Float();
-        AddPropertyHandle(30 + offset, x => x.DamageDirection, ExportCategory.Gunplay).FVectorNetQuantizeNormal();
-        AddPropertyHandle(31 + offset, x => x.DamageImpactLocation, ExportCategory.Gunplay).FVectorNetQuantize();
-        AddPropertyHandle(32 + offset, x => x.DamageImpactNormal, ExportCategory.Gunplay).FVectorNetQuantizeNormal();
-        AddPropertyHandle(33 + offset, x => x.DamageImpactBoneRelativeLocation, ExportCategory.Gunplay).FVectorNetQuantize();
+        AddPropertyHandle(LayoutHandle(26 + offset, offset), x => x.DamagedComponent, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(27 + offset, offset), x => x.DamagedBone, ExportCategory.Gunplay).FName();
+        AddPropertyHandle(LayoutHandle(28 + offset, offset), "bIsWallPenetration", x => x.IsWallPenetration, ExportCategory.Gunplay).Bool();
+        AddPropertyHandle(LayoutHandle(29 + offset, offset), x => x.FalloffMultiplier, ExportCategory.Gunplay).Float();
+        AddPropertyHandle(LayoutHandle(30 + offset, offset), x => x.DamageDirection, ExportCategory.Gunplay).FVectorNetQuantizeNormal();
+        AddPropertyHandle(LayoutHandle(31 + offset, offset), x => x.DamageImpactLocation, ExportCategory.Gunplay).FVectorNetQuantize();
+        AddPropertyHandle(LayoutHandle(32 + offset, offset), x => x.DamageImpactNormal, ExportCategory.Gunplay).FVectorNetQuantizeNormal();
+        AddPropertyHandle(LayoutHandle(33 + offset, offset), x => x.DamageImpactBoneRelativeLocation, ExportCategory.Gunplay).FVectorNetQuantize();
     }
 }
