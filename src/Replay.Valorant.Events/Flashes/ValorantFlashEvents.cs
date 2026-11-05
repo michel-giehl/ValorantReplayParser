@@ -13,6 +13,8 @@ public enum ValorantFlashKind
     PhoenixCurveballRight,
     VyseArcRose,
     YoruBlindside,
+    HushFlashbulbOverhand,
+    HushFlashbulbUnderhand,
 }
 
 public enum ValorantFlashPathSampleSource
@@ -27,6 +29,10 @@ public enum ValorantFlashExplosionEvidence
     SkyeFlashSource,
     VyseFlashSource,
     ActorDestroyedFallback,
+    /// <summary>Hush's Flashbulb detonates when its windup effect ends, after the redirect stop.</summary>
+    FlashWindupEnded,
+    /// <summary>A blind caused by a flash whose detonation was not otherwise observed yet.</summary>
+    BlindObserved,
 }
 
 public enum ValorantFlashHitCorrelation

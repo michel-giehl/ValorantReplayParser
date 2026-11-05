@@ -3,6 +3,8 @@ using Replay.Models.Descriptors;
 using Replay.Models.Events;
 using Replay.Models.Net;
 using Replay.Models.Unreal;
+using Replay.Unreal.Parsing;
+using Replay.Valorant.Descriptors.Agents;
 using Replay.Valorant.Events.Flashes;
 using Replay.Valorant.Flashes.Descriptors;
 using Replay.Valorant.GameState;
@@ -281,6 +283,73 @@ public class ValorantFlashEventEnricherTests
     }
 
     [Test]
+    public void Emit_HushRedirectStop_DetonatesWhenWindupEnds()
+    {
+        var sink = new CapturingReplayEventSink();
+        var enricher = new ValorantFlashEventEnricher(sink, new NetGuidCache());
+        RegisterPlayer(enricher, 20, 30, "hush");
+        RegisterPlayer(enricher, 21, 31, "target");
+        enricher.Emit(SpawnFlash(1, 100, FlashPaths.HushOverhandProjectile));
+        enricher.Emit(Export(1.01f, 2, 100, HushProjectile(FlashPaths.HushOverhandProjectile, new(20, null),
+            Movement(new FVector(4, 5, 6)))));
+        enricher.Emit(StopRpc(2.6f, 3, 100)); // The redirect pause, not the detonation.
+        enricher.Emit(WindupRpc(2.6f, 4, 100, 77));
+        Assert.That(sink.Events.OfType<ValorantFlashExploded>(), Is.Empty);
+
+        enricher.Emit(Rpc(3.1f, 5, 100, "MulticastStopContinuousEffect",
+            new EffectManagerStopContinuousParameters { EffectId = 77 }));
+        var manager = BlindManager(1, 501, 0);
+        manager.ActiveBlinds![0]!.CausingActor = new(100, null);
+        enricher.Emit(Export(3.1f, 6, 21, manager));
+        enricher.Complete();
+
+        var cast = sink.Events.OfType<ValorantFlashCast>().Single();
+        var explosion = sink.Events.OfType<ValorantFlashExploded>().Single();
+        var hit = sink.Events.OfType<ValorantFlashPlayerHit>().Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(cast.FlashKind, Is.EqualTo(ValorantFlashKind.HushFlashbulbOverhand));
+            Assert.That(cast.CasterCharacterNetGuid, Is.EqualTo(20));
+            Assert.That(explosion.TimeSeconds, Is.EqualTo(3.1f));
+            Assert.That(explosion.Evidence, Is.EqualTo(ValorantFlashExplosionEvidence.FlashWindupEnded));
+            Assert.That(explosion.Location, Is.EqualTo(new FVector(4, 5, 6)));
+            Assert.That(hit.FlashKind, Is.EqualTo(ValorantFlashKind.HushFlashbulbOverhand));
+            Assert.That(hit.Correlation, Is.EqualTo(ValorantFlashHitCorrelation.CausingProjectile));
+        });
+    }
+
+    [Test]
+    public void Emit_HushBlindBeforeWindupStop_DetonatesOnceAtTheBlind()
+    {
+        var sink = new CapturingReplayEventSink();
+        var enricher = new ValorantFlashEventEnricher(sink, new NetGuidCache());
+        RegisterPlayer(enricher, 20, 30, "hush");
+        RegisterPlayer(enricher, 21, 31, "target");
+        enricher.Emit(SpawnFlash(1, 100, FlashPaths.HushUnderhandProjectile));
+        enricher.Emit(Export(1.01f, 2, 100, HushProjectile(FlashPaths.HushUnderhandProjectile, new(20, null),
+            Movement(new FVector(4, 5, 6)))));
+        enricher.Emit(WindupRpc(2.6f, 3, 100, 77));
+        var manager = BlindManager(1, 501, 0);
+        manager.ActiveBlinds![0]!.CausingActor = new(100, null);
+        enricher.Emit(Export(3.1f, 4, 21, manager));
+        enricher.Emit(Rpc(3.1f, 5, 100, "MulticastStopContinuousEffect",
+            new EffectManagerStopContinuousParameters { EffectId = 77 }));
+        enricher.Emit(new ActorClosed(4, 6, 100, 1, ChannelCloseReason.Destroyed));
+        enricher.Complete();
+
+        var explosion = sink.Events.OfType<ValorantFlashExploded>().Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(sink.Events.OfType<ValorantFlashCast>().Single().FlashKind,
+                Is.EqualTo(ValorantFlashKind.HushFlashbulbUnderhand));
+            Assert.That(explosion.TimeSeconds, Is.EqualTo(3.1f));
+            Assert.That(explosion.Evidence, Is.EqualTo(ValorantFlashExplosionEvidence.BlindObserved));
+            Assert.That(sink.Events.OfType<ValorantFlashPlayerHit>().Single().Correlation,
+                Is.EqualTo(ValorantFlashHitCorrelation.CausingProjectile));
+        });
+    }
+
+    [Test]
     public void Emit_VyseSourceAndRepeatedBlinds_EmitsReusableExplosions()
     {
         var sink = new CapturingReplayEventSink();
@@ -497,6 +566,31 @@ public class ValorantFlashEventEnricherTests
         projectile.MarkDecoded(nameof(projectile.ReplicatedMovement));
         return projectile;
     }
+
+    private static AbilityActorDescriptor HushProjectile(
+        string path,
+        NetObjectReference instigator,
+        FRepMovement movement)
+    {
+        var projectile = new AbilityActorDescriptor(path,
+            new HashSet<string>(StringComparer.Ordinal) { "Owner", "Instigator", "ReplicatedMovement" },
+            ERotatorQuantization.ByteComponents)
+        {
+            Instigator = instigator,
+            ReplicatedMovement = movement,
+        };
+        projectile.MarkDecoded(nameof(projectile.Instigator));
+        projectile.MarkDecoded(nameof(projectile.ReplicatedMovement));
+        return projectile;
+    }
+
+    private static RpcReceived WindupRpc(float time, int packetId, uint actorNetGuid, ulong effectId) =>
+        Rpc(time, packetId, actorNetGuid, "MulticastPlayContinuousEffect",
+            new EffectManagerPlayContinuousParameters
+            {
+                EffectId = effectId,
+                EffectContainerPath = "/Game/Characters/Paprika/S0/Ability_Q/FXC_Paprika_Q_Projectile_FlashWindup.FXC_Paprika_Q_Projectile_FlashWindup_C",
+            });
 
     private static FRepMovement Movement(FVector location) =>
         new(new FVector(1, 2, 3), null, location, null, false, false, 1, 0);

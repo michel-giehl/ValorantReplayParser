@@ -20,4 +20,8 @@ public static class FlashPaths
         "/Game/Characters/Nox/S0/Ability_E/GameObject_Nox_StealthingTrap_Flash_2.GameObject_Nox_StealthingTrap_Flash_2_C";
     public const string YoruProjectile =
         "/Game/Characters/Stealth/S0/Ability_Q/Projectile_Stealth_Q_BounceFlash.Projectile_Stealth_Q_BounceFlash_C";
+    public const string HushOverhandProjectile =
+        "/Game/Characters/Paprika/S0/Ability_Q/Projectile_Paprika_Q_RedirectFlash.Projectile_Paprika_Q_RedirectFlash_C";
+    public const string HushUnderhandProjectile =
+        "/Game/Characters/Paprika/S0/Ability_Q/Projectile_Paprika_Q_RedirectFlash_Underhand.Projectile_Paprika_Q_RedirectFlash_Underhand_C";
 }
