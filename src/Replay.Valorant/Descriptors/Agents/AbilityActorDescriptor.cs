@@ -4,15 +4,18 @@ using Replay.Models.Replay;
 using Replay.Models.Unreal;
 using Replay.Unreal.Parsing;
 using Replay.Valorant.Descriptors.Agents.Terra;
+using Replay.Valorant.Flashes.Descriptors;
 
 namespace Replay.Valorant.Descriptors.Agents;
 
-/// <summary>Reusable sparse actor fields. Agent registrations select only fields present in their wire exports.</summary>
+/// <summary>Reusable sparse actor fields. Agent registrations select only fields present in their wire exports.
+/// Flash projectiles registered this way (Hush's Flashbulb) feed the flash enricher through
+/// <see cref="IFlashProjectilePayload"/>; it ignores every actor it did not spawn as a flash.</summary>
 public sealed class AbilityActorDescriptor(
     string path,
     IReadOnlySet<string> exportedFields,
     ERotatorQuantization rotatorQuantization)
-    : ExportGroupDescriptor<AbilityActorDescriptor>
+    : ExportGroupDescriptor<AbilityActorDescriptor>, IFlashProjectilePayload
 {
     public override string Path => path;
     public override ExportCategory Categories => ExportCategory.Ability | ExportCategory.Effects;

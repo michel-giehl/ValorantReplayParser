@@ -18,6 +18,7 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
     private const float UniqueBlindCandidateSeconds = 0.25f;
     private const float EffectFallbackDelaySeconds = 1f;
     private const int MaxOuterDepth = 16;
+    private const string HushFlashWindupEffect = "FXC_Paprika_Q_Projectile_FlashWindup_C";
 
     private readonly IReplayEventSink _inner;
     private readonly NetGuidCache _netGuidCache;
@@ -216,6 +217,12 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
         if (rpc.FunctionName == "MulticastStopProjectile" &&
             _flashes.TryGetValue(rpc.ActorNetGuid, out var projectile))
         {
+            // Flashbulb stops where it was redirected and detonates when its windup ends.
+            if (IsHush(projectile.Kind))
+            {
+                return;
+            }
+
             EmitExplosion(
                 projectile,
                 rpc.TimeSeconds,
@@ -238,6 +245,25 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
                 source?.Location ?? skyeFlash.LastLocation,
                 ValorantFlashExplosionEvidence.SkyeFlashSource);
             return;
+        }
+
+        if (_flashes.TryGetValue(rpc.ActorNetGuid, out var hush) && IsHush(hush.Kind))
+        {
+            if (rpc.Payload is EffectManagerPlayContinuousParameters { EffectId: { } windupId } windup &&
+                windup.EffectContainerPath?.EndsWith(HushFlashWindupEffect, StringComparison.Ordinal) == true)
+            {
+                hush.WindupEffectId = windupId;
+            }
+            else if (rpc.Payload is EffectManagerStopContinuousParameters { EffectId: { } stoppedId } &&
+                     stoppedId == hush.WindupEffectId)
+            {
+                EmitExplosion(
+                    hush,
+                    rpc.TimeSeconds,
+                    rpc.PacketId,
+                    hush.LastLocation,
+                    ValorantFlashExplosionEvidence.FlashWindupEnded);
+            }
         }
 
         if (rpc.Payload is IEffectDataPayload effectData)
@@ -383,6 +409,16 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
                     exportGroup.PacketId,
                     vyseState.Spawn.Location ?? vyseState.LastLocation,
                     ValorantFlashExplosionEvidence.VyseFlashSource);
+            }
+            else if (resolution.State is { Exploded: false } hushState && IsHush(hushState.Kind))
+            {
+                // The blind can share the windup's stop frame and arrive first.
+                EmitExplosion(
+                    hushState,
+                    exportGroup.TimeSeconds,
+                    exportGroup.PacketId,
+                    hushState.LastLocation,
+                    ValorantFlashExplosionEvidence.BlindObserved);
             }
             else if (resolution.State is { } state && !state.Exploded && state.SourceSpawn is { } source)
             {
@@ -667,17 +703,26 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
             return ValorantFlashKind.BreachFlashpoint;
         }
 
+        if (path.Contains("Paprika", StringComparison.OrdinalIgnoreCase))
+        {
+            return ValorantFlashKind.HushFlashbulbOverhand;
+        }
+
         return path.Contains("Phoenix", StringComparison.OrdinalIgnoreCase)
             ? ValorantFlashKind.PhoenixCurveballLeft
             : null;
     }
+
+    private static bool IsHush(ValorantFlashKind kind) =>
+        kind is ValorantFlashKind.HushFlashbulbOverhand or ValorantFlashKind.HushFlashbulbUnderhand;
 
     private static bool MatchesKindFamily(ValorantFlashKind candidate, ValorantFlashKind configKind) =>
         candidate == configKind ||
         candidate is ValorantFlashKind.KayoFlashDriveOverhand or ValorantFlashKind.KayoFlashDriveUnderhand &&
         configKind is ValorantFlashKind.KayoFlashDriveOverhand or ValorantFlashKind.KayoFlashDriveUnderhand ||
         candidate is ValorantFlashKind.PhoenixCurveballLeft or ValorantFlashKind.PhoenixCurveballRight &&
-        configKind is ValorantFlashKind.PhoenixCurveballLeft or ValorantFlashKind.PhoenixCurveballRight;
+        configKind is ValorantFlashKind.PhoenixCurveballLeft or ValorantFlashKind.PhoenixCurveballRight ||
+        IsHush(candidate) && IsHush(configKind);
 
     private static bool TryResolveFlashKind(ActorSpawned spawned, out ValorantFlashKind kind)
     {
@@ -701,6 +746,10 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
                     ValorantFlashKind.VyseArcRose,
                 FlashPaths.YoruProjectile or "Default__Projectile_Stealth_Q_BounceFlash_C" =>
                     ValorantFlashKind.YoruBlindside,
+                FlashPaths.HushOverhandProjectile or "Default__Projectile_Paprika_Q_RedirectFlash_C" =>
+                    ValorantFlashKind.HushFlashbulbOverhand,
+                FlashPaths.HushUnderhandProjectile or "Default__Projectile_Paprika_Q_RedirectFlash_Underhand_C" =>
+                    ValorantFlashKind.HushFlashbulbUnderhand,
                 _ => null,
             };
             if (resolved is { } value)
@@ -755,6 +804,7 @@ internal sealed class ValorantFlashEventEnricher : IReplayEventSink
         public uint? SourceActorNetGuid { get; set; }
         public ActorSpawned? SourceSpawn { get; set; }
         public double? MaxFlashDurationSeconds { get; set; }
+        public ulong? WindupEffectId { get; set; }
         public bool IsReusableSource => Kind == ValorantFlashKind.VyseArcRose;
     }
 

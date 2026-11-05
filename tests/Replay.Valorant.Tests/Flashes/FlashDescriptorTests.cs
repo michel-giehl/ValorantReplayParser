@@ -44,6 +44,23 @@ public class FlashDescriptorTests
         });
     }
 
+    [TestCase(FlashPaths.HushOverhandProjectile, 8)]
+    [TestCase(FlashPaths.HushUnderhandProjectile, 9)]
+    public void CreateCatalog_RegistersHushFlashbulbProjectilesWithShiftedStopRpc(string path, int stopHandle)
+    {
+        var catalog = ValorantDescriptors.CreateCatalog();
+        var stop = catalog.ClassNetCacheDescriptors
+            .Single(cache => cache.Path == path + "_ClassNetCache")
+            .FunctionFields.Single(function => function.Name == "MulticastStopProjectile");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(catalog.ExportGroupDescriptors.Single(candidate => candidate.Path == path),
+                Is.InstanceOf<IFlashProjectilePayload>());
+            Assert.That(stop.Handle, Is.EqualTo(stopHandle));
+        });
+    }
+
     [Test]
     public void CreateCatalog_RegistersSkyeFlashSourceAndDoubleDurationRpc()
     {
