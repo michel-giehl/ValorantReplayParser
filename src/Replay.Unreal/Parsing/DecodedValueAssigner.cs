@@ -8,6 +8,17 @@ internal static class DecodedValueAssigner
 {
     public static void Assign(object payload, FieldBinding binding, DecodedFieldValue value)
     {
+        if (value.HasValue && binding.Assigner is not null)
+        {
+            binding.Assigner(payload, value, binding.AssignerState);
+            if (payload is ExportGroupDescriptor custom && binding.DecodedMarker is not null)
+            {
+                custom.MarkDecoded(binding.DecodedMarker);
+            }
+
+            return;
+        }
+
         if (!value.HasValue || binding.TargetProperty is null)
         {
             return;

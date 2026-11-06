@@ -34,6 +34,8 @@ internal static class FieldBindingCompiler
             Name = field.PropertyName ?? exportName,
             ExportName = exportName,
             TargetProperty = field.TargetProperty,
+            Assigner = field.Assigner,
+            DecodedMarker = field.DecodedMarker,
         };
     }
 }
