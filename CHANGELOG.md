@@ -8,6 +8,24 @@
 - `ValorantRoundPhaseChanged` precedes each round-boundary RPC, so consumers no longer match RPC names.
 - `ActorOwnerReferences.Read` is the one way to read an actor's Owner, Instigator and CreatedByCharacter, and
   `ValorantActorOwnerObserved` precedes each export that names one.
+- Player crosshairs. `BombPlayerStateDescriptor.CrosshairSettings` exposes the crosshair members present in an update
+  (`CrosshairSettingsUpdate`), `CrosshairSettings` is the merged state, and `ValorantEventEnricher` emits
+  `ValorantCrosshairUpdated` with a full snapshot per player state whenever it changes. The struct is replicated as 159
+  flattened leaves; `CrosshairWireLayout` describes them and binds them by position relative to the other player-state
+  properties, because leaf names repeat and the export table only lists leaves some player sent. Unsent leaves hold the
+  class default object: zero/false, white for the colours, black for the outline colour. Decoded on 12.08 to 13.09.
+  Two wire orderings exist and a replay is bound with the one whose names match the most exports of its crosshair block
+  (`CrosshairWireLayout.Current` for 12.11 to 13.09, `CrosshairWireLayout.Legacy` for 12.08 and 12.10, where
+  `bAllowVertScaling` precedes `LineOffset` in every line section and the sniper dot leaves are
+  `bUseCustomCenterDotColor`, `CenterDotSize`, `CenterDotOpacity`, `bDisplayCenterDot`). `CrosshairWireLayout.Inspect`
+  reports the chosen ordering and every export inside the block whose name fits no leaf; such a leaf is not bound. The
+  count reaches consumers as `CrosshairSettingsUpdate.UnmatchedLeafCount` and `ValorantCrosshairUpdated.UnmatchedLeafCount`
+  (`IsPartial` when above zero, sticky per player state), so a patch that inserts or reorders a leaf is reported instead
+  of silently losing its value.
+- `FieldDescriptor.HandleResolver` and `FieldDescriptor.Assigner` (`ExportGroupDescriptor<T>.AddResolvedField`) let a
+  descriptor bind a field by a function of the replay export table and route its value to custom code instead of a CLR
+  property. `FieldDescriptor.BindingStateResolver` computes per-replay state when the group is bound and passes it to
+  the assigner.
 
 ### Fixed
 

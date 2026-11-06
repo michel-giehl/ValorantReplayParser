@@ -45,6 +45,7 @@ internal sealed class ReplayExportBinder
             var h = handle.Value;
             var binding = FieldBindingCompiler.Compile(
                 fieldDesc, descriptor.Categories, _releaseVersion, replayGroup.NetFieldExports[h]?.Name);
+            binding.AssignerState = fieldDesc.BindingStateResolver?.Invoke(replayGroup);
             ApplySelection(ref binding, descriptor.Path, groupEnabled);
             fields[h] = binding;
         }
@@ -228,6 +229,11 @@ internal sealed class ReplayExportBinder
 
     private static uint? ResolveHandle(FieldDescriptor fieldDesc, NetFieldExportGroup replayGroup)
     {
+        if (fieldDesc.HandleResolver is { } resolver)
+        {
+            return resolver(replayGroup);
+        }
+
         if (fieldDesc.Handle.HasValue)
         {
             return fieldDesc.Handle.Value;
