@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using Replay.Models.Net;
 
 namespace Replay.Models.Descriptors;
 
@@ -118,6 +119,27 @@ public abstract class ExportGroupDescriptor<TDescriptor> : ExportGroupDescriptor
     {
         var propertyInfo = GetProperty(property);
         return AddField(propertyInfo.Name, propertyInfo, exportName, handle, categories);
+    }
+
+    /// <summary>
+    /// Adds a field with no backing CLR property: the handle comes from <paramref name="resolveHandle"/> and the
+    /// decoded value goes to <paramref name="assign"/>. <paramref name="decodedMarker"/> is the property name that
+    /// <c>HasDecoded</c> reports once the field was assigned. <paramref name="bindingState"/> computes per-replay
+    /// state when the field is bound; it reaches <paramref name="assign"/> as its last argument.
+    /// </summary>
+    protected FieldDescriptorBuilder AddResolvedField(
+        string name,
+        string exportName,
+        Func<NetFieldExportGroup, uint?> resolveHandle,
+        Action<TDescriptor, DecodedFieldValue, object?> assign,
+        string decodedMarker,
+        ExportCategory categories = ExportCategory.None,
+        Func<NetFieldExportGroup, object?>? bindingState = null)
+    {
+        var builder = AddField(name, targetProperty: null, exportName, handle: null, categories);
+        builder.ResolveHandle(resolveHandle)
+            .AssignWith((payload, value, state) => assign((TDescriptor)payload, value, state), decodedMarker);
+        return bindingState is null ? builder : builder.WithBindingState(bindingState);
     }
 
     private FieldDescriptorBuilder AddField(
