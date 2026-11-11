@@ -11,8 +11,8 @@ public sealed class MulticastNotifyDamagePointParameters : PointDamageParameters
     {
     }
 
-    public MulticastNotifyDamagePointParameters(bool hasKillCreditPlayerState)
-        : base(hasKillCreditPlayerState)
+    public MulticastNotifyDamagePointParameters(bool hasKillCreditPlayerState, bool hasDamageIcon = false)
+        : base(hasKillCreditPlayerState, hasDamageIcon)
     {
     }
 
