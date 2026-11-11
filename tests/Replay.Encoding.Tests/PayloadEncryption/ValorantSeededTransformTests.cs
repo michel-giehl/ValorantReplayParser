@@ -112,6 +112,18 @@ public class ValorantSeededTransformTests
         new("++Ares-Core+release-13.08", 65, "7E8AB6B0AD92F14F00"),
         new("++Ares-Core+release-13.08", 287, "1FEE335A39DA29B773FED1DF6DCD7519C180BAA20B6F5B3045DC6EDC088C26A906195007"),
         new("++Ares-Core+release-13.08", 288, "24E3E8FA9A9B3C1367196C6CEC3A9F25701BBC89558813AB5BBDD9A6864A07AF1919D37C"),
+        // Captured by emulating the 13.10 native routine at RVA 0x432eb50 on private buffers.
+        new("++Ares-Core+release-13.10", 0, ""),
+        new("++Ares-Core+release-13.10", 1, "01"),
+        new("++Ares-Core+release-13.10", 7, "09"),
+        new("++Ares-Core+release-13.10", 8, "E3"),
+        new("++Ares-Core+release-13.10", 31, "81A90E6C"),
+        new("++Ares-Core+release-13.10", 32, "9BEEED3B"),
+        new("++Ares-Core+release-13.10", 63, "3DD567DBA74FD53B"),
+        new("++Ares-Core+release-13.10", 64, "940242C04DB53A20"),
+        new("++Ares-Core+release-13.10", 65, "B92B20E41756AB0301"),
+        new("++Ares-Core+release-13.10", 287, "D37FF5963920BD0A120D371387A22E050731A05A8A754AB9C26C98457040FC56A9A05B18"),
+        new("++Ares-Core+release-13.10", 288, "545F1060C4825F097D33D4CC4B4145FD75921C9477F375A61FF101CDFB56EA151354CFED"),
     ];
 
     [TestCaseSource(nameof(KnownTransformVectors))]
@@ -139,6 +151,7 @@ public class ValorantSeededTransformTests
     [TestCase("++Ares-Core+release-china-13.05", 65)]
     [TestCase("++Ares-Core+release-13.06", 65)]
     [TestCase("++Ares-Core+release-13.08", 65)]
+    [TestCase("++Ares-Core+release-13.10", 65)]
     public void Apply_WithExplicitBitCount_ConsumesOnlyRequestedPayloadBits(string replayVersion, int bitCount)
     {
         var bytes = Convert.FromHexString(PayloadHex);

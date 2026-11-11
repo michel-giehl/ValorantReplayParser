@@ -5,6 +5,7 @@
 ### Added
 
 - Payload transform for `++Ares-Core+release-china-13.09`.
+- Payload transform for `++Ares-Core+release-13.10`.
 - `ValorantRoundPhaseChanged` precedes each round-boundary RPC, so consumers no longer match RPC names.
 - `ActorOwnerReferences.Read` is the one way to read an actor's Owner, Instigator and CreatedByCharacter, and
   `ValorantActorOwnerObserved` precedes each export that names one.
