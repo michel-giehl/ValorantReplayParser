@@ -1,5 +1,6 @@
 using Replay.Models.Descriptors;
 using Replay.Models.Net;
+using Replay.Models.Replay;
 using Replay.Models.Unreal;
 using Replay.Unreal.Parsing;
 
@@ -32,6 +33,7 @@ public sealed class BombCombatReportComponentDescriptor : ExportGroupDescriptor<
     public bool WasKiller { get; set; }
     public CombatReportArrayUpdate<CombatInteractionUpdate>? DealtIteractions { get; set; }
     public NetObjectReference DamageType { get; set; }
+    public NetObjectReference DamageIcon { get; set; }
     public CombatReportArrayUpdate<RegionalDamageInteractionUpdate>? RegionalDamageInteractions { get; set; }
     public byte Region { get; set; }
     public int Hits { get; set; }
@@ -47,14 +49,16 @@ public sealed class BombCombatReportComponentDescriptor : ExportGroupDescriptor<
 
     protected override void Configure()
     {
-        AddProperty(x => x.Rounds).Decode(new CombatRoundReportsDecoder());
+        var decoders = new VersionedDefinition<CombatRoundReportsDecoder>(new())
+            .From(new ReplayReleaseVersion(13, 10), new(CombatReportHandles.Release1310));
+        AddProperty(x => x.Rounds).Decode(decoders);
         AddProperty(x => x.RoundNum).Int32();
-        AddProperty(x => x.Reports).Decode(CombatRoundReportsDecoder.Reports);
+        AddProperty(x => x.Reports).Decode(decoders.Select(decoder => decoder.Reports));
         AddProperty(x => x.RoundNumber).Int32();
         AddProperty(x => x.StateRemainingTime).Float();
         AddProperty(x => x.GameTime).Float();
         AddProperty(x => x.GamePhase).EnumByte();
-        AddProperty(x => x.Interactions).Decode(CombatRoundReportsDecoder.Interactions);
+        AddProperty(x => x.Interactions).Decode(decoders.Select(decoder => decoder.Interactions));
         AddProperty(x => x.ParticipantSubject).FString();
         AddProperty(x => x.ParticipantTeamName).FName();
         AddProperty(x => x.ParticipantCharacterIcon).ObjectNetGuid();
@@ -66,17 +70,18 @@ public sealed class BombCombatReportComponentDescriptor : ExportGroupDescriptor<
         AddProperty(x => x.AssistType).EnumByte();
         AddProperty(x => x.ParticipantsKillerState).ObjectNetGuid();
         AddProperty("bWasKiller", x => x.WasKiller).Bool();
-        AddProperty(x => x.DealtIteractions).Decode(CombatRoundReportsDecoder.DealtInteractions);
+        AddProperty(x => x.DealtIteractions).Decode(decoders.Select(decoder => decoder.DealtInteractions));
         AddProperty(x => x.DamageType).ObjectNetGuid();
+        AddProperty(x => x.DamageIcon).ObjectNetGuid();
         AddProperty(x => x.RegionalDamageInteractions)
-            .Decode(CombatRoundReportsDecoder.RegionalInteractions);
+            .Decode(decoders.Select(decoder => decoder.RegionalInteractions));
         AddProperty(x => x.Region).EnumByte();
         AddProperty(x => x.Hits).Int32();
         AddProperty(x => x.Damage).Float();
         AddProperty("bIsWallPen", x => x.IsWallPen).Bool();
         AddProperty("bIsKill", x => x.IsKill).Bool();
         AddProperty(x => x.DestroyedArmor).ObjectNetGuid();
-        AddProperty(x => x.ReceivedInteractions).Decode(CombatRoundReportsDecoder.ReceivedInteractions);
+        AddProperty(x => x.ReceivedInteractions).Decode(decoders.Select(decoder => decoder.ReceivedInteractions));
         AddProperty(x => x.CombatReportIndex).Int32();
         AddProperty(x => x.ResurrectorPlayerState).ObjectNetGuid();
         AddProperty("bDied", x => x.Died).Bool();

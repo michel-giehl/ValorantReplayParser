@@ -12,8 +12,8 @@ public sealed class MulticastReceivePlayerTemporaryDeathEventBaseParameters : Da
     {
     }
 
-    public MulticastReceivePlayerTemporaryDeathEventBaseParameters(bool hasKillCreditPlayerState)
-        : base(hasKillCreditPlayerState)
+    public MulticastReceivePlayerTemporaryDeathEventBaseParameters(bool hasKillCreditPlayerState, bool hasDamageIcon = false)
+        : base(hasKillCreditPlayerState, hasDamageIcon)
     {
     }
 

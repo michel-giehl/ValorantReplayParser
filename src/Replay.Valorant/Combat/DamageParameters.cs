@@ -16,16 +16,21 @@ public static class DamageResponseLayout
 
     /// <summary>KillCreditPlayerState's handle in FNetworkedDamageResponseData. Later handles sit one lower without it.</summary>
     internal const uint KillCreditPlayerStateHandle = 17;
+
+    /// <summary>DamageIcon was inserted after DamageType in the damage response.</summary>
+    public static ReplayReleaseVersion DamageIconRelease { get; } = new(13, 10);
 }
 
 public abstract class DamageParameters<T> : ExportGroupDescriptor<T>
     where T : DamageParameters<T>
 {
     private readonly bool _hasKillCreditPlayerState;
+    private readonly bool _hasDamageIcon;
 
-    protected DamageParameters(bool hasKillCreditPlayerState)
+    protected DamageParameters(bool hasKillCreditPlayerState, bool hasDamageIcon = false)
     {
         _hasKillCreditPlayerState = hasKillCreditPlayerState;
+        _hasDamageIcon = hasDamageIcon;
     }
 
     public override ExportCategory Categories => ExportCategory.Gunplay;
@@ -41,6 +46,7 @@ public abstract class DamageParameters<T> : ExportGroupDescriptor<T>
     public FVector? DamageOrigin { get; set; }
     public NetObjectReference? EquippableUsed { get; set; }
     public NetObjectReference DamageType { get; set; }
+    public NetObjectReference? DamageIcon { get; set; }
     public DamageLifeChangeEvent?[]? LifeChangeEvents { get; set; }
     public NetObjectReference ChangedComponent { get; set; }
     public float? LifeResult { get; set; }
@@ -58,9 +64,16 @@ public abstract class DamageParameters<T> : ExportGroupDescriptor<T>
     public bool EquippableUsedZoomed { get; set; }
     public bool EquippableUsedInFocusMode { get; set; }
 
-    /// <summary>Maps a handle in the current layout, whose damage response data starts at <paramref name="offset"/>, to this release's handle.</summary>
-    protected uint LayoutHandle(uint handle, uint offset = 0) =>
-        _hasKillCreditPlayerState || handle < DamageResponseLayout.KillCreditPlayerStateHandle + offset ? handle : handle - 1;
+    /// <summary>Maps a 13.09 handle, whose damage response data starts at <paramref name="offset"/>, to this release's handle.</summary>
+    protected uint LayoutHandle(uint handle, uint offset = 0)
+    {
+        var mappedHandle = handle;
+        if (!_hasKillCreditPlayerState && handle >= DamageResponseLayout.KillCreditPlayerStateHandle + offset)
+            mappedHandle--;
+        if (_hasDamageIcon && handle >= 9 + offset)
+            mappedHandle++;
+        return mappedHandle;
+    }
 
     protected void AddSharedFields(uint offset = 0)
     {
@@ -73,16 +86,18 @@ public abstract class DamageParameters<T> : ExportGroupDescriptor<T>
         AddPropertyHandle(6 + offset, x => x.DamageOrigin, ExportCategory.Gunplay).FVectorNetQuantize100();
         AddPropertyHandle(7 + offset, x => x.EquippableUsed, ExportCategory.Gunplay).ObjectNetGuid();
         AddPropertyHandle(8 + offset, x => x.DamageType, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(9 + offset, x => x.LifeChangeEvents, ExportCategory.Gunplay).RepLayoutDynamicArray(
-            new VersionedDefinition<DamageLifeChangeEvent>(new(offset)));
-        AddPropertyHandle(10 + offset, x => x.ChangedComponent, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(11 + offset, x => x.LifeResult, ExportCategory.Gunplay).Float();
-        AddPropertyHandle(12 + offset, x => x.DeltaLife, ExportCategory.Gunplay).Float();
-        AddPropertyHandle(13 + offset, "bAliveAfterChange", x => x.AliveAfterChange, ExportCategory.Gunplay).Bool();
-        AddPropertyHandle(15 + offset, x => x.EventInstigatorPawn, ExportCategory.Gunplay).ObjectNetGuid();
-        AddPropertyHandle(16 + offset, x => x.DamagerPlayerState, ExportCategory.Gunplay).ObjectNetGuid();
+        if (_hasDamageIcon)
+            AddPropertyHandle(9 + offset, x => x.DamageIcon, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(9 + offset, offset), x => x.LifeChangeEvents, ExportCategory.Gunplay).RepLayoutDynamicArray(
+            new VersionedDefinition<DamageLifeChangeEvent>(new(offset + (_hasDamageIcon ? 1u : 0u))));
+        AddPropertyHandle(LayoutHandle(10 + offset, offset), x => x.ChangedComponent, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(11 + offset, offset), x => x.LifeResult, ExportCategory.Gunplay).Float();
+        AddPropertyHandle(LayoutHandle(12 + offset, offset), x => x.DeltaLife, ExportCategory.Gunplay).Float();
+        AddPropertyHandle(LayoutHandle(13 + offset, offset), "bAliveAfterChange", x => x.AliveAfterChange, ExportCategory.Gunplay).Bool();
+        AddPropertyHandle(LayoutHandle(15 + offset, offset), x => x.EventInstigatorPawn, ExportCategory.Gunplay).ObjectNetGuid();
+        AddPropertyHandle(LayoutHandle(16 + offset, offset), x => x.DamagerPlayerState, ExportCategory.Gunplay).ObjectNetGuid();
         if (_hasKillCreditPlayerState)
-            AddPropertyHandle(17 + offset, x => x.KillCreditPlayerState, ExportCategory.Gunplay).ObjectNetGuid();
+            AddPropertyHandle(LayoutHandle(17 + offset, offset), x => x.KillCreditPlayerState, ExportCategory.Gunplay).ObjectNetGuid();
         AddPropertyHandle(LayoutHandle(18 + offset, offset), x => x.RegionalDamage, ExportCategory.Gunplay).EnumByte();
         AddPropertyHandle(LayoutHandle(19 + offset, offset), x => x.Character, ExportCategory.Gunplay).ObjectNetGuid();
         AddPropertyHandle(LayoutHandle(20 + offset, offset), x => x.NetTimestamp, ExportCategory.Gunplay).Float();

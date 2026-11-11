@@ -13,13 +13,15 @@ public sealed class DamageableComponentClassNetCacheDescriptor
             0, "MulticastNotifyDamage_Base",
             "/Script/ShooterGame.DamageableComponent:MulticastNotifyDamage_Base",
             new VersionedDefinition<MulticastNotifyDamageBaseParameters>(new(hasKillCreditPlayerState: false))
-                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new())
+                .From(DamageResponseLayout.DamageIconRelease, new(hasKillCreditPlayerState: true, hasDamageIcon: true)),
             ExportCategory.Gunplay);
         AddFunctionHandle(
             1, "MulticastNotifyDamage_Point",
             "/Script/ShooterGame.DamageableComponent:MulticastNotifyDamage_Point",
             new VersionedDefinition<MulticastNotifyDamagePointParameters>(new(hasKillCreditPlayerState: false))
-                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new())
+                .From(DamageResponseLayout.DamageIconRelease, new(hasKillCreditPlayerState: true, hasDamageIcon: true)),
             ExportCategory.Gunplay);
         AddFunctionHandle<MulticastNotifyHealParameters>(
             6, "MulticastNotifyHeal", "/Script/ShooterGame.DamageableComponent:MulticastNotifyHeal", ExportCategory.Gunplay);

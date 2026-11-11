@@ -64,7 +64,8 @@ public sealed class BombGameStateClassNetCacheDescriptor : ClassNetCacheDescript
             "MulticastReceivePlayerTemporaryDeathEvent_Base",
             "/Script/ShooterGame.ShooterGameState:MulticastReceivePlayerTemporaryDeathEvent_Base",
             new VersionedDefinition<MulticastReceivePlayerTemporaryDeathEventBaseParameters>(new(hasKillCreditPlayerState: false))
-                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new())
+                .From(DamageResponseLayout.DamageIconRelease, new(hasKillCreditPlayerState: true, hasDamageIcon: true)),
             ExportCategory.GameState | ExportCategory.Gunplay);
     }
 
@@ -74,7 +75,8 @@ public sealed class BombGameStateClassNetCacheDescriptor : ClassNetCacheDescript
             "MulticastReceivePlayerTemporaryDeathEvent_Point",
             "/Script/ShooterGame.ShooterGameState:MulticastReceivePlayerTemporaryDeathEvent_Point",
             new VersionedDefinition<MulticastReceivePlayerTemporaryDeathEventPointParameters>(new(hasKillCreditPlayerState: false))
-                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new()),
+                .From(DamageResponseLayout.KillCreditPlayerStateRelease, new())
+                .From(DamageResponseLayout.DamageIconRelease, new(hasKillCreditPlayerState: true, hasDamageIcon: true)),
             ExportCategory.GameState | ExportCategory.Gunplay);
     }
 }

@@ -56,6 +56,9 @@ public sealed record CombatInteractionUpdate(
 {
     public CombatTimestamp? StartTime { get; init; }
     public CombatTimestamp? EndTime { get; init; }
+
+    /// <summary>Damage icon object reference, replicated since 13.10.</summary>
+    public uint? DamageIcon { get; init; }
 }
 
 public sealed record RegionalDamageInteractionUpdate(
@@ -107,13 +110,49 @@ internal sealed class CompatibleCombatRoundReportsDecoder : IFieldDecoder
 
 public sealed record CombatTimestamp(uint? HudConfig, float? StateRemainingTime, float? GameTime, byte? GamePhase);
 
+/// <summary>Combat report handles that move between releases; handles up to DealtIteractions' DamageType are shared.</summary>
+internal readonly record struct CombatReportHandles(
+    bool HasDamageIcon,
+    int ReceivedInteractions,
+    int CombatReportIndex,
+    int ResurrectorPlayerState)
+{
+    public const int DealtInteractions = 26;
+
+    public static CombatReportHandles Release1309 { get; } = new(false, 61, 96, 98);
+
+    /// <summary>13.10 added DamageIcon after DamageType in every combat interaction, shifting every later handle.</summary>
+    public static CombatReportHandles Release1310 { get; } = new(true, 62, 98, 100);
+
+    /// <summary>Handle of the RegionalDamageInteractions array of the combat interactions at <paramref name="interactionsHandle"/>.</summary>
+    public int RegionsOf(int interactionsHandle) => interactionsHandle + (HasDamageIcon ? 19 : 18);
+}
+
 public sealed class CombatRoundReportsDecoder : IFieldDecoder
 {
-    internal static IFieldDecoder Reports { get; } = new NestedDecoder(a => ReadArray(a, ReadCharacterReport));
-    internal static IFieldDecoder Interactions { get; } = new NestedDecoder(a => ReadArray(a, ReadParticipant));
-    internal static IFieldDecoder DealtInteractions { get; } = new NestedDecoder(a => ReadCombatInteractions(a, 44, 45));
-    internal static IFieldDecoder ReceivedInteractions { get; } = new NestedDecoder(a => ReadCombatInteractions(a, 79, 80));
-    internal static IFieldDecoder RegionalInteractions { get; } = new NestedDecoder(a => ReadRegionalInteractions(a, 45));
+    private readonly CombatReportHandles _handles;
+
+    public CombatRoundReportsDecoder()
+        : this(CombatReportHandles.Release1309)
+    {
+    }
+
+    internal CombatRoundReportsDecoder(CombatReportHandles handles)
+    {
+        _handles = handles;
+        Reports = new NestedDecoder(a => ReadArray(a, ReadCharacterReport));
+        Interactions = new NestedDecoder(a => ReadArray(a, ReadParticipant));
+        DealtInteractions = new NestedDecoder(a => ReadCombatInteractions(a, CombatReportHandles.DealtInteractions));
+        ReceivedInteractions = new NestedDecoder(a => ReadCombatInteractions(a, handles.ReceivedInteractions));
+        RegionalInteractions = new NestedDecoder(
+            a => ReadRegionalInteractions(a, handles.RegionsOf(CombatReportHandles.DealtInteractions) + 1));
+    }
+
+    internal IFieldDecoder Reports { get; }
+    internal IFieldDecoder Interactions { get; }
+    internal IFieldDecoder DealtInteractions { get; }
+    internal IFieldDecoder ReceivedInteractions { get; }
+    internal IFieldDecoder RegionalInteractions { get; }
 
     private sealed class NestedDecoder(Func<FBitArchive, object> read) : IFieldDecoder
     {
@@ -136,7 +175,7 @@ public sealed class CombatRoundReportsDecoder : IFieldDecoder
         return DecodedFieldValue.FromObject(reports);
     }
 
-    private static CombatRoundReportUpdate ReadRound(int index, FBitArchive archive)
+    private CombatRoundReportUpdate ReadRound(int index, FBitArchive archive)
     {
         int? roundNumber = null;
         CombatReportArrayUpdate<CharacterCombatReportUpdate>? reports = null;
@@ -148,23 +187,24 @@ public sealed class CombatRoundReportsDecoder : IFieldDecoder
         return new CombatRoundReportUpdate(index, roundNumber, reports);
     }
 
-    private static CharacterCombatReportUpdate ReadCharacterReport(int index, FBitArchive archive)
+    private CharacterCombatReportUpdate ReadCharacterReport(int index, FBitArchive archive)
     {
         int? roundNumber = null;
         CombatReportArrayUpdate<ParticipantInteractionUpdate>? interactions = null;
         uint? resurrector = null;
         bool? died = null;
         FVector? deathLocation = null;
+        var resurrectorHandle = _handles.ResurrectorPlayerState;
         var interactionTime = new TimestampState(6);
-        var respawnTime = new TimestampState(99);
-        var deathTime = new TimestampState(105);
+        var respawnTime = new TimestampState(resurrectorHandle + 1);
+        var deathTime = new TimestampState(resurrectorHandle + 7);
         ReadFields(archive, (handle, field) =>
         {
             if (handle == 5) roundNumber = ReadInt32(field);
             if (handle == 10) interactions = ReadArray(field, ReadParticipant);
-            if (handle == 98) resurrector = ReadNetGuid(field);
-            if (handle == 103) died = ReadBool(field);
-            if (handle == 104) deathLocation = ReadVector(field);
+            if (handle == resurrectorHandle) resurrector = ReadNetGuid(field);
+            if (handle == resurrectorHandle + 5) died = ReadBool(field);
+            if (handle == resurrectorHandle + 6) deathLocation = ReadVector(field);
             interactionTime.Read(handle, field);
             respawnTime.Read(handle, field);
             deathTime.Read(handle, field);
@@ -176,36 +216,38 @@ public sealed class CombatRoundReportsDecoder : IFieldDecoder
         };
     }
 
-    private static ParticipantInteractionUpdate ReadParticipant(int index, FBitArchive archive)
+    private ParticipantInteractionUpdate ReadParticipant(int index, FBitArchive archive)
     {
-        var state = new ParticipantState(index);
+        var state = new ParticipantState(index, this);
         ReadFields(archive, state.Read);
         return state.Build();
     }
 
-    private static CombatReportArrayUpdate<CombatInteractionUpdate> ReadCombatInteractions(
+    private CombatReportArrayUpdate<CombatInteractionUpdate> ReadCombatInteractions(
         FBitArchive archive,
-        int regionsHandle,
-        int regionHandle)
+        int interactionsHandle)
     {
+        var regionsHandle = _handles.RegionsOf(interactionsHandle);
         return ReadArray(archive, (index, item) =>
         {
             uint? damageType = null;
+            uint? damageIcon = null;
             CombatReportArrayUpdate<RegionalDamageInteractionUpdate>? regions = null;
-            var start = new TimestampState(regionsHandle - 17);
-            var end = new TimestampState(regionsHandle - 13);
+            var start = new TimestampState(interactionsHandle + 1);
+            var end = new TimestampState(interactionsHandle + 5);
             ReadFields(item, (handle, field) =>
             {
-                if (handle == regionsHandle - 9) damageType = ReadNetGuid(field);
+                if (handle == interactionsHandle + 9) damageType = ReadNetGuid(field);
+                if (_handles.HasDamageIcon && handle == interactionsHandle + 10) damageIcon = ReadNetGuid(field);
                 start.Read(handle, field);
                 end.Read(handle, field);
                 if (handle == regionsHandle)
                 {
-                    regions = ReadRegionalInteractions(field, regionHandle);
+                    regions = ReadRegionalInteractions(field, regionsHandle + 1);
                 }
             });
             return new CombatInteractionUpdate(index, damageType, regions)
-            { StartTime = start.Build(), EndTime = end.Build() };
+            { StartTime = start.Build(), EndTime = end.Build(), DamageIcon = damageIcon };
         });
     }
 
@@ -332,7 +374,7 @@ public sealed class CombatRoundReportsDecoder : IFieldDecoder
             requested,
             message);
 
-    private sealed class ParticipantState(int index)
+    private sealed class ParticipantState(int index, CombatRoundReportsDecoder decoder)
     {
         private CombatReportArrayUpdate<CombatInteractionUpdate>? _dealtInteractions;
         private CombatReportArrayUpdate<CombatInteractionUpdate>? _receivedInteractions;
@@ -366,10 +408,18 @@ public sealed class CombatRoundReportsDecoder : IFieldDecoder
                 case 23: _assistType = ReadByte(field); break;
                 case 24: _killerPlayerState = ReadNetGuid(field); break;
                 case 25: _wasKiller = ReadBool(field); break;
-                case 26: _dealtInteractions = ReadCombatInteractions(field, 44, 45); break;
-                case 61: _receivedInteractions = ReadCombatInteractions(field, 79, 80); break;
-                case 96: _combatReportIndex = ReadInt32(field); break;
+                case CombatReportHandles.DealtInteractions:
+                    _dealtInteractions = decoder.ReadCombatInteractions(field, handle);
+                    break;
             }
+
+            var handles = decoder._handles;
+            if (handle == handles.ReceivedInteractions)
+            {
+                _receivedInteractions = decoder.ReadCombatInteractions(field, handle);
+            }
+
+            if (handle == handles.CombatReportIndex) _combatReportIndex = ReadInt32(field);
         }
 
         public ParticipantInteractionUpdate Build()

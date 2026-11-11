@@ -11,8 +11,8 @@ public sealed class MulticastNotifyDamageBaseParameters : DamageParameters<Multi
     {
     }
 
-    public MulticastNotifyDamageBaseParameters(bool hasKillCreditPlayerState)
-        : base(hasKillCreditPlayerState)
+    public MulticastNotifyDamageBaseParameters(bool hasKillCreditPlayerState, bool hasDamageIcon = false)
+        : base(hasKillCreditPlayerState, hasDamageIcon)
     {
     }
 

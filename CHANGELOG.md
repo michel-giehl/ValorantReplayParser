@@ -5,6 +5,11 @@
 ### Added
 
 - Payload transform for `++Ares-Core+release-china-13.09`.
+- Payload transform for `++Ares-Core+release-13.10`.
+- Combat reports decode on 13.10, which added `DamageIcon` after `DamageType` in every combat interaction and moved
+  every later handle. `CombatInteractionUpdate.DamageIcon` exposes the new object reference.
+- Damage and temporary-death RPCs select the 13.10 damage-response layout, including `DamageIcon` and shifted
+  life-change, point-damage, assist, and death fields. Earlier releases retain their existing layouts.
 - `ValorantRoundPhaseChanged` precedes each round-boundary RPC, so consumers no longer match RPC names.
 - `ActorOwnerReferences.Read` is the one way to read an actor's Owner, Instigator and CreatedByCharacter, and
   `ValorantActorOwnerObserved` precedes each export that names one.

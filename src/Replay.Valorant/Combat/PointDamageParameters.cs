@@ -7,8 +7,8 @@ namespace Replay.Valorant.Combat;
 
 public abstract class PointDamageParameters<T> : DamageParameters<T> where T : PointDamageParameters<T>
 {
-    protected PointDamageParameters(bool hasKillCreditPlayerState)
-        : base(hasKillCreditPlayerState)
+    protected PointDamageParameters(bool hasKillCreditPlayerState, bool hasDamageIcon = false)
+        : base(hasKillCreditPlayerState, hasDamageIcon)
     {
     }
 
